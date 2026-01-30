@@ -1,0 +1,29 @@
+WARNING:root:OpenTelemetry not available; tracing disabled
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\CRYPTSWARM\main.py", line 310, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\User\Desktop\CRYPTSWARM\main.py", line 247, in main
+    coordinator = SwarmCoordinator(cfg)
+  File "C:\Users\User\Desktop\CRYPTSWARM\agents\coordinator.py", line 51, in __init__
+    self._initialize_agents()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\User\Desktop\CRYPTSWARM\agents\coordinator.py", line 94, in _initialize_agents
+    self.agents["ui"] = UIAgent(self, host=self.cfg.ui_host, port=self.cfg.ui_port)
+                        ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\CRYPTSWARM\agents\ui_agent.py", line 29, in __init__
+    self._setup_routes()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\User\Desktop\CRYPTSWARM\agents\ui_agent.py", line 507, in _setup_routes
+    @self.app.route("/status.json")
+     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\sansio\scaffold.py", line 362, in decorator
+    self.add_url_rule(rule, endpoint, f, **options)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\sansio\scaffold.py", line 47, in wrapper_func
+    return f(self, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\sansio\app.py", line 657, in add_url_rule
+    raise AssertionError(
+    ...<2 lines>...
+    )
+AssertionError: View function mapping is overwriting an existing endpoint function: status_json

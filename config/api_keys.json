@@ -1,0 +1,10 @@
+{
+  "binance_api_key": "",
+  "binance_api_secret": "",
+  "kraken_api_key": "VgZAl0mlS/JjBHzan4o+n34Vn/i4laYv1yW4rmvgkNaYtTp6APath0JM",
+  "kraken_api_secret": "iqtCcatykdLd5Y7m1E5TVnUE0w78RTEp8KATYeewEHyELiUAUlrrwEUwov8N2wwU5RuD1XznnlkKXnyFIxTE2A==",
+  "web3_rpc_url": "https://mainnet.base.org",
+  "watch_address": "0x7Ba65b768bdeae6F29213e30daa0152583A591aF",
+  "erc20_token_address": "",
+  "etherscan_api_key": ""
+}

@@ -1,0 +1,279 @@
+2026-01-27 15:51:19,758 | INFO | Kraken client initialized successfully
+2026-01-27 15:51:19,758 | INFO | Kill Switch Agent enabled.
+2026-01-27 15:51:19,762 | INFO | UI Agent enabled.
+2026-01-27 15:51:19,763 | INFO | Data Store Agent connected to data/swarm_data.db
+2026-01-27 15:51:19,764 | INFO | Data Store tables created/verified
+2026-01-27 15:51:19,764 | INFO | Data Store Agent enabled.
+2026-01-27 15:51:19,764 | INFO | Performance Agent enabled.
+2026-01-27 15:51:19,765 | INFO | Security Agent initialized
+2026-01-27 15:51:19,765 | INFO | Security Agent enabled.
+2026-01-27 15:51:21,734 | INFO | Kraken Market Data Agent initialized.
+2026-01-27 15:51:21,734 | INFO | Kraken Execution Agent initialized.
+2026-01-27 15:51:23,455 | INFO | Wallet monitor enabled.
+2026-01-27 15:51:23,459 | INFO | UI Agent started on http://0.0.0.0:5000
+2026-01-27 15:51:24,755 | INFO | [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.217.65.241:5000
+2026-01-27 15:51:24,755 | INFO | [33mPress CTRL+C to quit[0m
+2026-01-27 15:51:30,836 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:52:13,378 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:53:19,917 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:54:13,441 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:55:09,296 | ERROR | Loop error: name 'logging' is not defined
+Exception in thread Thread-3 (_health_monitor_loop):
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\threading.py", line 1081, in _bootstrap_inner
+    self._context.run(self.run)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\threading.py", line 1023, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\CRYPTSWARM\agents\coordinator.py", line 273, in _health_monitor_loop
+    trades = self.agents["data_store"].get_recent_trades(100)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DataStoreAgent' object has no attribute 'get_recent_trades'
+2026-01-27 15:56:18,550 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:57:12,328 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:58:05,875 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 15:59:12,960 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:00:11,634 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:01:06,121 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:02:13,477 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:03:06,960 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:04:12,279 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:05:19,499 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:06:15,670 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:07:13,400 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:08:06,719 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:09:12,333 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:10:05,605 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:11:13,099 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:12:06,310 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:13:11,675 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:14:16,954 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:15:09,926 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:16:16,104 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:17:09,293 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:18:15,954 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:19:09,208 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:20:15,745 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:21:08,590 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:21:50,592 | INFO | 127.0.0.1 - - [27/Jan/2026 16:21:50] "GET / HTTP/1.1" 200 -
+2026-01-27 16:21:50,725 | INFO | 127.0.0.1 - - [27/Jan/2026 16:21:50] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:01,678 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:01] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:02,716 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:02] "GET / HTTP/1.1" 200 -
+2026-01-27 16:22:03,026 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:03] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:15,180 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:15] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:15,760 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:22:15,769 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:15] "GET / HTTP/1.1" 200 -
+2026-01-27 16:22:16,232 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:16] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:28,528 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:28] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:32,661 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:32] "GET / HTTP/1.1" 200 -
+2026-01-27 16:22:32,972 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:32] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:46,015 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:46] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:55,558 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:55] "GET / HTTP/1.1" 200 -
+2026-01-27 16:22:55,775 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:55] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:22:57,445 | INFO | 127.0.0.1 - - [27/Jan/2026 16:22:57] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:05,858 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:05] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:11,935 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:11] "GET / HTTP/1.1" 200 -
+2026-01-27 16:23:12,107 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:23:12,723 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:12] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:22,884 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:22] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:26,273 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:26] "GET / HTTP/1.1" 200 -
+2026-01-27 16:23:26,572 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:26] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:37,468 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:37] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:39,897 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:39] "GET / HTTP/1.1" 200 -
+2026-01-27 16:23:40,082 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:40] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:50,888 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:50] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:23:52,910 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:52] "GET / HTTP/1.1" 200 -
+2026-01-27 16:23:53,280 | INFO | 127.0.0.1 - - [27/Jan/2026 16:23:53] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:03,854 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:03] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:06,209 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:06] "GET / HTTP/1.1" 200 -
+2026-01-27 16:24:06,582 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:06] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:06,840 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:24:16,831 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:16] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:19,393 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:19] "GET / HTTP/1.1" 200 -
+2026-01-27 16:24:20,316 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:20] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:29,665 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:29] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:32,529 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:32] "GET / HTTP/1.1" 200 -
+2026-01-27 16:24:33,395 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:33] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:44,520 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:44] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:47,485 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:47] "GET / HTTP/1.1" 200 -
+2026-01-27 16:24:47,758 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:47] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:24:56,595 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:56] "GET / HTTP/1.1" 200 -
+2026-01-27 16:24:56,808 | INFO | 127.0.0.1 - - [27/Jan/2026 16:24:56] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:07,878 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:07] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:08,700 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:08] "GET / HTTP/1.1" 200 -
+2026-01-27 16:25:09,992 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:09] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:17,781 | ERROR | Loop error: DataStoreAgent.store_market_data() takes 2 positional arguments but 3 were given
+2026-01-27 16:25:19,777 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:19] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:22,366 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:22] "GET / HTTP/1.1" 200 -
+2026-01-27 16:25:22,813 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:22] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:33,596 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:33] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:36,947 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:36] "GET / HTTP/1.1" 200 -
+2026-01-27 16:25:37,147 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:37] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:47,798 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:47] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:25:51,348 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:51] "GET / HTTP/1.1" 200 -
+2026-01-27 16:25:51,647 | INFO | 127.0.0.1 - - [27/Jan/2026 16:25:51] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:01,552 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:01] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:05,075 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:05] "GET / HTTP/1.1" 200 -
+2026-01-27 16:26:05,437 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:05] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:11,682 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:26:15,771 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:15] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:19,287 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:19] "GET / HTTP/1.1" 200 -
+2026-01-27 16:26:21,042 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:21] "GET / HTTP/1.1" 200 -
+2026-01-27 16:26:21,374 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:21] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:23,997 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:23] "GET /trades HTTP/1.1" 200 -
+2026-01-27 16:26:28,424 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:28] "GET / HTTP/1.1" 200 -
+2026-01-27 16:26:28,816 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:28] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:31,180 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:31] "GET /logs HTTP/1.1" 200 -
+2026-01-27 16:26:34,696 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:34] "GET / HTTP/1.1" 200 -
+2026-01-27 16:26:34,827 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:34] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:45,562 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:45] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:47,077 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:47] "GET / HTTP/1.1" 200 -
+2026-01-27 16:26:47,411 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:47] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:26:57,584 | INFO | 127.0.0.1 - - [27/Jan/2026 16:26:57] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:00,291 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:00] "GET / HTTP/1.1" 200 -
+2026-01-27 16:27:00,606 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:00] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:10,591 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:10] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:13,357 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:13] "GET / HTTP/1.1" 200 -
+2026-01-27 16:27:13,620 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:13] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:20,942 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:27:23,729 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:23] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:27,178 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:27] "GET / HTTP/1.1" 200 -
+2026-01-27 16:27:27,282 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:27] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:37,836 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:37] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:40,682 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:40] "GET / HTTP/1.1" 200 -
+2026-01-27 16:27:40,818 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:40] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:51,834 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:51] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:27:53,684 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:53] "GET / HTTP/1.1" 200 -
+2026-01-27 16:27:53,842 | INFO | 127.0.0.1 - - [27/Jan/2026 16:27:53] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:28:04,781 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:04] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:28:06,996 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:06] "GET / HTTP/1.1" 200 -
+2026-01-27 16:28:07,434 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:07] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:28:15,965 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:28:17,916 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:17] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:28:20,483 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:20] "GET / HTTP/1.1" 200 -
+2026-01-27 16:28:20,871 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:20] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:28:31,978 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:31] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:28:35,418 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:35] "GET / HTTP/1.1" 200 -
+2026-01-27 16:28:35,731 | INFO | 127.0.0.1 - - [27/Jan/2026 16:28:35] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:29:09,940 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:30:15,848 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:31:09,729 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:32:18,089 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:33:10,990 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:34:18,889 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:34:38,173 | INFO | 127.0.0.1 - - [27/Jan/2026 16:34:38] "GET / HTTP/1.1" 200 -
+2026-01-27 16:34:38,447 | INFO | 127.0.0.1 - - [27/Jan/2026 16:34:38] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:34:42,168 | INFO | 127.0.0.1 - - [27/Jan/2026 16:34:42] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-01-27 16:34:48,813 | INFO | 127.0.0.1 - - [27/Jan/2026 16:34:48] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:34:53,895 | INFO | 127.0.0.1 - - [27/Jan/2026 16:34:53] "GET / HTTP/1.1" 200 -
+2026-01-27 16:34:54,094 | INFO | 127.0.0.1 - - [27/Jan/2026 16:34:54] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:04,746 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:04] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:07,630 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:07] "GET / HTTP/1.1" 200 -
+2026-01-27 16:35:07,896 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:07] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:15,744 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:35:18,619 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:18] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:21,019 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:21] "GET / HTTP/1.1" 200 -
+2026-01-27 16:35:21,421 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:21] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:31,667 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:31] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:34,768 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:34] "GET / HTTP/1.1" 200 -
+2026-01-27 16:35:35,066 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:35] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:53,655 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:53] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:35:54,439 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:54] "GET / HTTP/1.1" 200 -
+2026-01-27 16:35:54,549 | INFO | 127.0.0.1 - - [27/Jan/2026 16:35:54] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:05,326 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:05] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:08,516 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:08] "GET / HTTP/1.1" 200 -
+2026-01-27 16:36:09,464 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:36:09,590 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:09] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:19,568 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:19] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:21,860 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:21] "GET / HTTP/1.1" 200 -
+2026-01-27 16:36:21,975 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:21] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:32,553 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:32] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:35,201 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:35] "GET / HTTP/1.1" 200 -
+2026-01-27 16:36:36,165 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:36] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:45,887 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:45] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:36:49,535 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:49] "GET / HTTP/1.1" 200 -
+2026-01-27 16:36:49,762 | INFO | 127.0.0.1 - - [27/Jan/2026 16:36:49] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:01,548 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:01] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:04,584 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:04] "GET / HTTP/1.1" 200 -
+2026-01-27 16:37:04,892 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:04] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:15,562 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:15] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:19,340 | ERROR | Loop error: DataStoreAgent.store_market_data() takes 2 positional arguments but 3 were given
+2026-01-27 16:37:20,945 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:20] "GET / HTTP/1.1" 200 -
+2026-01-27 16:37:21,060 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:21] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:31,610 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:31] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:34,769 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:34] "GET / HTTP/1.1" 200 -
+2026-01-27 16:37:34,861 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:34] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:45,576 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:45] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:47,996 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:47] "GET / HTTP/1.1" 200 -
+2026-01-27 16:37:48,463 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:48] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:37:58,558 | INFO | 127.0.0.1 - - [27/Jan/2026 16:37:58] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:01,050 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:01] "GET / HTTP/1.1" 200 -
+2026-01-27 16:38:01,337 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:01] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:11,654 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:11] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:12,234 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:38:13,834 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:13] "GET / HTTP/1.1" 200 -
+2026-01-27 16:38:14,104 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:14] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:25,690 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:25] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:26,656 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:26] "GET / HTTP/1.1" 200 -
+2026-01-27 16:38:26,921 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:26] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:37,938 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:37] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:39,514 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:39] "GET / HTTP/1.1" 200 -
+2026-01-27 16:38:39,621 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:39] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:50,567 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:50] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:38:52,592 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:52] "GET / HTTP/1.1" 200 -
+2026-01-27 16:38:52,878 | INFO | 127.0.0.1 - - [27/Jan/2026 16:38:52] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:03,798 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:03] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:05,805 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:05] "GET / HTTP/1.1" 200 -
+2026-01-27 16:39:05,927 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:05] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:08,911 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:39:16,997 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:16] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:22,527 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:22] "GET / HTTP/1.1" 200 -
+2026-01-27 16:39:22,910 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:22] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:34,787 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:34] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:35,837 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:35] "GET / HTTP/1.1" 200 -
+2026-01-27 16:39:35,975 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:35] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:47,194 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:47] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:49,090 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:49] "GET / HTTP/1.1" 200 -
+2026-01-27 16:39:49,203 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:49] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:39:59,657 | INFO | 127.0.0.1 - - [27/Jan/2026 16:39:59] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:04,394 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:04] "GET / HTTP/1.1" 200 -
+2026-01-27 16:40:04,500 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:04] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:14,871 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:14] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:15,293 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:40:17,972 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:17] "GET / HTTP/1.1" 200 -
+2026-01-27 16:40:18,084 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:18] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:26,904 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:26] "GET / HTTP/1.1" 200 -
+2026-01-27 16:40:27,579 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:27] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:37,784 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:37] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:39,835 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:39] "GET / HTTP/1.1" 200 -
+2026-01-27 16:40:40,396 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:40] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:50,747 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:50] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:40:53,860 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:53] "GET / HTTP/1.1" 200 -
+2026-01-27 16:40:54,397 | INFO | 127.0.0.1 - - [27/Jan/2026 16:40:54] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:05,278 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:05] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:06,727 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:06] "GET / HTTP/1.1" 200 -
+2026-01-27 16:41:06,897 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:06] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:09,161 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:41:17,691 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:17] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:20,249 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:20] "GET / HTTP/1.1" 200 -
+2026-01-27 16:41:21,457 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:21] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:30,774 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:30] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:33,187 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:33] "GET / HTTP/1.1" 200 -
+2026-01-27 16:41:33,964 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:33] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:43,819 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:43] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:46,020 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:46] "GET / HTTP/1.1" 200 -
+2026-01-27 16:41:46,593 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:46] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:56,759 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:56] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:41:58,987 | INFO | 127.0.0.1 - - [27/Jan/2026 16:41:58] "GET / HTTP/1.1" 200 -
+2026-01-27 16:42:00,490 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:00] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:42:09,573 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:09] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:42:11,866 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:11] "GET / HTTP/1.1" 200 -
+2026-01-27 16:42:12,232 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:12] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:42:15,738 | ERROR | Loop error: name 'logging' is not defined
+2026-01-27 16:42:22,578 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:22] "GET /price.json HTTP/1.1" 200 -
+2026-01-27 16:42:24,806 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:24] "GET / HTTP/1.1" 200 -
+2026-01-27 16:42:25,186 | INFO | 127.0.0.1 - - [27/Jan/2026 16:42:25] "GET /price.json HTTP/1.1" 200 -

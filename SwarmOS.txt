@@ -1,0 +1,715 @@
+1) Regime Detection Agent — Detailed Spec
+1.1 Goals
+
+The regime agent should answer, continuously:
+
+What kind of market is this right now? (trend / chop / panic / illiquid)
+
+How confident are we?
+
+What changed? (regime shift events)
+
+It must be:
+
+stable (not flipping constantly)
+
+fast (online updates)
+
+explainable (why it labeled something)
+
+1.2 Regime Labels (practical set)
+
+Use a small set you can actually act on:
+
+Core 6-label set
+
+TREND_UP
+
+TREND_DOWN
+
+CHOP_RANGE
+
+BREAKOUT
+
+PANIC_VOLATILE
+
+LOW_LIQUIDITY
+
+Optional later:
+
+MEAN_REVERT_HIGH_VOL
+
+NEWS_SHOCK (if you add event feeds)
+
+1.3 Feature Set (what the agent computes)
+
+Compute features across multiple timeframes (e.g., 1m, 5m, 1h).
+At minimum: “fast” (1m/5m) + “slow” (1h).
+
+A) Trend strength
+
+MA slope: slope of SMA(50) or EMA(50) over last N candles
+
+ADX(14) (or a simplified trend strength proxy)
+
+Directional consistency: % candles in same direction over last N
+
+Breakout persistence: # of closes above recent high / below recent low
+
+B) Volatility & shock
+
+ATR%: ATR(14) / price
+
+Realized volatility (std dev of returns)
+
+Wickiness / tail ratio: average (high-low)/(abs(close-open)+ε)
+
+Gap/spike score: max return in last N vs median return
+
+C) Range / mean reversion signal
+
+Bollinger Band width
+
+Price position in bands (close vs midline)
+
+Hurst proxy (optional): trending vs mean reverting tendency
+
+Mean-cross frequency: how often price crosses SMA(20)
+
+D) Liquidity / microstructure (CEX-friendly)
+
+Spread %: (ask-bid)/mid
+
+Order book depth (if available)
+
+Volume percentile: current volume vs trailing window
+
+Slippage estimate: last fill vs mid (from execution logs)
+
+If you can’t access order book depth, use spread + volume as proxies.
+
+1.4 Decision Rules (buildable v1)
+
+You can do this with a scoring + hysteresis approach (better than raw thresholds).
+
+Step 1: Compute standardized feature scores
+
+Convert each feature to a 0–1 score using rolling percentiles:
+
+vol_score = percentile(ATR%)
+
+spread_score = percentile(spread%)
+
+trend_score = normalized(ADX) + normalized(MA_slope)
+
+range_score = normalized(mean-cross frequency) + low BB width
+
+Step 2: Regime scoring
+
+Each regime gets a weighted score:
+
+PANIC_VOLATILE
+
+high volatility + high wickiness + spread widening
+
+score = 0.45*vol + 0.25*wick + 0.20*spread + 0.10*spike
+
+LOW_LIQUIDITY
+
+high spread + low volume + poor fill quality
+
+score = 0.50*spread + 0.35*(1-volume) + 0.15*slippage
+
+TREND_UP / TREND_DOWN
+
+high trend strength + directional consistency + low mean-cross frequency
+
+score = 0.45*trend + 0.25*dir_consistency + 0.20*(1-mean_cross) + 0.10*breakout_persistence
+
+direction from MA slope / price vs MA
+
+CHOP_RANGE
+
+low trend + high mean-cross frequency + narrow BB width
+
+score = 0.45*(1-trend) + 0.35*mean_cross + 0.20*(1-bb_width)
+
+BREAKOUT
+
+recent range expansion + closes beyond prior bounds + rising volume
+
+score = 0.40*breakout_persistence + 0.25*bb_width + 0.20*volume + 0.15*trend
+
+Step 3: Choose label + confidence
+
+label = argmax(score)
+
+confidence = top_score - second_score (bounded 0–1)
+
+Step 4: Hysteresis / stickiness (prevents flip-flopping)
+
+Only allow regime switch if:
+
+New label is top for K consecutive updates (e.g., 3)
+
+AND confidence exceeds a threshold (e.g., 0.15)
+
+OR current regime’s score drops below a floor
+
+Also add minimum regime duration (e.g., at least 5 minutes on 1m candles).
+
+1.5 Outputs (what it publishes)
+
+Every cycle it emits:
+
+{
+  "timestamp": 1730000000000,
+  "symbol": "BTCUSDT",
+  "regime": "CHOP_RANGE",
+  "confidence": 0.42,
+  "features": {
+    "trend": 0.18,
+    "vol": 0.22,
+    "spread": 0.12,
+    "mean_cross": 0.77,
+    "bb_width": 0.21,
+    "volume": 0.43
+  },
+  "regime_change": false
+}
+
+1.6 Why this is valuable
+
+Because your governance layer can say:
+
+CHOP → mean reversion strategies get capital
+
+TREND → momentum / SMA crossover gets capital
+
+PANIC → shrink size or halt
+
+LOW_LIQ → halt or switch venue
+
+That’s the “intelligence”.
+
+2) Meta-Strategy Governance Agent — Detailed Spec
+
+This is the truly novel part: it manages strategies like a portfolio manager.
+
+2.1 What it does
+
+Given multiple strategy suggestions (some may disagree), it decides:
+
+Which strategy (if any) is allowed to trade now
+
+How much capital risk is allowed
+
+Whether to veto trading entirely
+
+How to adapt when performance drifts
+
+It is not a price predictor.
+
+2.2 Inputs
+
+regime, confidence, features (from Regime Agent)
+
+Candidate actions from each strategy:
+
+action: BUY/SELL/HOLD
+
+edge score (internal)
+
+risk estimate
+
+invalidation rule
+
+Portfolio state:
+
+exposure, current positions, leverage, free balance
+
+Execution quality:
+
+spread, slippage, fill rate, order rejections
+
+Performance memory:
+
+last N trades per strategy
+
+drawdown, hit rate, expectancy
+
+performance by regime (important)
+
+2.3 Outputs
+
+approved_action + strategy_selected
+
+position_size (or risk budget)
+
+constraints (limit only, reduce size, cooldown)
+
+rationale_summary (for logs/UI)
+
+2.4 The Core: Strategy Validity Score (SVS)
+
+Each strategy i gets a live validity score:
+
+SVS components (all 0–1)
+
+Regime fit (RF)
+“How good is this strategy historically in this regime?”
+
+Based on rolling stats conditioned on regime label.
+
+Recent performance (RP)
+Rolling expectancy / win rate / drawdown penalty.
+
+Use an exponentially weighted metric.
+
+Signal quality (SQ)
+How strong is the strategy’s current setup?
+
+e.g., distance between MAs, RSI extreme, breakout strength.
+
+Execution feasibility (EF)
+Can we actually execute without getting wrecked by spread/slippage?
+
+Penalize high spread or recent bad fills.
+
+Risk alignment (RA)
+Does it respect user constraints?
+
+penalize if stop-loss too wide, correlation too high, etc.
+
+Example formula
+SVS_i = 0.30*RF_i + 0.25*RP_i + 0.20*SQ_i + 0.15*EF_i + 0.10*RA_i
+
+
+Then apply penalties:
+
+Disagreement penalty if strategies conflict violently
+
+Drift penalty if the strategy’s performance suddenly deviates
+
+Cooldown penalty after losses or rapid flip signals
+
+2.5 Capital Allocation (novel, buildable)
+
+Two approaches:
+
+Option A (simple, strong): Winner-take-most
+
+Pick the highest SVS strategy if it exceeds threshold.
+
+Allocate size proportional to SVS and regime confidence:
+
+risk_budget = base_risk * f(regime_confidence) * f(market_risk)
+position_size = clamp(risk_budget / stop_distance, max_size)
+
+
+Where:
+
+f(regime_confidence) increases risk only when regime is clear
+
+f(market_risk) reduces risk in PANIC/LOW_LIQ
+
+Option B (more advanced): Contextual Bandit
+
+Treat each strategy as an “arm” and learn which performs best per context:
+
+context = regime features + volatility + spread + time-of-day
+
+reward = risk-adjusted return per trade
+
+This becomes truly “AI” without overfitting like price prediction.
+
+2.6 Veto Logic (most important safety)
+
+Even if SVS is high, veto if:
+
+spread > threshold percentile
+
+volatility shock detected (PANIC) unless strategy is built for it
+
+API errors / partial order execution
+
+correlation exposure too high
+
+daily loss limit near hit
+
+This is how you prevent “AI bravado”.
+
+2.7 “Explainable Output” (non-negotiable)
+
+Every decision produces a small rationale:
+
+Example:
+
+“CHOP_RANGE (0.42). Mean-reversion has best regime-fit + strong signal (RSI 24). Spread acceptable. Risk budget reduced due to low regime confidence.”
+
+That’s what makes this system trustworthy and “operating system” like.
+
+How These Two Work Together (flow)
+
+Regime Agent emits regime label + confidence + features.
+
+Strategies propose actions + signal strength.
+
+Governance Agent scores strategies using SVS + applies veto logic.
+
+Execution only runs approved action with size.
+
+Performance feedback updates RF/RP over time.
+
+If you want the most buildable groundbreaking MVP
+
+Use:
+
+Regime Detection (rules + hysteresis)
+
+SVS governance (scoring + threshold)
+
+Add bandit later once logs exist
+
+That gets you novelty fast without research-death.
+
+Hivenance (aka SwarmOS) — Agent Registry (17 Agents)
+
+A swarm-governed trading operating system
+
+🧠 GOVERNANCE & INTELLIGENCE (The Novel Core)
+1. 👑 QUEEN
+
+Role: Meta-Strategy Governance Agent
+Purpose:
+
+Final decision authority
+
+Selects which strategies may act
+
+Allocates capital and risk budgets
+
+Can veto all trading
+
+The intelligence that governs intelligence.
+
+2. 🌦 ORACLE
+
+Role: Regime Detection Agent
+Purpose:
+
+Classifies market regimes (TREND, CHOP, PANIC, etc.)
+
+Detects regime shifts
+
+Provides confidence and feature context
+
+Knows what kind of world the hive is operating in.
+
+3. 🧠 COUNCIL
+
+Role: Strategy Ensemble Manager
+Purpose:
+
+Runs all strategy agents in parallel
+
+Normalizes their outputs (edge, risk, invalidation)
+
+Presents candidates to the Queen
+
+The deliberative layer before action.
+
+4. 🧪 NURSE
+
+Role: Post-Trade Review & Learning Agent
+Purpose:
+
+Performs trade autopsies
+
+Detects strategy drift
+
+Updates regime-conditioned priors
+
+Teaches the hive from its wounds.
+
+⚙️ EXECUTION & CONTROL
+5. 🐝 STING
+
+Role: Execution Agent
+Purpose:
+
+Places trades on CEX/DEX
+
+Tracks fills and execution quality
+
+Absolutely no decision power
+
+Fast. Precise. Obedient.
+
+6. 🛑 BUZZKILL
+
+Role: Intelligent Kill Switch
+Purpose:
+
+Monitors drawdown, anomalies, confidence collapse
+
+Can throttle or halt the entire system
+
+Overrides everyone, including the Queen
+
+The hive’s survival instinct.
+
+📊 DATA, OBSERVATION & SENSING
+7. 🧭 SCOUT
+
+Role: Market Data Agent
+Purpose:
+
+Fetches real-time & historical price data
+
+Volume, volatility, order book signals
+
+Feeds Oracle and Council
+
+The eyes of the hive.
+
+8. 🪙 SENTRY
+
+Role: Wallet Monitoring Agent
+Purpose:
+
+Monitors on-chain and custodial balances
+
+Detects deposits, withdrawals, transfers
+
+Feeds risk and position sizing
+
+Guards the treasury.
+
+9. 📡 HUM
+
+Role: Network / Messaging Agent
+Purpose:
+
+Message queues (Redis/Kafka/RabbitMQ)
+
+Ensures low-latency swarm communication
+
+The vibration that keeps the hive synchronized.
+
+🧠 STRATEGY WORKERS (Replaceable, Competing)
+10. 🐜 WORKER-SMA
+
+Role: Trend / Moving Average Strategy
+
+Thrives in directional regimes.
+
+11. 🐜 WORKER-RSI
+
+Role: Mean Reversion Strategy
+
+Feeds in chop and range.
+
+12. 🐜 WORKER-BREAKOUT
+
+Role: Volatility Expansion Strategy
+
+Strikes when compression snaps.
+
+13. 🐜 WORKER-MOMENTUM
+
+Role: Short-Term Momentum / Continuation
+
+Chases controlled acceleration.
+
+⚠️ Workers never execute. They propose, score, and compete.
+
+🗄️ MEMORY, PERFORMANCE & SECURITY
+14. 🍯 HONEYCOMB
+
+Role: Data Store Agent
+Purpose:
+
+Trade logs
+
+Market history
+
+Regime-conditioned performance
+
+The hive’s long-term memory.
+
+15. 📈 OBSERVER
+
+Role: Performance Agent
+Purpose:
+
+Tracks P/L, Sharpe, drawdown
+
+Measures execution quality
+
+Feeds Queen and Buzzkill
+
+Watches how well the hive is doing.
+
+16. 🛡 WAX
+
+Role: Security Agent
+Purpose:
+
+API key management
+
+Encryption
+
+Auth & access control
+
+The protective shell.
+
+🧑‍🚀 HUMAN INTERFACE
+17. 🪟 GLASS
+
+Role: User Interface Agent
+Purpose:
+
+Dashboard / CLI / API
+
+Shows decisions + rationale
+
+Allows human overrides
+
+Makes the hive intelligible to humans.
+
+Agent Registry (Canonical)
+🧠 Governance & Intelligence
+Agent	Name	Responsibility
+1	QUEEN	Meta-strategy governance, capital allocation, veto power
+2	ORACLE	Market regime detection and confidence scoring
+3	COUNCIL	Aggregates and normalizes strategy proposals
+4	NURSE	Post-trade review, drift detection, learning
+⚙️ Execution & Safety
+Agent	Name	Responsibility
+5	STING	Stateless trade execution (CEX / DEX)
+6	BUZZKILL	Intelligent kill switch and risk override
+📊 Observation & Infrastructure
+Agent	Name	Responsibility
+7	SCOUT	Market data ingestion (price, volume, order book)
+8	SENTRY	Wallet and balance monitoring
+9	HUM	Messaging / event bus (Redis / Kafka / MQ)
+🐜 Strategy Workers (Replaceable)
+Agent	Name	Responsibility
+10	WORKER-SMA	Trend following
+11	WORKER-RSI	Mean reversion
+12	WORKER-BREAKOUT	Volatility expansion
+13	WORKER-MOMENTUM	Short-term continuation
+
+Workers never execute trades.
+They propose actions with confidence, risk, and invalidation logic.
+
+🗄️ Memory, Performance & Security
+Agent	Name	Responsibility
+14	HONEYCOMB	Persistent data store
+15	OBSERVER	Performance metrics & analytics
+16	WAX	API key security & encryption
+17	GLASS	User interface (dashboard / CLI / API)
+🌦 ORACLE — Regime Detection (Technical)
+
+Purpose: classify the type of market, not predict price.
+
+Regimes
+
+TREND_UP
+
+TREND_DOWN
+
+CHOP_RANGE
+
+BREAKOUT
+
+PANIC_VOLATILE
+
+LOW_LIQUIDITY
+
+Features
+
+Trend strength (ADX, MA slope)
+
+Volatility (ATR%, realized vol)
+
+Range metrics (mean-cross frequency, BB width)
+
+Liquidity proxies (spread %, volume percentile)
+
+Execution quality feedback (slippage)
+
+Output
+{
+  "regime": "CHOP_RANGE",
+  "confidence": 0.42,
+  "features": {...},
+  "regime_change": false
+}
+
+👑 QUEEN — Meta-Strategy Governance (Novel Core)
+
+The Queen does not predict markets.
+It governs decisions under uncertainty.
+
+Inputs
+
+Regime + confidence (Oracle)
+
+Strategy proposals (Council)
+
+Wallet state (Sentry)
+
+Execution conditions (Scout / Sting)
+
+Performance memory (Honeycomb)
+
+Strategy Validity Score (SVS)
+
+Each strategy is scored dynamically:
+
+SVS = 0.30*RegimeFit
+    + 0.25*RecentPerformance
+    + 0.20*SignalQuality
+    + 0.15*ExecutionFeasibility
+    + 0.10*RiskAlignment
+
+Outputs
+{
+  "approved": true,
+  "strategy": "WORKER_RSI",
+  "position_size": 0.7,
+  "rationale": "Chop regime + strong RSI extreme, reduced size due to low confidence"
+}
+
+🛑 BUZZKILL — Intelligent Risk Control
+
+Buzzkill halts or throttles the system when trust collapses, not just when losses hit a number.
+
+Triggers include:
+
+Strategy confidence decay
+
+Execution anomalies
+
+Liquidity shocks
+
+Regime instability
+
+API/system degradation
+
+Buzzkill overrides the Queen.
+
+🔐 Security Model
+
+Execution keys isolated to STING
+
+Governance agents never touch private keys
+
+Encrypted secrets via WAX
+
+Read-only xpubs supported for wallet monitoring
+
+Kill switch always reachable
+

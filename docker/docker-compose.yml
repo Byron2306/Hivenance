@@ -1,0 +1,42 @@
+services:
+  swarm-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: swarm-agent
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../data:/app/data
+      - ../logs:/app/logs
+      - ../config:/app/config
+    environment:
+      - DRY_RUN=1
+      - WALLETCONNECT_PROJECT_ID=${WALLETCONNECT_PROJECT_ID}
+      - ONEINCH_API_KEY=${ONEINCH_API_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:5000/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    networks:
+      - trading-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: swarm-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - trading-net
+
+networks:
+  trading-net:
+    driver: bridge
+
+volumes:
+  redis-data:

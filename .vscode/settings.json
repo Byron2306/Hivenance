@@ -1,0 +1,11 @@
+{
+    "DockerRun.DisableDockerrc": true,
+    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}\\.venv\\Lib\\site-packages",
+        "${workspaceFolder}"
+    ],
+    "files.readonlyInclude": {
+        "{**/.c4z/.extsrcs/*.PROTSYM.cbl,**/.c4z/.extsrcs/*.PROTSYM.listing}": true
+    }
+}

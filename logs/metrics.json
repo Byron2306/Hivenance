@@ -1,0 +1,24 @@
+{
+  "buzz": {
+    "type": "buzz.analytics.snapshot",
+    "source": "ANALYTICS",
+    "ts": 1769767789083,
+    "seq": 8906,
+    "id": "c2997126-ef27-4d0c-b83d-5820ae7592a6"
+  },
+  "payload": {
+    "window_sec": 300,
+    "symbol": "ETH/USD",
+    "trades": 5,
+    "filled": 0,
+    "rejected": 0,
+    "avg_slippage_pct": 0.0,
+    "p95_latency_ms": 0,
+    "market_stale_events": 0,
+    "wallet_stale_events": 0,
+    "equity_usd_est": 18.277827315298396,
+    "equity_change_pct": 0.0,
+    "daily_pnl_pct": 0.0,
+    "drawdown_pct": 0.0
+  }
+}

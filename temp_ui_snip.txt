@@ -1,0 +1,249 @@
+html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Configuration - Crypto Swarm</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+                .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                .header {{ text-align: center; margin-bottom: 30px; }}
+                .section {{ margin: 25px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }}
+                .section h3 {{ margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }}
+                .form-group {{ margin: 15px 0; }}
+                .form-group label {{ display: inline-block; width: 220px; font-weight: bold; color: #555; }}
+                .form-group input, .form-group select {{ padding: 8px; width: 300px; border: 1px solid #ccc; border-radius: 4px; }}
+                .checkbox-group {{ margin: 10px 0; }}
+                .checkbox-group input {{ margin-right: 10px; }}
+                .warning {{ background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }}
+                .warning::before {{ content: "⚠️ "; font-size: 18px; }}
+                .nav-button {{ display: inline-block; padding: 12px 25px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px; font-weight: bold; }}
+                .nav-button:hover {{ background: #0056b3; }}
+                .save-button {{ background: #28a745; }}
+                .save-button:hover {{ background: #218838; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>⚙️ Crypto Swarm Configuration</h1>
+                    <p>Configure your crypto trading swarm</p>
+                </div>
+
+                <a href="/" class="nav-button">⬅️ Back to Dashboard</a>
+
+                <form method="post">
+                    <div class="section">
+                        <h3>📈 Trading Settings</h3>
+
+                        <div class="form-group">
+                            <label>Exchange:</label>
+                            <select name="exchange">
+                                <option value="kraken" {"selected" if config.get('exchange', 'kraken') == 'kraken' else ""}>Kraken</option>
+                                <option value="binance" {"selected" if config.get('exchange') == 'binance' else ""}>Binance</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Symbol:</label>
+                            <input type="text" name="symbol" value="{config.get('symbol', 'BTCUSDT')}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Interval:</label>
+                            <select name="interval">
+                                <option value="1m" {"selected" if config.get('interval') == '1m' else ""}>1 Minute</option>
+                                <option value="5m" {"selected" if config.get('interval') == '5m' else ""}>5 Minutes</option>
+                                <option value="15m" {"selected" if config.get('interval') == '15m' else ""}>15 Minutes</option>
+                                <option value="1h" {"selected" if config.get('interval') == '1h' else ""}>1 Hour</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Strategy Type:</label>
+                            <select name="strategy_type">
+                                <option value="sma_crossover" {"selected" if config.get('strategy_type') == 'sma_crossover' else ""}>SMA Crossover</option>
+                                <option value="rsi" {"selected" if config.get('strategy_type') == 'rsi' else ""}>RSI</option>
+                                <option value="macd" {"selected" if config.get('strategy_type') == 'macd' else ""}>MACD</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Quote Order Size (USDT):</label>
+                            <input type="number" step="0.01" name="quote_order_size" value="{config.get('quote_order_size', 25.0)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Max Position Base:</label>
+                            <input type="number" step="0.0001" name="max_position_base" value="{config.get('max_position_base', 0.002)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Risk Percentage:</label>
+                            <input type="number" step="0.001" name="risk_pct" value="{config.get('risk_pct', 0.01)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>SMA Fast:</label>
+                            <input type="number" name="sma_fast" value="{config.get('sma_fast', 20)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>SMA Slow:</label>
+                            <input type="number" name="sma_slow" value="{config.get('sma_slow', 50)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Lookback Period:</label>
+                            <input type="number" name="lookback" value="{config.get('lookback', 500)}">
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="dry_run" {"checked" if config.get('dry_run') else ""}>
+                            <label>Dry Run Mode (Safe - no real trades)</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="binance_testnet" {"checked" if config.get('binance_testnet') else ""}>
+                            <label>Use Binance Testnet</label>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>🔑 API Keys</h3>
+                        <div class="warning">
+                            API keys are stored locally. Never share them with anyone!
+                        </div>
+
+                        <div class="form-group">
+                            <label>Binance API Key:</label>
+                            <input type="password" name="binance_api_key" value="{api_keys.get('binance_api_key', '')}" placeholder="Enter your Binance API key">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Binance API Secret:</label>
+                            <input type="password" name="binance_api_secret" value="{api_keys.get('binance_api_secret', '')}" placeholder="Enter your Binance API secret">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Kraken API Key:</label>
+                            <input type="password" name="kraken_api_key" value="{api_keys.get('kraken_api_key', '')}" placeholder="Enter your Kraken API key">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Kraken API Secret:</label>
+                            <input type="password" name="kraken_api_secret" value="{api_keys.get('kraken_api_secret', '')}" placeholder="Enter your Kraken API secret">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Etherscan API Key:</label>
+                            <input type="password" name="etherscan_api_key" value="{api_keys.get('etherscan_api_key', '')}" placeholder="Enter your Etherscan API key">
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>👛 Wallet Settings</h3>
+
+                        <div class="form-group">
+                            <label>Web3 RPC URL:</label>
+                            <input type="url" name="web3_rpc_url" value="{api_keys.get('web3_rpc_url', '')}" placeholder="https://mainnet.infura.io/v3/your_infura_key">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Watch Address:</label>
+                            <input type="text" name="watch_address" value="{api_keys.get('watch_address', '')}" placeholder="0xYourAddress">
+                        </div>
+
+                        <div class="form-group">
+                            <label>ERC20 Token Address:</label>
+                            <input type="text" name="erc20_token_address" value="{api_keys.get('erc20_token_address', '')}" placeholder="0xTokenAddress (optional)">
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>🤖 Agent Configuration</h3>
+
+                        <h4>Core Agents</h4>
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="kill_switch_enabled" {"checked" if config.get('kill_switch_enabled') else ""}>
+                            <label>Kill Switch Agent (Safety system)</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="ui_enabled" {"checked" if config.get('ui_enabled') else ""}>
+                            <label>UI Agent (This dashboard)</label>
+                        </div>
+
+                        <h4>Optional Agents</h4>
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="network_enabled" {"checked" if config.get('network_enabled') else ""}>
+                            <label>Network Agent (Redis messaging)</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="data_store_enabled" {"checked" if config.get('data_store_enabled') else ""}>
+                            <label>Data Store Agent (SQLite database)</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="performance_enabled" {"checked" if config.get('performance_enabled') else ""}>
+                            <label>Performance Agent (System monitoring)</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="security_enabled" {"checked" if config.get('security_enabled') else ""}>
+                            <label>Security Agent (Encryption)</label>
+                        </div>
+
+                        <h4>Connection Settings</h4>
+                        <div class="form-group">
+                            <label>UI Host:</label>
+                            <input type="text" name="ui_host" value="{config.get('ui_host', '0.0.0.0')}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>UI Port:</label>
+                            <input type="number" name="ui_port" value="{config.get('ui_port', 5000)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Allowed IPs (comma-separated, empty = allow all):</label>
+                            <input type="text" name="allowed_ips" value="{','.join(config.get('allowed_ips', []) or [])}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Redis Host:</label>
+                            <input type="text" name="redis_host" value="{config.get('redis_host', 'localhost')}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Redis Port:</label>
+                            <input type="number" name="redis_port" value="{config.get('redis_port', 6379)}">
+                        </div>
+                        <div class="form-group">
+                            <label>Redis DB:</label>
+                            <input type="number" name="redis_db" value="{config.get('redis_db', 0)}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Redis Password (optional):</label>
+                            <input type="password" name="redis_password" value="{config.get('redis_password', '')}" placeholder="password (optional)">
+                        </div>
+
+                        <div style="margin-top:10px;">
+                            <form method="post" action="/enable_network" style="display:inline-block; margin-right:10px;">
+                                <input type="hidden" name="redis_host" value="{config.get('redis_host', 'localhost')}">
+                                <input type="hidden" name="redis_port" value="{config.get('redis_port', 6379)}">
+                                <input type="hidden" name="redis_db" value="{config.get('redis_db', 0)}">
+                                <input type="hidden" name="redis_password" value="{config.get('redis_password', '')}">
+                                <button type="submit" class="nav-button">🔌 Connect to Redis Now</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="nav-button save-button">💾 Save Configuration</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
+        

@@ -1,0 +1,8 @@
+{
+  "binance_api_key": "your_binance_api_key_here",
+  "binance_api_secret": "your_binance_api_secret_here",
+  "web3_rpc_url": "https://mainnet.infura.io/v3/your_infura_key",
+  "watch_address": "0xYourAddress",
+  "erc20_token_address": "0xTokenAddress",
+  "etherscan_api_key": "your_etherscan_api_key_here"
+}

@@ -1,0 +1,12 @@
+2026-01-27 15:09:48,940 | INFO | UI Agent enabled.
+2026-01-27 15:09:50,207 | INFO | Kraken Market Data Agent initialized.
+2026-01-27 15:09:50,208 | INFO | Kraken Execution Agent initialized.
+2026-01-27 15:09:51,789 | WARNING | Wallet monitor disabled (error): Web3 provider not connected. Check WEB3_RPC_URL.
+2026-01-27 15:09:51,795 | INFO | UI Agent started on http://0.0.0.0:5000
+2026-01-27 15:09:51,795 | INFO | UI available at http://0.0.0.0:5000
+2026-01-27 15:09:51,796 | INFO | Press Ctrl+C to stop the UI.
+2026-01-27 15:09:53,056 | INFO | [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.217.65.241:5000
+2026-01-27 15:09:53,057 | INFO | [33mPress CTRL+C to quit[0m

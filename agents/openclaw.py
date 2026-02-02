@@ -2,6 +2,7 @@ import time
 import threading
 import logging
 import argparse
+from typing import Any, Dict, List, Optional
 
 
 class OpenClawAgent:
@@ -52,6 +53,65 @@ class OpenClawAgent:
         self._stop.set()
         if self.thread:
             self.thread.join(timeout=2)
+
+    def decide(
+        self,
+        council_decision: Optional[Dict[str, Any]] = None,
+        proposals: Optional[List[Dict[str, Any]]] = None,
+        regime_snapshot: Optional[Dict[str, Any]] = None,
+        cfg: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        min_score = 0.55
+        try:
+            min_score = float(getattr(cfg, "openclaw_autonomy_min_score", min_score) or min_score)
+        except Exception:
+            min_score = 0.55
+
+        if council_decision:
+            try:
+                direction = str(council_decision.get("direction") or "").upper()
+                score = float(council_decision.get("score") or 0.0)
+                recommendation = str(council_decision.get("recommendation") or "").upper()
+                if direction in ("BUY", "SELL") and score >= min_score and recommendation != "REJECT":
+                    return {
+                        "action": direction,
+                        "strategy": "OPENCLAW",
+                        "rationale": f"COUNCIL_{recommendation or 'ALLOW'} score={score:.2f}",
+                        "signal_id": council_decision.get("request_id"),
+                        "regime": regime_snapshot,
+                    }
+            except Exception:
+                pass
+
+        best = None
+        if proposals:
+            for proposal in proposals:
+                try:
+                    action = str(proposal.get("action") or "HOLD").upper()
+                    if action not in ("BUY", "SELL"):
+                        continue
+                    strength = float(proposal.get("signal_strength") or 0.0)
+                    if not best or strength > float(best.get("signal_strength") or 0.0):
+                        best = proposal
+                except Exception:
+                    continue
+
+        if best:
+            return {
+                "action": str(best.get("action") or "HOLD").upper(),
+                "strategy": "OPENCLAW",
+                "rationale": f"HIVE_PROPOSAL {best.get('strategy')}",
+                "signal_id": best.get("signal_id"),
+                "regime": regime_snapshot,
+            }
+
+        return {
+            "action": "HOLD",
+            "strategy": "OPENCLAW",
+            "rationale": "HIVE_NO_BUY_SELL",
+            "signal_id": None,
+            "regime": regime_snapshot,
+        }
 
 
 def main():

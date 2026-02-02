@@ -712,6 +712,30 @@ class UIAgent:
                 logging.exception("coin_selection.json error")
                 return jsonify({"payload": {}, "error": str(e)}), 500
 
+        @self.app.route("/autonomy", methods=["GET", "POST"])
+        def autonomy_toggle():
+            try:
+                if request.method == "POST":
+                    data = {}
+                    try:
+                        if request.is_json:
+                            data = request.get_json() or {}
+                        else:
+                            data = request.form.to_dict() if request.form else {}
+                    except Exception:
+                        data = {}
+                    enabled = bool(str(data.get("enabled", "false")).lower() in ("1", "true", "yes", "y"))
+                    try:
+                        self._update_config_partial({"openclaw_autonomy_enabled": bool(enabled)})
+                    except Exception:
+                        pass
+                cfg = getattr(self.coordinator, "cfg", None)
+                state = bool(getattr(cfg, "openclaw_autonomy_enabled", False)) if cfg else False
+                return jsonify({"enabled": state})
+            except Exception as e:
+                logging.exception("autonomy toggle error")
+                return jsonify({"error": str(e)}), 500
+
         @self.app.route("/dex/pending.json")
         def dex_pending_json():
             try:
@@ -1673,11 +1697,14 @@ class UIAgent:
       <div class="mini" id="swarmguardSize">Adjusted Size: |</div>
       <div class="mini" id="overrideStatus">Override: OFF</div>
       <div class="mini" id="safetyResetStatus">Safety: Ready</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
-        <button id="overrideToggleBtn" class="btn secondary" onclick="toggleOverride()">Enable Override</button>
-        <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
-      </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
+          <button id="overrideToggleBtn" class="btn secondary" onclick="toggleOverride()">Enable Override</button>
+          <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()">Enable Autonomous Control</button>
+        </div>
       <div class="mini" style="margin-top:6px;"><a class="link" href="/swarmguard">Open SwarmGuard details</a></div>
     </div>
 
@@ -1935,6 +1962,31 @@ class UIAgent:
         const j = await res.json();
         if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
         if (j && j.ok) await loadStatus();
+      }catch(e){ alert('Failed: ' + e); }
+    }
+
+    async function loadAutonomy(){
+      try{
+        const res = await fetch(api('/autonomy?' + cb()));
+        const j = await res.json();
+        const btn = document.getElementById('autonomyToggleBtn');
+        if (!btn) return;
+        const enabled = !!j.enabled;
+        btn.innerText = enabled ? 'Disable Autonomous Control' : 'Enable Autonomous Control';
+        btn.classList.toggle('secondary', !enabled);
+      }catch(e){ /* ignore */ }
+    }
+
+    async function toggleAutonomy(){
+      try{
+        const res = await fetch(api('/autonomy?' + cb()));
+        const st = await res.json();
+        const next = !(st && st.enabled);
+        const body = `enabled=$${next ? 'true' : 'false'}`;
+        const update = await fetch(api('/autonomy'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+        const j = await update.json();
+        if (!j || j.error) alert('Failed: ' + (j.error || 'unknown'));
+        await loadAutonomy();
       }catch(e){ alert('Failed: ' + e); }
     }
     async function saveLimits(){
@@ -3467,7 +3519,7 @@ async function loadPerformance() {
       }catch(e){ /* ignore */ }
     }
 
-    loadPrice(); loadAltPrices(); loadMetrics(); loadMarketSnapshot(); loadAnalytics(); loadSwarmGuard(); loadOverride(); loadBuzzSummary(); loadCoinSelection(); loadRegime(); loadCouncil(); loadCycle(); loadGovernance(); loadTrades(); loadSignals(); loadDecisionChain(); loadIntents(); loadRisk(); loadPerformance(); loadAlerts(); loadAudit(); loadRiskTimeline(); loadDexPending(); pollBuzz();
+    loadPrice(); loadAltPrices(); loadMetrics(); loadMarketSnapshot(); loadAnalytics(); loadSwarmGuard(); loadOverride(); loadAutonomy(); loadBuzzSummary(); loadCoinSelection(); loadRegime(); loadCouncil(); loadCycle(); loadGovernance(); loadTrades(); loadSignals(); loadDecisionChain(); loadIntents(); loadRisk(); loadPerformance(); loadAlerts(); loadAudit(); loadRiskTimeline(); loadDexPending(); pollBuzz();
     tickClock(); loadHealth(); loadWallet(); loadStatus();
     setInterval(tickClock, 1000);
     setInterval(loadHealth, 10000);
@@ -3482,6 +3534,7 @@ async function loadPerformance() {
     setInterval(loadAnalytics, 7000);
     setInterval(loadSwarmGuard, 7000);
     setInterval(loadOverride, 10000);
+    setInterval(loadAutonomy, 10000);
     setInterval(loadBuzzSummary, 10000);
     setInterval(loadCoinSelection, 10000);
     setInterval(loadRegime, 7000);

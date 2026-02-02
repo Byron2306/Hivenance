@@ -88,7 +88,7 @@ class OpenClawAgent:
                     return {
                         "action": direction,
                         "strategy": "OPENCLAW",
-                        "rationale": f"COUNCIL_{recommendation or 'ALLOW'} score={score:.2f}",
+                        "rationale": f"COUNCIL_{recommendation} score={score:.2f}",
                         "signal_id": council_decision.get("request_id"),
                         "regime": regime_snapshot,
                         "score": score,

@@ -1698,6 +1698,7 @@ class SwarmCoordinator:
                 except Exception:
                     council_decision = None
 
+                decision = None
                 # OpenClaw autonomy override: allow the autonomous agent to drive decisions
                 if getattr(self.cfg, "openclaw_autonomy_enabled", False):
                     try:

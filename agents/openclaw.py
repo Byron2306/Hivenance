@@ -175,7 +175,12 @@ class OpenClawAgent:
         timeout: int = 30,
         format_type: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Send a chat message to the configured Hugging Face Space endpoint."""
+        """Send a chat message to a Hugging Face Space endpoint.
+
+        Returns {"response": str, "raw": Any} on success or {"error": code, ...} on failure.
+        Supported format_type: "hf_space" (Gradio /predict data payload) or "hf_inference"
+        (standard {"inputs": message} payload).
+        """
         endpoint = endpoint or self.chat_endpoint
         if not endpoint:
             return {"error": "endpoint_not_configured"}
@@ -223,7 +228,7 @@ class OpenClawAgent:
     def _is_valid_endpoint(self, endpoint: str) -> bool:
         try:
             parsed = urlparse(endpoint)
-            if parsed.scheme not in ("https",):
+            if parsed.scheme != "https":
                 return False
             if parsed.port not in (None, 443):
                 return False
@@ -234,11 +239,12 @@ class OpenClawAgent:
                 return False
             try:
                 ip = ipaddress.ip_address(host)
+            except ValueError:
+                ip = None
+            if ip:
                 if ip.is_private or ip.is_loopback or ip.is_link_local:
                     return False
                 return True
-            except ValueError:
-                pass
             if not (host.endswith(".hf.space") or host.endswith("huggingface.co")):
                 return False
             try:

@@ -1764,7 +1764,7 @@ class UIAgent:
         <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT} (hf.space)</div>
         <div class="filters">
           <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
-          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="new-password" />
+          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="off" />
         </div>
         <div class="filters">
           <input id="openclawChatInput" placeholder="Ask OpenClaw..." />
@@ -2049,9 +2049,10 @@ class UIAgent:
         const endpoint = document.getElementById('openclawChatEndpoint');
         const token = document.getElementById('openclawChatToken');
         const log = document.getElementById('openclawChatLog');
+        const sanitize = (text) => String(text || '').replace(/[\r\n]+/g, ' ');
         const appendLog = (prefix, text) => {
           if (!log) return;
-          const clean = String(text || '').replace(/[\r\n]+/g, ' ');
+          const clean = sanitize(text);
           log.textContent += `\n${prefix}${clean}`;
           log.scrollTop = log.scrollHeight;
         };
@@ -2078,7 +2079,7 @@ class UIAgent:
       }catch(e){
         const log = document.getElementById('openclawChatLog');
         if (log) {
-          const clean = String(e || '').replace(/[\r\n]+/g, ' ');
+          const clean = sanitize(e);
           log.textContent += '\nOpenClaw: ' + clean;
           log.scrollTop = log.scrollHeight;
         }

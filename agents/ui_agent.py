@@ -10,7 +10,7 @@ import hmac
 import hashlib
 import html as _html
 from datetime import datetime
-from typing import List
+from typing import List, Any
 
 ERC20_MIN_ABI = json.loads("""
 [

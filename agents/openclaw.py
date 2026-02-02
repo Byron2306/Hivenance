@@ -197,8 +197,12 @@ class OpenClawAgent:
             resp = requests.post(endpoint, json=payload, headers=headers, timeout=timeout, verify=True)
             resp.raise_for_status()
             data = resp.json()
-        except Exception as exc:
-            return {"error": "request_failed", "detail": str(exc)}
+        except requests.exceptions.Timeout as exc:
+            return {"error": "timeout", "detail": str(exc)}
+        except requests.exceptions.HTTPError as exc:
+            return {"error": "http_error", "detail": str(exc)}
+        except requests.exceptions.RequestException as exc:
+            return {"error": "network_error", "detail": str(exc)}
 
         text = self._extract_response_text(data)
         return {"response": text or "", "raw": data}
@@ -237,10 +241,12 @@ class OpenClawAgent:
                 return False
             if host in ("localhost", "127.0.0.1", "::1"):
                 return False
-            try:
-                ip = ipaddress.ip_address(host)
-            except ValueError:
-                ip = None
+            ip = None
+            if host.replace(".", "").isdigit():
+                try:
+                    ip = ipaddress.ip_address(host)
+                except ValueError:
+                    ip = None
             if ip:
                 if ip.is_private or ip.is_loopback or ip.is_link_local:
                     return False

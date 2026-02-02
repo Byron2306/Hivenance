@@ -1761,7 +1761,7 @@ class UIAgent:
 
       <div class="card" id="openclawChatCard" style="margin-top:12px;">
         <h3>OpenClaw Chat</h3>
-        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT} (hf.space)</div>
+        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT} (hf.space or huggingface.co)</div>
         <div class="filters">
           <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
           <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="off" />
@@ -2079,7 +2079,7 @@ class UIAgent:
       }catch(e){
         const log = document.getElementById('openclawChatLog');
         if (log) {
-          const clean = sanitize(e);
+          const clean = String(e || '').replace(/[\r\n]+/g, ' ');
           log.textContent += '\nOpenClaw: ' + clean;
           log.scrollTop = log.scrollHeight;
         }

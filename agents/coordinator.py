@@ -312,7 +312,15 @@ class SwarmCoordinator:
 
         # OpenClaw Agent (custom local agent)
         try:
-            agent = OpenClawAgent(coordinator=self, cfg={"heartbeat_sec": getattr(self.cfg, 'openclaw_heartbeat_sec', 5)})
+            agent = OpenClawAgent(
+                coordinator=self,
+                cfg={
+                    "heartbeat_sec": getattr(self.cfg, "openclaw_heartbeat_sec", 5),
+                    "openclaw_chat_endpoint": getattr(self.cfg, "openclaw_chat_endpoint", ""),
+                    "openclaw_chat_token": getattr(self.cfg, "openclaw_chat_token", ""),
+                    "openclaw_chat_format": getattr(self.cfg, "openclaw_chat_format", "hf_space"),
+                },
+            )
             self.agents["openclaw"] = agent
             try:
                 agent.start()
@@ -1698,50 +1706,82 @@ class SwarmCoordinator:
                 except Exception:
                     council_decision = None
 
-                # Governance decision (Queen)
                 decision = None
-                try:
-                    if self.governance:
-                        exec_quality = {}
-                        try:
-                            client = getattr(self.agents.get("execution"), "client", None)
-                            if client and hasattr(client, "fetch_ticker"):
-                                t = client.fetch_ticker(self.cfg.symbol)
-                                bid = t.get("bid")
-                                ask = t.get("ask")
-                                if bid and ask and bid > 0:
-                                    exec_quality["spread_pct"] = (ask - bid) / bid
-                        except Exception:
-                            pass
-                        try:
-                            exec_agent = self.agents.get("execution")
-                            if exec_agent and hasattr(exec_agent, "health_snapshot"):
-                                hs = exec_agent.health_snapshot() or {}
-                                if "order_unconfirmed_ms" in hs:
-                                    exec_quality["order_unconfirmed_ms"] = hs.get("order_unconfirmed_ms")
-                                if "api_failures_60s" in hs:
-                                    exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
-                        except Exception:
-                            pass
-                        perf_metrics = {}
-                        try:
-                            if self.agents.get("logging"):
-                                perf_metrics = self.agents["logging"].get_metrics() or {}
-                        except Exception:
+                # OpenClaw autonomy override: allow the autonomous agent to drive decisions
+                if getattr(self.cfg, "openclaw_autonomy_enabled", False):
+                    try:
+                        openclaw = self.agents.get("openclaw")
+                        if openclaw and hasattr(openclaw, "decide"):
+                            autonomy_decision = openclaw.decide(
+                                council_decision=council_decision,
+                                proposals=proposals,
+                                regime_snapshot=regime_snapshot,
+                                cfg=self.cfg,
+                            )
+                            if autonomy_decision:
+                                approved = bool(autonomy_decision.get("approved"))
+                                decision = {
+                                    "approved": approved,
+                                    "action": autonomy_decision.get("action") or "HOLD",
+                                    "strategy": autonomy_decision.get("strategy") or "OPENCLAW",
+                                    "position_size": None,
+                                    "rationale": autonomy_decision.get("rationale") or "OPENCLAW_AUTONOMY",
+                                    "signal_id": autonomy_decision.get("signal_id"),
+                                    "svs": autonomy_decision.get("score"),
+                                    "ts": int(time.time() * 1000),
+                                    "autonomy": True,
+                                }
+                                self.share_data("buzz.governance.decision", {
+                                    "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
+                                    "payload": decision,
+                                })
+                    except Exception:
+                        pass
+
+                # Governance decision (Queen)
+                if decision is None:
+                    try:
+                        if self.governance:
+                            exec_quality = {}
+                            try:
+                                client = getattr(self.agents.get("execution"), "client", None)
+                                if client and hasattr(client, "fetch_ticker"):
+                                    t = client.fetch_ticker(self.cfg.symbol)
+                                    bid = t.get("bid")
+                                    ask = t.get("ask")
+                                    if bid and ask and bid > 0:
+                                        exec_quality["spread_pct"] = (ask - bid) / bid
+                            except Exception:
+                                pass
+                            try:
+                                exec_agent = self.agents.get("execution")
+                                if exec_agent and hasattr(exec_agent, "health_snapshot"):
+                                    hs = exec_agent.health_snapshot() or {}
+                                    if "order_unconfirmed_ms" in hs:
+                                        exec_quality["order_unconfirmed_ms"] = hs.get("order_unconfirmed_ms")
+                                    if "api_failures_60s" in hs:
+                                        exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
+                            except Exception:
+                                pass
                             perf_metrics = {}
-                        portfolio = {
-                            "base_free": base_free,
-                            "quote_free": quote_free,
-                            "latest_price": latest_price,
-                        }
-                        decision = self.governance.decide(regime_snapshot or {}, proposals, portfolio, exec_quality, perf_metrics, self.cfg)
-                        if decision:
-                            self.share_data("buzz.governance.decision", {
-                                "buzz": {"type": "buzz.governance.decision", "source": "QUEEN", "ts": int(time.time() * 1000)},
-                                "payload": decision,
-                            })
-                except Exception:
-                    decision = None
+                            try:
+                                if self.agents.get("logging"):
+                                    perf_metrics = self.agents["logging"].get_metrics() or {}
+                            except Exception:
+                                perf_metrics = {}
+                            portfolio = {
+                                "base_free": base_free,
+                                "quote_free": quote_free,
+                                "latest_price": latest_price,
+                            }
+                            decision = self.governance.decide(regime_snapshot or {}, proposals, portfolio, exec_quality, perf_metrics, self.cfg)
+                            if decision:
+                                self.share_data("buzz.governance.decision", {
+                                    "buzz": {"type": "buzz.governance.decision", "source": "QUEEN", "ts": int(time.time() * 1000)},
+                                    "payload": decision,
+                                })
+                    except Exception:
+                        decision = None
 
                 # Cycle snapshot/update (2 min per symbol by default)
                 try:

@@ -149,6 +149,9 @@ class Config:
     buzz_shared_secret: Optional[str]
     buzz_account: Optional[str]
 
+    openclaw_autonomy_enabled: bool
+    openclaw_autonomy_min_score: float
+
     web3_rpc_url: Optional[str]
     watch_address: Optional[str]
     erc20_token_address: Optional[str]
@@ -317,6 +320,9 @@ def load_config() -> Config:
         buzz_base_url=settings.get("buzz_base_url", "http://localhost:9009"),
         buzz_shared_secret=settings.get("buzz_shared_secret", ""),
         buzz_account=settings.get("buzz_account", "hivenance-system"),
+
+        openclaw_autonomy_enabled=settings.get("openclaw_autonomy_enabled", False),
+        openclaw_autonomy_min_score=settings.get("openclaw_autonomy_min_score", 0.55),
 
         web3_rpc_url=api_keys.get("web3_rpc_url") or settings.get("web3_rpc_url"),
         watch_address=api_keys.get("watch_address") or settings.get("watch_address"),

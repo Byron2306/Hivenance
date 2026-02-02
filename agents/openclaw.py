@@ -165,6 +165,7 @@ class OpenClawAgent:
 
     def chat(self, message: str, endpoint: Optional[str], timeout: int = 30, token: Optional[str] = None) -> Dict[str, Any]:
         """Send a chat message to the configured Hugging Face Space endpoint."""
+        endpoint = endpoint or self.chat_endpoint
         if not endpoint:
             return {"error": "endpoint_not_configured"}
         if not message:

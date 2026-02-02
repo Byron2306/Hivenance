@@ -751,6 +751,8 @@ class UIAgent:
                 message = (data.get("message") or "").strip()
                 endpoint = data.get("endpoint") or getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
                 token = data.get("token") or getattr(self.coordinator.cfg, "openclaw_chat_token", "")
+                if not message:
+                    return jsonify({"error": "message_required"}), 400
                 if not endpoint:
                     return jsonify({"error": "endpoint_required"}), 400
                 agent = self.coordinator.agents.get("openclaw") if self.coordinator else None
@@ -1762,7 +1764,7 @@ class UIAgent:
         <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT}</div>
         <div class="filters">
           <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
-          <input id="openclawChatToken" placeholder="HF token (optional)" value="${OPENCLAW_CHAT_TOKEN}" type="password" />
+          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" />
         </div>
         <div class="filters">
           <input id="openclawChatInput" placeholder="Ask OpenClaw..." />
@@ -2049,7 +2051,7 @@ class UIAgent:
         const log = document.getElementById('openclawChatLog');
         const message = (input && input.value ? input.value.trim() : '');
         if (!message) return;
-        if (log) log.textContent += '\nYou: ' + message;
+        if (log) log.textContent += '\nYou: ' + message.replace(/[\r\n]+/g, ' ');
         if (input) input.value = '';
         const payload = {
           message,
@@ -2063,14 +2065,14 @@ class UIAgent:
         });
         const data = await res.json();
         if (data && data.response) {
-          if (log) log.textContent += '\nOpenClaw: ' + data.response;
+          if (log) log.textContent += '\nOpenClaw: ' + String(data.response).replace(/[\r\n]+/g, ' ');
         } else if (log) {
-          log.textContent += '\nOpenClaw: ' + (data.error || 'No response');
+          log.textContent += '\nOpenClaw: ' + String(data.error || 'No response').replace(/[\r\n]+/g, ' ');
         }
         if (log) log.scrollTop = log.scrollHeight;
       }catch(e){
         const log = document.getElementById('openclawChatLog');
-        if (log) log.textContent += '\nOpenClaw: ' + e;
+        if (log) log.textContent += '\nOpenClaw: ' + String(e).replace(/[\r\n]+/g, ' ');
       }
     }
     async function saveLimits(){
@@ -3758,7 +3760,6 @@ async function loadPerformance() {
             ONCHAIN_EXPLORER_URL=onchain_explorer,
             WATCH_ADDRESS=watch_addr,
             OPENCLAW_CHAT_ENDPOINT=_html.escape(openclaw_chat_endpoint or ""),
-            OPENCLAW_CHAT_TOKEN=_html.escape(openclaw_chat_token or ""),
             ALT_MARKETS_JSON=json.dumps(alt_markets),
             ALT_CHARTS_HTML=alt_charts_html,
 

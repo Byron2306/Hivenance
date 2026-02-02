@@ -10,7 +10,9 @@ import hmac
 import hashlib
 import html as _html
 from datetime import datetime
-from typing import List, Any
+from typing import List
+
+AI_ENDPOINT_LABEL = "local"
 
 ERC20_MIN_ABI = json.loads("""
 [
@@ -735,7 +737,7 @@ class UIAgent:
                 return jsonify({
                     "enabled": state,
                     "decision_owner": owner,
-                    "ai_endpoint": "local",
+                    "ai_endpoint": AI_ENDPOINT_LABEL,
                     "note": "OpenClaw uses local hive signals; no external AI API.",
                 })
             except Exception as e:
@@ -4399,7 +4401,7 @@ async function loadPerformance() {
             pass
         return {}
 
-    def _parse_bool(self, value: Any) -> bool:
+    def _parse_bool(self, value) -> bool:
         """Convert common truthy string values to bool."""
         try:
             if isinstance(value, bool):

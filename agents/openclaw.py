@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 import ipaddress
+import socket
 from urllib.parse import urlparse
 
 DEFAULT_MIN_SCORE = 0.55
@@ -188,7 +189,7 @@ class OpenClawAgent:
             headers["Authorization"] = f"Bearer {token}"
         payload = self._build_payload(message, format_type)
         try:
-            resp = requests.post(endpoint, json=payload, headers=headers, timeout=timeout)
+            resp = requests.post(endpoint, json=payload, headers=headers, timeout=timeout, verify=True)
             resp.raise_for_status()
             data = resp.json()
         except Exception as exc:
@@ -230,11 +231,27 @@ class OpenClawAgent:
             if host in ("localhost", "127.0.0.1"):
                 return False
             try:
-                ipaddress.ip_address(host)
-                return False
+                ip = ipaddress.ip_address(host)
+                if ip.is_private or ip.is_loopback or ip.is_link_local:
+                    return False
+                return True
             except ValueError:
                 pass
-            return host.endswith(".hf.space") or host.endswith("huggingface.co")
+            if not (host.endswith(".hf.space") or host.endswith("huggingface.co")):
+                return False
+            try:
+                resolved = socket.getaddrinfo(host, None)
+                for info in resolved:
+                    addr = info[4][0]
+                    try:
+                        ip = ipaddress.ip_address(addr)
+                        if ip.is_private or ip.is_loopback or ip.is_link_local:
+                            return False
+                    except ValueError:
+                        continue
+            except Exception:
+                return False
+            return True
         except Exception:
             return False
 

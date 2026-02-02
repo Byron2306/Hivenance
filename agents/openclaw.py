@@ -163,16 +163,16 @@ class OpenClawAgent:
             "approved": False,
         }
 
-    def chat(self, message: str, endpoint: Optional[str], timeout: int = 30, token: Optional[str] = None) -> Dict[str, Any]:
+    def chat(self, message: str, endpoint: Optional[str], token: Optional[str] = None, timeout: int = 30) -> Dict[str, Any]:
         """Send a chat message to the configured Hugging Face Space endpoint."""
         endpoint = endpoint or self.chat_endpoint
         if not endpoint:
             return {"error": "endpoint_not_configured"}
         if not message:
             return {"error": "message_required"}
-        headers = {"content-type": "application/json"}
+        headers = {"Content-Type": "application/json"}
         if token:
-            headers["authorization"] = f"Bearer {token}"
+            headers["Authorization"] = f"Bearer {token}"
         payload: Dict[str, Any]
         if "predict" in endpoint:
             payload = {"data": [message]}

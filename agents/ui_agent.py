@@ -1764,7 +1764,7 @@ class UIAgent:
         <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT}</div>
         <div class="filters">
           <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
-          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" />
+          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="off" />
         </div>
         <div class="filters">
           <input id="openclawChatInput" placeholder="Ask OpenClaw..." />
@@ -2049,9 +2049,15 @@ class UIAgent:
         const endpoint = document.getElementById('openclawChatEndpoint');
         const token = document.getElementById('openclawChatToken');
         const log = document.getElementById('openclawChatLog');
+        const appendLog = (prefix, text) => {
+          if (!log) return;
+          const clean = String(text || '').replace(/[\r\n]+/g, ' ');
+          log.textContent += `\n${prefix}${clean}`;
+          log.scrollTop = log.scrollHeight;
+        };
         const message = (input && input.value ? input.value.trim() : '');
         if (!message) return;
-        if (log) log.textContent += '\nYou: ' + message.replace(/[\r\n]+/g, ' ');
+        appendLog('You: ', message);
         if (input) input.value = '';
         const payload = {
           message,
@@ -2065,14 +2071,17 @@ class UIAgent:
         });
         const data = await res.json();
         if (data && data.response) {
-          if (log) log.textContent += '\nOpenClaw: ' + String(data.response).replace(/[\r\n]+/g, ' ');
-        } else if (log) {
-          log.textContent += '\nOpenClaw: ' + String(data.error || 'No response').replace(/[\r\n]+/g, ' ');
+          appendLog('OpenClaw: ', data.response);
+        } else {
+          appendLog('OpenClaw: ', data.error || 'No response');
         }
-        if (log) log.scrollTop = log.scrollHeight;
       }catch(e){
         const log = document.getElementById('openclawChatLog');
-        if (log) log.textContent += '\nOpenClaw: ' + String(e).replace(/[\r\n]+/g, ' ');
+        if (log) {
+          const clean = String(e || '').replace(/[\r\n]+/g, ' ');
+          log.textContent += '\nOpenClaw: ' + clean;
+          log.scrollTop = log.scrollHeight;
+        }
       }
     }
     async function saveLimits(){

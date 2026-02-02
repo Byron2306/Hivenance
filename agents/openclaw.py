@@ -36,7 +36,7 @@ class OpenClawAgent:
                         self.coordinator.data_cache['openclaw.heartbeat'] = payload
                         if hasattr(self.coordinator, 'share_data'):
                             evt = {
-                                'buzz': {'type': 'buzz.agent.heartbeat', 'source': 'OPENCLAW', 'ts': now_ms},
+                                'buzz': {'type': 'buzz.agent.heartbeat', 'source': 'AUTONOMOUS', 'ts': now_ms},
                                 'payload': payload,
                             }
                             self.coordinator.share_data('buzz.agent.heartbeat', evt)

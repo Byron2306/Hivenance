@@ -32,7 +32,14 @@ class OpenClawAgent:
                 try:
                     if self.coordinator and hasattr(self.coordinator, 'data_cache'):
                         now_ms = int(time.time() * 1000)
-                        self.coordinator.data_cache['openclaw.heartbeat'] = {'ts': now_ms, 'status': 'ok'}
+                        payload = {'agent': 'openclaw', 'status': 'ok', 'ts': now_ms}
+                        self.coordinator.data_cache['openclaw.heartbeat'] = payload
+                        if hasattr(self.coordinator, 'share_data'):
+                            evt = {
+                                'buzz': {'type': 'buzz.agent.heartbeat', 'source': 'OPENCLAW', 'ts': now_ms},
+                                'payload': payload,
+                            }
+                            self.coordinator.share_data('buzz.agent.heartbeat', evt)
                 except Exception:
                     logging.exception("OpenClawAgent failed to publish heartbeat")
                 # TODO: replace with real agent work (network calls, strategy, etc.)

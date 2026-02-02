@@ -992,6 +992,7 @@ class UIAgent:
             "worker_rsi": "WORKER-RSI",
             "worker_breakout": "WORKER-BREAKOUT",
             "worker_momentum": "WORKER-MOMENTUM",
+            "openclaw": "AUTONOMOUS",
         }
         bee_icon_map = {
             "QUEEN": "coordinator.png",
@@ -1012,6 +1013,7 @@ class UIAgent:
             "WORKER-RSI": "workerRSI.png",
             "WORKER-BREAKOUT": "workerBreakout.png",
             "WORKER-MOMENTUM": "workerMomentum.png",
+            "AUTONOMOUS": "strategy.png",
         }
         default_bee_msg = {
             "QUEEN": "I'm coordinating the hive decisions and waiting for signals",
@@ -1032,6 +1034,7 @@ class UIAgent:
             "WORKER-RSI": "I'm looking for RSI mean-reversion setups",
             "WORKER-BREAKOUT": "I'm hunting for volatility breakouts",
             "WORKER-MOMENTUM": "I'm tracking short-term momentum bursts",
+            "AUTONOMOUS": "I'm the autonomous trading agent, running heartbeat checks",
         }
         bee_preface = {
             "QUEEN": "I'm coordinating the hive. ",
@@ -1052,6 +1055,7 @@ class UIAgent:
             "WORKER-RSI": "I'm watching for RSI extremes. ",
             "WORKER-BREAKOUT": "I'm watching for breakouts. ",
             "WORKER-MOMENTUM": "I'm watching momentum swings. ",
+            "AUTONOMOUS": "I'm the autonomous agent. ",
         }
 
         def _bee_name(agent_name: str) -> str:
@@ -1248,7 +1252,7 @@ class UIAgent:
         bee_order_all = [
             "QUEEN", "ORACLE", "COUNCIL", "NURSE",
             "BUZZKILL", "SCOUT", "SENTRY", "HUM",
-            "STING", "HONEYCOMB", "SCRIBE", "OBSERVER", "WAX", "GLASS",
+            "STING", "HONEYCOMB", "SCRIBE", "OBSERVER", "WAX", "GLASS", "AUTONOMOUS",
             "WORKER-SMA", "WORKER-RSI", "WORKER-BREAKOUT", "WORKER-MOMENTUM",
         ]
         # determine which bees are present based on current agents
@@ -5312,5 +5316,3 @@ async function loadPerformance() {
         if self.thread:
             logging.info("UI Agent stopping...")
             self.thread = None
-
-

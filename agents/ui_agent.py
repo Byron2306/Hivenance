@@ -1250,9 +1250,9 @@ class UIAgent:
         bee_messages = {}
         bee_status = {}
         bee_order_all = [
-            "QUEEN", "ORACLE", "COUNCIL", "NURSE",
+            "QUEEN", "AUTONOMOUS", "ORACLE", "COUNCIL", "NURSE",
             "BUZZKILL", "SCOUT", "SENTRY", "HUM",
-            "STING", "HONEYCOMB", "SCRIBE", "OBSERVER", "WAX", "GLASS", "AUTONOMOUS",
+            "STING", "HONEYCOMB", "SCRIBE", "OBSERVER", "WAX", "GLASS",
             "WORKER-SMA", "WORKER-RSI", "WORKER-BREAKOUT", "WORKER-MOMENTUM",
         ]
         # determine which bees are present based on current agents

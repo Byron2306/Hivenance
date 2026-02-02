@@ -1986,7 +1986,7 @@ class UIAgent:
         if (status) {
           const owner = j.decision_owner || (enabled ? 'OPENCLAW' : 'QUEEN');
           const ai = j.ai_endpoint || 'local';
-          status.innerText = `Autonomy: $${enabled ? 'ON' : 'OFF'} | Decision: $${owner} | AI: $${ai}`;
+          status.innerText = 'Autonomy: ' + (enabled ? 'ON' : 'OFF') + ' | Decision: ' + owner + ' | AI: ' + ai;
         }
       }catch(e){ /* ignore */ }
     }

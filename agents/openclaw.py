@@ -133,10 +133,11 @@ class OpenClawAgent:
                     continue
 
         if best:
+            strategy_name = best.get("strategy") or "UNKNOWN"
             return {
                 "action": str(best.get("action") or "HOLD").upper(),
                 "strategy": "OPENCLAW",
-                "rationale": f"HIVE_PROPOSAL {best.get('strategy')}",
+                "rationale": f"HIVE_PROPOSAL {strategy_name}",
                 "signal_id": best.get("signal_id"),
                 "regime": regime_snapshot,
                 "approved": str(best.get("action") or "").upper() in ("BUY", "SELL"),

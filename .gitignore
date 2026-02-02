@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 logs/
+data/*.db-shm
+data/*.db-wal

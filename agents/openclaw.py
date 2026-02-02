@@ -63,6 +63,13 @@ class OpenClawAgent:
         regime_snapshot: Optional[Dict[str, Any]] = None,
         cfg: Optional[Any] = None,
     ) -> Dict[str, Any]:
+        """Generate an autonomous action using council feedback and hive proposals.
+
+        Prefers council_decision when provided (BUY/SELL above min score, REJECT
+        becomes HOLD). Falls back to the strongest proposal above the minimum score.
+        Returns a decision dict with action, rationale, score (if available), and
+        approved flag for downstream gating.
+        """
         min_score = DEFAULT_MIN_SCORE
         try:
             min_score = float(getattr(cfg, "openclaw_autonomy_min_score", min_score) or min_score)

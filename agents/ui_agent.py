@@ -4387,6 +4387,7 @@ async function loadPerformance() {
         return {}
 
     def _parse_bool(self, value: Any) -> bool:
+        """Convert common truthy string values to bool."""
         try:
             if isinstance(value, bool):
                 return value

@@ -4,6 +4,8 @@ import logging
 import argparse
 from typing import Any, Dict, List, Optional
 
+import requests
+
 DEFAULT_MIN_SCORE = 0.55
 
 
@@ -18,6 +20,8 @@ class OpenClawAgent:
     def __init__(self, coordinator=None, cfg=None):
         self.coordinator = coordinator
         self.cfg = cfg or {}
+        self.chat_endpoint = self.cfg.get("openclaw_chat_endpoint") or ""
+        self.chat_token = self.cfg.get("openclaw_chat_token") or ""
         self._stop = threading.Event()
         self.thread = None
 
@@ -158,6 +162,41 @@ class OpenClawAgent:
             "regime": regime_snapshot,
             "approved": False,
         }
+
+    def chat(self, message: str, endpoint: str, timeout: int = 30, token: Optional[str] = None) -> Dict[str, Any]:
+        """Send a chat message to the configured Hugging Face Space endpoint."""
+        if not endpoint:
+            return {"error": "endpoint_not_configured"}
+        if not message:
+            return {"error": "message_required"}
+        headers = {"content-type": "application/json"}
+        if token:
+            headers["authorization"] = f"Bearer {token}"
+        payload: Dict[str, Any]
+        if "predict" in endpoint:
+            payload = {"data": [message]}
+        else:
+            payload = {"inputs": message}
+        try:
+            resp = requests.post(endpoint, json=payload, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            return {"error": "request_failed", "detail": str(exc)}
+
+        text = None
+        if isinstance(data, dict):
+            if "generated_text" in data:
+                text = data.get("generated_text")
+            elif "data" in data:
+                items = data.get("data")
+                if isinstance(items, list) and items:
+                    text = items[0]
+            elif "output" in data:
+                text = data.get("output")
+        elif isinstance(data, list) and data:
+            text = data[0]
+        return {"response": text or "", "raw": data}
 
 
 def main():

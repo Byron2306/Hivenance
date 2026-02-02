@@ -744,6 +744,24 @@ class UIAgent:
                 logging.exception("autonomy toggle error")
                 return jsonify({"error": str(e)}), 500
 
+        @self.app.route("/openclaw/chat", methods=["POST"])
+        def openclaw_chat():
+            try:
+                data = request.json if request.is_json else request.form.to_dict()
+                message = (data.get("message") or "").strip()
+                endpoint = data.get("endpoint") or getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
+                token = data.get("token") or getattr(self.coordinator.cfg, "openclaw_chat_token", "")
+                agent = self.coordinator.agents.get("openclaw") if self.coordinator else None
+                if not agent or not hasattr(agent, "chat"):
+                    return jsonify({"error": "openclaw_unavailable"}), 503
+                result = agent.chat(message, endpoint, token=token)
+                if result.get("error"):
+                    return jsonify(result), 400
+                return jsonify(result)
+            except Exception as e:
+                logging.exception("openclaw chat error")
+                return jsonify({"error": str(e)}), 500
+
         @self.app.route("/dex/pending.json")
         def dex_pending_json():
             try:
@@ -1326,6 +1344,8 @@ class UIAgent:
         max_dd = getattr(self.coordinator.cfg, 'max_drawdown_pct', 5)
         wallet_eth = self._get_wallet_snapshot().get('ETH', 'N/A')
         watch_addr = ""
+        openclaw_chat_endpoint = getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
+        openclaw_chat_token = getattr(self.coordinator.cfg, "openclaw_chat_token", "")
         try:
             watch_addr = (self._load_api_keys() or {}).get("watch_address", "") or ""
         except Exception:
@@ -1729,11 +1749,25 @@ class UIAgent:
       <div class="mini" style="margin-top:6px;"><a class="link" href="/buzz">Open BuzzCoin ledger</a></div>
     </div>
 
-    <div class="card" id="coinSelectionCard" style="margin-top:12px;">
-      <h3>Coin Selection</h3>
-      <div class="mini" id="coinSelectionTop">Top: |</div>
-      <div class="mini" id="coinSelectionList">Candidates: |</div>
-    </div>
+      <div class="card" id="coinSelectionCard" style="margin-top:12px;">
+        <h3>Coin Selection</h3>
+        <div class="mini" id="coinSelectionTop">Top: |</div>
+        <div class="mini" id="coinSelectionList">Candidates: |</div>
+      </div>
+
+      <div class="card" id="openclawChatCard" style="margin-top:12px;">
+        <h3>OpenClaw Chat</h3>
+        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT}</div>
+        <div class="filters">
+          <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
+          <input id="openclawChatToken" placeholder="HF token (optional)" value="${OPENCLAW_CHAT_TOKEN}" type="password" />
+        </div>
+        <div class="filters">
+          <input id="openclawChatInput" placeholder="Ask OpenClaw..." />
+          <button class="btn" onclick="sendOpenClawChat()">Send</button>
+        </div>
+        <pre class="log-tail" id="openclawChatLog" style="max-height:220px;"></pre>
+      </div>
 
     <div class="card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
       <h3>On-chain Trade Approval</h3>
@@ -2004,6 +2038,38 @@ class UIAgent:
         if (!j || j.error) alert('Failed: ' + (j.error || 'unknown'));
         await loadAutonomy();
       }catch(e){ alert('Failed: ' + e); }
+    }
+    async function sendOpenClawChat(){
+      try{
+        const input = document.getElementById('openclawChatInput');
+        const endpoint = document.getElementById('openclawChatEndpoint');
+        const token = document.getElementById('openclawChatToken');
+        const log = document.getElementById('openclawChatLog');
+        const message = (input && input.value ? input.value.trim() : '');
+        if (!message) return;
+        if (log) log.textContent += '\nYou: ' + message;
+        if (input) input.value = '';
+        const payload = {
+          message,
+          endpoint: endpoint ? endpoint.value : '',
+          token: token ? token.value : '',
+        };
+        const res = await fetch(api('/openclaw/chat'), {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data && data.response !== undefined) {
+          if (log) log.textContent += '\nOpenClaw: ' + data.response;
+        } else if (log) {
+          log.textContent += '\nOpenClaw: ' + (data.error || 'No response');
+        }
+        if (log) log.scrollTop = log.scrollHeight;
+      }catch(e){
+        const log = document.getElementById('openclawChatLog');
+        if (log) log.textContent += '\nOpenClaw: ' + e;
+      }
     }
     async function saveLimits(){
       const maxNotional = ((document.getElementById('cfgMaxNotional') || {}).value || '');
@@ -3689,6 +3755,8 @@ async function loadPerformance() {
             ONCHAIN_CHAIN_NAME=onchain_chain_name,
             ONCHAIN_EXPLORER_URL=onchain_explorer,
             WATCH_ADDRESS=watch_addr,
+            OPENCLAW_CHAT_ENDPOINT=_html.escape(openclaw_chat_endpoint or ""),
+            OPENCLAW_CHAT_TOKEN=_html.escape(openclaw_chat_token or ""),
             ALT_MARKETS_JSON=json.dumps(alt_markets),
             ALT_CHARTS_HTML=alt_charts_html,
 

@@ -5,6 +5,8 @@ import argparse
 from typing import Any, Dict, List, Optional
 
 import requests
+import ipaddress
+from urllib.parse import urlparse
 
 DEFAULT_MIN_SCORE = 0.55
 
@@ -22,6 +24,7 @@ class OpenClawAgent:
         self.cfg = cfg or {}
         self.chat_endpoint = self.cfg.get("openclaw_chat_endpoint") or ""
         self.chat_token = self.cfg.get("openclaw_chat_token") or ""
+        self.chat_format = self.cfg.get("openclaw_chat_format") or "hf_space"
         self._stop = threading.Event()
         self.thread = None
 
@@ -163,21 +166,27 @@ class OpenClawAgent:
             "approved": False,
         }
 
-    def chat(self, message: str, endpoint: Optional[str], token: Optional[str] = None, timeout: int = 30) -> Dict[str, Any]:
+    def chat(
+        self,
+        message: str,
+        endpoint: Optional[str],
+        token: Optional[str] = None,
+        timeout: int = 30,
+        format_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Send a chat message to the configured Hugging Face Space endpoint."""
         endpoint = endpoint or self.chat_endpoint
         if not endpoint:
             return {"error": "endpoint_not_configured"}
         if not message:
             return {"error": "message_required"}
+        if not self._is_valid_endpoint(endpoint):
+            return {"error": "invalid_endpoint"}
+        format_type = (format_type or self.chat_format or "hf_space").lower()
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        payload: Dict[str, Any]
-        if "predict" in endpoint:
-            payload = {"data": [message]}
-        else:
-            payload = {"inputs": message}
+        payload = self._build_payload(message, format_type)
         try:
             resp = requests.post(endpoint, json=payload, headers=headers, timeout=timeout)
             resp.raise_for_status()
@@ -185,22 +194,49 @@ class OpenClawAgent:
         except Exception as exc:
             return {"error": "request_failed", "detail": str(exc)}
 
-        text = None
+        text = self._extract_response_text(data)
+        return {"response": text or "", "raw": data}
+
+    def _build_payload(self, message: str, format_type: str) -> Dict[str, Any]:
+        if format_type == "hf_space":
+            return {"data": [message]}
+        return {"inputs": message}
+
+    def _extract_response_text(self, data: Any) -> Optional[str]:
         if isinstance(data, dict):
             if "generated_text" in data:
-                text = data.get("generated_text")
-            elif "data" in data:
+                return data.get("generated_text")
+            if "data" in data:
                 items = data.get("data")
                 if isinstance(items, list) and items:
-                    text = items[0]
-            elif "output" in data:
-                text = data.get("output")
-        elif isinstance(data, list) and data:
-            if isinstance(data[0], dict):
-                text = data[0].get("generated_text") or data[0].get("output") or str(data[0])
-            else:
-                text = data[0]
-        return {"response": text or "", "raw": data}
+                    return str(items[0])
+            if "output" in data:
+                return data.get("output")
+        if isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, dict):
+                return first.get("generated_text") or first.get("output") or str(first)
+            return str(first)
+        return None
+
+    def _is_valid_endpoint(self, endpoint: str) -> bool:
+        try:
+            parsed = urlparse(endpoint)
+            if parsed.scheme not in ("https", "http"):
+                return False
+            host = parsed.hostname or ""
+            if not host:
+                return False
+            if host in ("localhost", "127.0.0.1"):
+                return False
+            try:
+                ipaddress.ip_address(host)
+                return False
+            except ValueError:
+                pass
+            return host.endswith(".hf.space") or host.endswith("huggingface.co")
+        except Exception:
+            return False
 
 
 def main():

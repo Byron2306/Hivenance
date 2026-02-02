@@ -318,6 +318,7 @@ class SwarmCoordinator:
                     "heartbeat_sec": getattr(self.cfg, "openclaw_heartbeat_sec", 5),
                     "openclaw_chat_endpoint": getattr(self.cfg, "openclaw_chat_endpoint", ""),
                     "openclaw_chat_token": getattr(self.cfg, "openclaw_chat_token", ""),
+                    "openclaw_chat_format": getattr(self.cfg, "openclaw_chat_format", "hf_space"),
                 },
             )
             self.agents["openclaw"] = agent

@@ -758,7 +758,7 @@ class UIAgent:
                 agent = self.coordinator.agents.get("openclaw") if self.coordinator else None
                 if not agent or not hasattr(agent, "chat"):
                     return jsonify({"error": "openclaw_unavailable"}), 503
-                result = agent.chat(message, endpoint, token=token)
+                result = agent.chat(message, endpoint, token=token, format_type="hf_space")
                 if result.get("error"):
                     return jsonify(result), 400
                 return jsonify(result)
@@ -1761,10 +1761,10 @@ class UIAgent:
 
       <div class="card" id="openclawChatCard" style="margin-top:12px;">
         <h3>OpenClaw Chat</h3>
-        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT}</div>
+        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT} (hf.space)</div>
         <div class="filters">
           <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
-          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="off" />
+          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="new-password" />
         </div>
         <div class="filters">
           <input id="openclawChatInput" placeholder="Ask OpenClaw..." />

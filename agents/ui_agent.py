@@ -1982,7 +1982,7 @@ class UIAgent:
         const res = await fetch(api('/autonomy?' + cb()));
         const st = await res.json();
         const next = !(st && st.enabled);
-        const body = `enabled=$${next ? 'true' : 'false'}`;
+        const body = `enabled=${next ? 'true' : 'false'}`;
         const update = await fetch(api('/autonomy'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
         const j = await update.json();
         if (!j || j.error) alert('Failed: ' + (j.error || 'unknown'));

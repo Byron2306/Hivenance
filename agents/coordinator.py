@@ -1711,7 +1711,7 @@ class SwarmCoordinator:
                             )
                             if autonomy_decision:
                                 decision = {
-                                    "approved": True if autonomy_decision.get("action") in ("BUY", "SELL") else False,
+                                    "approved": autonomy_decision.get("action") in ("BUY", "SELL"),
                                     "action": autonomy_decision.get("action") or "HOLD",
                                     "strategy": autonomy_decision.get("strategy") or "OPENCLAW",
                                     "position_size": None,

@@ -4,6 +4,8 @@ import logging
 import argparse
 from typing import Any, Dict, List, Optional
 
+DEFAULT_MIN_SCORE = 0.55
+
 
 class OpenClawAgent:
     """Minimal local OpenClaw agent for integration and testing.
@@ -61,11 +63,11 @@ class OpenClawAgent:
         regime_snapshot: Optional[Dict[str, Any]] = None,
         cfg: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        min_score = 0.55
+        min_score = DEFAULT_MIN_SCORE
         try:
             min_score = float(getattr(cfg, "openclaw_autonomy_min_score", min_score) or min_score)
         except Exception:
-            min_score = 0.55
+            min_score = DEFAULT_MIN_SCORE
 
         if council_decision:
             try:
@@ -79,6 +81,7 @@ class OpenClawAgent:
                         "rationale": f"COUNCIL_{recommendation or 'ALLOW'} score={score:.2f}",
                         "signal_id": council_decision.get("request_id"),
                         "regime": regime_snapshot,
+                        "score": score,
                     }
             except Exception:
                 pass

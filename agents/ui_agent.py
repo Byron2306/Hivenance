@@ -724,7 +724,7 @@ class UIAgent:
                             data = request.form.to_dict() if request.form else {}
                     except Exception:
                         data = {}
-                    enabled = bool(str(data.get("enabled", "false")).lower() in ("1", "true", "yes", "y"))
+                    enabled = str(data.get("enabled", "false")).lower() in ("1", "true", "yes", "y")
                     try:
                         self._update_config_partial({"openclaw_autonomy_enabled": bool(enabled)})
                     except Exception:

@@ -724,7 +724,7 @@ class UIAgent:
                             data = request.form.to_dict() if request.form else {}
                     except Exception:
                         data = {}
-                    enabled = str(data.get("enabled", "false")).lower() in ("1", "true", "yes", "y")
+                    enabled = self._parse_bool(data.get("enabled", "false"))
                     try:
                         self._update_config_partial({"openclaw_autonomy_enabled": bool(enabled)})
                     except Exception:
@@ -4384,6 +4384,14 @@ async function loadPerformance() {
         except Exception:
             pass
         return {}
+
+    def _parse_bool(self, value: Any) -> bool:
+        try:
+            if isinstance(value, bool):
+                return value
+            return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
+        except Exception:
+            return False
 
     def _latest_buzz_payload(self, typ: str) -> dict:
         """Fetch latest payload for a given buzz type from cache or DB."""

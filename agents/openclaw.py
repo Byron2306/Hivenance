@@ -74,7 +74,17 @@ class OpenClawAgent:
                 direction = str(council_decision.get("direction") or "").upper()
                 score = float(council_decision.get("score") or 0.0)
                 recommendation = str(council_decision.get("recommendation") or "").upper()
-                if direction in ("BUY", "SELL") and score >= min_score and recommendation != "REJECT":
+                if recommendation == "REJECT":
+                    return {
+                        "action": "HOLD",
+                        "strategy": "OPENCLAW",
+                        "rationale": "COUNCIL_REJECT",
+                        "signal_id": council_decision.get("request_id"),
+                        "regime": regime_snapshot,
+                        "score": score,
+                        "approved": False,
+                    }
+                if direction in ("BUY", "SELL") and score >= min_score:
                     return {
                         "action": direction,
                         "strategy": "OPENCLAW",
@@ -82,6 +92,7 @@ class OpenClawAgent:
                         "signal_id": council_decision.get("request_id"),
                         "regime": regime_snapshot,
                         "score": score,
+                        "approved": True,
                     }
             except Exception:
                 pass
@@ -94,8 +105,18 @@ class OpenClawAgent:
                     if action not in ("BUY", "SELL"):
                         continue
                     strength = float(proposal.get("signal_strength") or 0.0)
-                    if not best or strength > float(best.get("signal_strength") or 0.0):
+                    if not best:
                         best = proposal
+                        continue
+                    best_strength = float(best.get("signal_strength") or 0.0)
+                    if strength > best_strength:
+                        best = proposal
+                        continue
+                    if strength == best_strength:
+                        ts = float(proposal.get("ts") or 0.0)
+                        best_ts = float(best.get("ts") or 0.0)
+                        if ts > best_ts:
+                            best = proposal
                 except Exception:
                     continue
 
@@ -106,6 +127,7 @@ class OpenClawAgent:
                 "rationale": f"HIVE_PROPOSAL {best.get('strategy')}",
                 "signal_id": best.get("signal_id"),
                 "regime": regime_snapshot,
+                "approved": True if str(best.get("action") or "").upper() in ("BUY", "SELL") else False,
             }
 
         return {
@@ -114,6 +136,7 @@ class OpenClawAgent:
             "rationale": "HIVE_NO_BUY_SELL",
             "signal_id": None,
             "regime": regime_snapshot,
+            "approved": False,
         }
 
 

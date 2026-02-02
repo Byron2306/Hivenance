@@ -1701,17 +1701,17 @@ class UIAgent:
       </div>
       <div class="mini" id="swarmguardLine">Decision: | Reason: |</div>
       <div class="mini" id="swarmguardSize">Adjusted Size: |</div>
-        <div class="mini" id="overrideStatus">Override: OFF</div>
-        <div class="mini" id="autonomyStatus">Autonomy: OFF | Decision: QUEEN | AI: local</div>
+      <div class="mini" id="overrideStatus">Override: OFF</div>
+      <div class="mini" id="autonomyStatus">Autonomy: OFF | Decision: QUEEN | AI: local</div>
       <div class="mini" id="safetyResetStatus">Safety: Ready</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
-          <button id="overrideToggleBtn" class="btn secondary" onclick="toggleOverride()">Enable Override</button>
-          <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()" aria-label="Toggle OpenClaw autonomous trade control on or off">Toggle Autonomous Control</button>
-        </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
+        <button id="overrideToggleBtn" class="btn secondary" onclick="toggleOverride()">Enable Override</button>
+        <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()" aria-label="Toggle OpenClaw autonomous trade control on or off">Toggle Autonomous Control</button>
+      </div>
       <div class="mini" style="margin-top:6px;"><a class="link" href="/swarmguard">Open SwarmGuard details</a></div>
     </div>
 
@@ -1913,7 +1913,7 @@ class UIAgent:
     const cb = () => 'v=' + Date.now();
     const UI_PORT = '$UI_PORT';
     const sameOrigin = (location.port === UI_PORT) || (location.hostname === '127.0.0.1') || (location.hostname === 'localhost');
-    const API_BASE = sameOrigin ? '' : `http://127.0.0.1:${UI_PORT}`;
+    const API_BASE = sameOrigin ? '' : `http://127.0.0.1:$${UI_PORT}`;
     const api = (path) => API_BASE + path;
     let priceChart;
     const DEFAULT_SYMBOL = "$SYMBOL";
@@ -1986,7 +1986,7 @@ class UIAgent:
         if (status) {
           const owner = j.decision_owner || (enabled ? 'OPENCLAW' : 'QUEEN');
           const ai = j.ai_endpoint || 'local';
-          status.innerText = 'Autonomy: ' + (enabled ? 'ON' : 'OFF') + ' | Decision: ' + owner + ' | AI: ' + ai;
+          status.innerText = `Autonomy: $${enabled ? 'ON' : 'OFF'} | Decision: $${owner} | AI: $${ai}`;
         }
       }catch(e){ /* ignore */ }
     }

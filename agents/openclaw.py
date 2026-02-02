@@ -163,7 +163,7 @@ class OpenClawAgent:
             "approved": False,
         }
 
-    def chat(self, message: str, endpoint: str, timeout: int = 30, token: Optional[str] = None) -> Dict[str, Any]:
+    def chat(self, message: str, endpoint: Optional[str], timeout: int = 30, token: Optional[str] = None) -> Dict[str, Any]:
         """Send a chat message to the configured Hugging Face Space endpoint."""
         if not endpoint:
             return {"error": "endpoint_not_configured"}
@@ -195,7 +195,10 @@ class OpenClawAgent:
             elif "output" in data:
                 text = data.get("output")
         elif isinstance(data, list) and data:
-            text = data[0]
+            if isinstance(data[0], dict):
+                text = data[0].get("generated_text") or data[0].get("output") or str(data[0])
+            else:
+                text = data[0]
         return {"response": text or "", "raw": data}
 
 

@@ -751,6 +751,8 @@ class UIAgent:
                 message = (data.get("message") or "").strip()
                 endpoint = data.get("endpoint") or getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
                 token = data.get("token") or getattr(self.coordinator.cfg, "openclaw_chat_token", "")
+                if not endpoint:
+                    return jsonify({"error": "endpoint_required"}), 400
                 agent = self.coordinator.agents.get("openclaw") if self.coordinator else None
                 if not agent or not hasattr(agent, "chat"):
                     return jsonify({"error": "openclaw_unavailable"}), 503
@@ -2060,7 +2062,7 @@ class UIAgent:
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (data && data.response !== undefined) {
+        if (data && data.response) {
           if (log) log.textContent += '\nOpenClaw: ' + data.response;
         } else if (log) {
           log.textContent += '\nOpenClaw: ' + (data.error || 'No response');

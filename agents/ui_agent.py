@@ -731,7 +731,13 @@ class UIAgent:
                         pass
                 cfg = getattr(self.coordinator, "cfg", None)
                 state = bool(getattr(cfg, "openclaw_autonomy_enabled", False)) if cfg else False
-                return jsonify({"enabled": state})
+                owner = "OPENCLAW" if state else "QUEEN"
+                return jsonify({
+                    "enabled": state,
+                    "decision_owner": owner,
+                    "ai_endpoint": "local",
+                    "note": "OpenClaw uses local hive signals; no external AI API.",
+                })
             except Exception as e:
                 logging.exception("autonomy toggle error")
                 return jsonify({"error": str(e)}), 500
@@ -1695,7 +1701,8 @@ class UIAgent:
       </div>
       <div class="mini" id="swarmguardLine">Decision: | Reason: |</div>
       <div class="mini" id="swarmguardSize">Adjusted Size: |</div>
-      <div class="mini" id="overrideStatus">Override: OFF</div>
+        <div class="mini" id="overrideStatus">Override: OFF</div>
+        <div class="mini" id="autonomyStatus">Autonomy: OFF | Decision: QUEEN | AI: local</div>
       <div class="mini" id="safetyResetStatus">Safety: Ready</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
           <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
@@ -1975,6 +1982,12 @@ class UIAgent:
         btn.innerText = enabled ? 'Disable Autonomous Control' : 'Enable Autonomous Control';
         btn.setAttribute('aria-label', enabled ? 'Disable OpenClaw autonomous trade control' : 'Enable OpenClaw autonomous trade control');
         btn.classList.toggle('secondary', !enabled);
+        const status = document.getElementById('autonomyStatus');
+        if (status) {
+          const owner = j.decision_owner || (enabled ? 'OPENCLAW' : 'QUEEN');
+          const ai = j.ai_endpoint || 'local';
+          status.innerText = `Autonomy: ${enabled ? 'ON' : 'OFF'} | Decision: ${owner} | AI: ${ai}`;
+        }
       }catch(e){ /* ignore */ }
     }
 

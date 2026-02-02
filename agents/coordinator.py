@@ -1730,8 +1730,7 @@ class SwarmCoordinator:
                         pass
 
                 # Governance decision (Queen)
-                decision = None
-                if not decision:
+                if decision is None:
                     try:
                         if self.governance:
                             exec_quality = {}

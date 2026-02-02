@@ -223,12 +223,14 @@ class OpenClawAgent:
     def _is_valid_endpoint(self, endpoint: str) -> bool:
         try:
             parsed = urlparse(endpoint)
-            if parsed.scheme not in ("https", "http"):
+            if parsed.scheme not in ("https",):
+                return False
+            if parsed.port not in (None, 443):
                 return False
             host = parsed.hostname or ""
             if not host:
                 return False
-            if host in ("localhost", "127.0.0.1"):
+            if host in ("localhost", "127.0.0.1", "::1"):
                 return False
             try:
                 ip = ipaddress.ip_address(host)

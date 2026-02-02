@@ -1913,7 +1913,7 @@ class UIAgent:
     const cb = () => 'v=' + Date.now();
     const UI_PORT = '$UI_PORT';
     const sameOrigin = (location.port === UI_PORT) || (location.hostname === '127.0.0.1') || (location.hostname === 'localhost');
-    const API_BASE = sameOrigin ? '' : `http://127.0.0.1:$${UI_PORT}`;
+    const API_BASE = sameOrigin ? '' : ('http://127.0.0.1:' + UI_PORT);
     const api = (path) => API_BASE + path;
     let priceChart;
     const DEFAULT_SYMBOL = "$SYMBOL";
@@ -1986,7 +1986,7 @@ class UIAgent:
         if (status) {
           const owner = j.decision_owner || (enabled ? 'OPENCLAW' : 'QUEEN');
           const ai = j.ai_endpoint || 'local';
-          status.innerText = `Autonomy: $${enabled ? 'ON' : 'OFF'} | Decision: $${owner} | AI: $${ai}`;
+          status.innerText = 'Autonomy: ' + (enabled ? 'ON' : 'OFF') + ' | Decision: ' + owner + ' | AI: ' + ai;
         }
       }catch(e){ /* ignore */ }
     }

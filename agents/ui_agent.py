@@ -1973,6 +1973,7 @@ class UIAgent:
         if (!btn) return;
         const enabled = !!j.enabled;
         btn.innerText = enabled ? 'Disable Autonomous Control' : 'Enable Autonomous Control';
+        btn.setAttribute('aria-label', enabled ? 'Disable OpenClaw autonomous trade control' : 'Enable OpenClaw autonomous trade control');
         btn.classList.toggle('secondary', !enabled);
       }catch(e){ /* ignore */ }
     }

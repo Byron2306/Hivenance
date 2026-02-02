@@ -140,7 +140,7 @@ class OpenClawAgent:
                 "rationale": f"HIVE_PROPOSAL {strategy_name}",
                 "signal_id": best.get("signal_id"),
                 "regime": regime_snapshot,
-                "approved": str(best.get("action") or "").upper() in ("BUY", "SELL"),
+                "approved": True,
             }
 
         return {

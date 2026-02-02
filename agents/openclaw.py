@@ -94,6 +94,16 @@ class OpenClawAgent:
                         "score": score,
                         "approved": True,
                     }
+                if direction in ("BUY", "SELL") and score < min_score:
+                    return {
+                        "action": "HOLD",
+                        "strategy": "OPENCLAW",
+                        "rationale": f"COUNCIL_BELOW_THRESHOLD score={score:.2f}",
+                        "signal_id": council_decision.get("request_id"),
+                        "regime": regime_snapshot,
+                        "score": score,
+                        "approved": False,
+                    }
             except Exception:
                 pass
 
@@ -105,6 +115,8 @@ class OpenClawAgent:
                     if action not in ("BUY", "SELL"):
                         continue
                     strength = float(proposal.get("signal_strength") or 0.0)
+                    if strength < min_score:
+                        continue
                     if not best:
                         best = proposal
                         continue

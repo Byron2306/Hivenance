@@ -1703,7 +1703,7 @@ class UIAgent:
           <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()" aria-label="Toggle OpenClaw autonomous control">Enable Autonomous Control</button>
+          <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()" aria-label="Toggle OpenClaw autonomous trade control on or off">Enable Autonomous Control</button>
         </div>
       <div class="mini" style="margin-top:6px;"><a class="link" href="/swarmguard">Open SwarmGuard details</a></div>
     </div>

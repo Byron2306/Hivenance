@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\scripts",
+    "\\src",
+    "\\src\\hackingBuddyGPT",
+    "\\src\\hackingBuddyGPT\\usecases",
+    "\\src\\hackingBuddyGPT\\usecases\\web"
+  ],
+  "SelectedNode": "\\src\\hackingBuddyGPT\\usecases\\web\\with_explanation.py",
+  "PreviewInSolutionExplorer": false
+}

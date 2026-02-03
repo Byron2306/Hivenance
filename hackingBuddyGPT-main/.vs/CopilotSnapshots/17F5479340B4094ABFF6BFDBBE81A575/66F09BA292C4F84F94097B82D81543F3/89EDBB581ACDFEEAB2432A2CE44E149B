@@ -1,0 +1,91 @@
+﻿import datetime
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, Optional
+
+import requests
+import tiktoken
+
+from hackingBuddyGPT.capabilities import Capability
+from hackingBuddyGPT.capabilities.capability import capabilities_to_tools
+from hackingBuddyGPT.utils.configurable import configurable, parameter
+from hackingBuddyGPT.utils.llm_util import LLM, LLMResult
+
+
+@configurable("ollama", "Ollama LLM API")
+@dataclass
+class OllamaConnection(LLM):
+    model: str = parameter(desc="Ollama model name")
+    context_size: int = parameter(desc="Maximum context size for the model", default=4096)
+    api_url: str = parameter(desc="URL of the Ollama API", default="http://localhost:11434")
+    api_timeout: int = parameter(desc="Timeout for the API request", default=240)
+
+    def init(self):
+        pass  # No special init needed for Ollama
+
+    def get_response(self, prompt, *, capabilities: Optional[Dict[str, Capability]] = None, **kwargs) -> LLMResult:
+        if isinstance(prompt, list):
+            messages = prompt
+        else:
+            messages = [{"role": "user", "content": str(prompt)}]
+
+        data = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False
+        }
+
+        if capabilities:
+            tools = capabilities_to_tools(capabilities)
+            data["tools"] = tools
+
+        tic = datetime.datetime.now()
+        try:
+            response = requests.post(f"{self.api_url}/api/chat", json=data, timeout=self.api_timeout)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Error contacting Ollama API: {e}")
+
+        result = response.json()
+        message = result.get("message", {})
+        answer = message.get("content", "")
+        tool_calls = message.get("tool_calls", [])
+
+        duration = datetime.datetime.now() - tic
+
+        # Estimate token counts
+        prompt_text = "\n".join([msg.get("content", "") for msg in messages])
+        tok_query = len(self.encode(prompt_text))
+        tok_res = len(self.encode(answer))
+
+        # For instructor-like, we need to return an object that has choices[0].message with tool_calls
+        # Mock the response to match OpenAI format
+        mock_response = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": answer,
+                    "tool_calls": tool_calls
+                }
+            }],
+            "usage": {
+                "prompt_tokens": tok_query,
+                "completion_tokens": tok_res
+            }
+        }
+
+        return LLMResult(
+            result=mock_response,
+            prompt=prompt_text,
+            answer=answer,
+            duration=duration,
+            tokens_query=tok_query,
+            tokens_response=tok_res,
+        )
+
+    def encode(self, query) -> list[int]:
+        # Use tiktoken for approximation
+        try:
+            encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        except:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        return encoding.encode(query)

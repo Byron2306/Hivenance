@@ -12,6 +12,8 @@ import html as _html
 from datetime import datetime
 from typing import List
 
+AI_ENDPOINT_LABEL = "local"
+
 ERC20_MIN_ABI = json.loads("""
 [
   {"constant":true,"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},
@@ -712,6 +714,58 @@ class UIAgent:
                 logging.exception("coin_selection.json error")
                 return jsonify({"payload": {}, "error": str(e)}), 500
 
+        @self.app.route("/autonomy", methods=["GET", "POST"])
+        def autonomy_toggle():
+            try:
+                if request.method == "POST":
+                    data = {}
+                    try:
+                        if request.is_json:
+                            data = request.get_json() or {}
+                        else:
+                            data = request.form.to_dict() if request.form else {}
+                    except Exception:
+                        data = {}
+                    enabled = self._parse_bool(data.get("enabled", "false"))
+                    try:
+                        self._update_config_partial({"openclaw_autonomy_enabled": bool(enabled)})
+                    except Exception:
+                        pass
+                cfg = getattr(self.coordinator, "cfg", None)
+                state = bool(getattr(cfg, "openclaw_autonomy_enabled", False)) if cfg else False
+                owner = "OPENCLAW" if state else "QUEEN"
+                return jsonify({
+                    "enabled": state,
+                    "decision_owner": owner,
+                    "ai_endpoint": AI_ENDPOINT_LABEL,
+                    "note": "OpenClaw uses local hive signals; no external AI API.",
+                })
+            except Exception as e:
+                logging.exception("autonomy toggle error")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/openclaw/chat", methods=["POST"])
+        def openclaw_chat():
+            try:
+                data = request.json if request.is_json else request.form.to_dict()
+                message = (data.get("message") or "").strip()
+                endpoint = data.get("endpoint") or getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
+                token = data.get("token") or getattr(self.coordinator.cfg, "openclaw_chat_token", "")
+                if not message:
+                    return jsonify({"error": "message_required"}), 400
+                if not endpoint:
+                    return jsonify({"error": "endpoint_required"}), 400
+                agent = self.coordinator.agents.get("openclaw") if self.coordinator else None
+                if not agent or not hasattr(agent, "chat"):
+                    return jsonify({"error": "openclaw_unavailable"}), 503
+                result = agent.chat(message, endpoint, token=token, format_type="hf_space")
+                if result.get("error"):
+                    return jsonify(result), 400
+                return jsonify(result)
+            except Exception as e:
+                logging.exception("openclaw chat error")
+                return jsonify({"error": str(e)}), 500
+
         @self.app.route("/dex/pending.json")
         def dex_pending_json():
             try:
@@ -992,6 +1046,7 @@ class UIAgent:
             "worker_rsi": "WORKER-RSI",
             "worker_breakout": "WORKER-BREAKOUT",
             "worker_momentum": "WORKER-MOMENTUM",
+            "openclaw": "AUTONOMOUS",
         }
         bee_icon_map = {
             "QUEEN": "coordinator.png",
@@ -1012,6 +1067,7 @@ class UIAgent:
             "WORKER-RSI": "workerRSI.png",
             "WORKER-BREAKOUT": "workerBreakout.png",
             "WORKER-MOMENTUM": "workerMomentum.png",
+            "AUTONOMOUS": "strategy.png",
         }
         default_bee_msg = {
             "QUEEN": "I'm coordinating the hive decisions and waiting for signals",
@@ -1032,6 +1088,7 @@ class UIAgent:
             "WORKER-RSI": "I'm looking for RSI mean-reversion setups",
             "WORKER-BREAKOUT": "I'm hunting for volatility breakouts",
             "WORKER-MOMENTUM": "I'm tracking short-term momentum bursts",
+            "AUTONOMOUS": "I'm the autonomous trading agent, running heartbeat checks",
         }
         bee_preface = {
             "QUEEN": "I'm coordinating the hive. ",
@@ -1052,6 +1109,7 @@ class UIAgent:
             "WORKER-RSI": "I'm watching for RSI extremes. ",
             "WORKER-BREAKOUT": "I'm watching for breakouts. ",
             "WORKER-MOMENTUM": "I'm watching momentum swings. ",
+            "AUTONOMOUS": "I'm the autonomous agent. ",
         }
 
         def _bee_name(agent_name: str) -> str:
@@ -1246,7 +1304,7 @@ class UIAgent:
         bee_messages = {}
         bee_status = {}
         bee_order_all = [
-            "QUEEN", "ORACLE", "COUNCIL", "NURSE",
+            "QUEEN", "AUTONOMOUS", "ORACLE", "COUNCIL", "NURSE",
             "BUZZKILL", "SCOUT", "SENTRY", "HUM",
             "STING", "HONEYCOMB", "SCRIBE", "OBSERVER", "WAX", "GLASS",
             "WORKER-SMA", "WORKER-RSI", "WORKER-BREAKOUT", "WORKER-MOMENTUM",
@@ -1290,6 +1348,8 @@ class UIAgent:
         max_dd = getattr(self.coordinator.cfg, 'max_drawdown_pct', 5)
         wallet_eth = self._get_wallet_snapshot().get('ETH', 'N/A')
         watch_addr = ""
+        openclaw_chat_endpoint = getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
+        openclaw_chat_token = getattr(self.coordinator.cfg, "openclaw_chat_token", "")
         try:
             watch_addr = (self._load_api_keys() or {}).get("watch_address", "") or ""
         except Exception:
@@ -1668,11 +1728,15 @@ class UIAgent:
       <div class="mini" id="swarmguardLine">Decision: | Reason: |</div>
       <div class="mini" id="swarmguardSize">Adjusted Size: |</div>
       <div class="mini" id="overrideStatus">Override: OFF</div>
+      <div class="mini" id="autonomyStatus">Autonomy: OFF | Decision: QUEEN | AI: local</div>
       <div class="mini" id="safetyResetStatus">Safety: Ready</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
         <button id="overrideToggleBtn" class="btn secondary" onclick="toggleOverride()">Enable Override</button>
         <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()" aria-label="Toggle OpenClaw autonomous trade control on or off">Toggle Autonomous Control</button>
       </div>
       <div class="mini" style="margin-top:6px;"><a class="link" href="/swarmguard">Open SwarmGuard details</a></div>
     </div>
@@ -1689,11 +1753,25 @@ class UIAgent:
       <div class="mini" style="margin-top:6px;"><a class="link" href="/buzz">Open BuzzCoin ledger</a></div>
     </div>
 
-    <div class="card" id="coinSelectionCard" style="margin-top:12px;">
-      <h3>Coin Selection</h3>
-      <div class="mini" id="coinSelectionTop">Top: |</div>
-      <div class="mini" id="coinSelectionList">Candidates: |</div>
-    </div>
+      <div class="card" id="coinSelectionCard" style="margin-top:12px;">
+        <h3>Coin Selection</h3>
+        <div class="mini" id="coinSelectionTop">Top: |</div>
+        <div class="mini" id="coinSelectionList">Candidates: |</div>
+      </div>
+
+      <div class="card" id="openclawChatCard" style="margin-top:12px;">
+        <h3>OpenClaw Chat</h3>
+        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT} (hf.space or huggingface.co)</div>
+        <div class="filters">
+          <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
+          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="off" />
+        </div>
+        <div class="filters">
+          <input id="openclawChatInput" placeholder="Ask OpenClaw..." />
+          <button class="btn" onclick="sendOpenClawChat()">Send</button>
+        </div>
+        <pre class="log-tail" id="openclawChatLog" style="max-height:220px;"></pre>
+      </div>
 
     <div class="card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
       <h3>On-chain Trade Approval</h3>
@@ -1875,7 +1953,7 @@ class UIAgent:
     const cb = () => 'v=' + Date.now();
     const UI_PORT = '$UI_PORT';
     const sameOrigin = (location.port === UI_PORT) || (location.hostname === '127.0.0.1') || (location.hostname === 'localhost');
-    const API_BASE = sameOrigin ? '' : `http://127.0.0.1:${UI_PORT}`;
+    const API_BASE = sameOrigin ? '' : ('http://127.0.0.1:' + UI_PORT);
     const api = (path) => API_BASE + path;
     let priceChart;
     const DEFAULT_SYMBOL = "$SYMBOL";
@@ -1932,6 +2010,80 @@ class UIAgent:
         if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
         if (j && j.ok) await loadStatus();
       }catch(e){ alert('Failed: ' + e); }
+    }
+
+    async function loadAutonomy(){
+      try{
+        const res = await fetch(api('/autonomy?' + cb()));
+        const j = await res.json();
+        const btn = document.getElementById('autonomyToggleBtn');
+        if (!btn) return;
+        const enabled = !!j.enabled;
+        btn.innerText = enabled ? 'Disable Autonomous Control' : 'Enable Autonomous Control';
+        btn.setAttribute('aria-label', enabled ? 'Disable OpenClaw autonomous trade control' : 'Enable OpenClaw autonomous trade control');
+        btn.classList.toggle('secondary', !enabled);
+        const status = document.getElementById('autonomyStatus');
+        if (status) {
+          const owner = j.decision_owner || (enabled ? 'OPENCLAW' : 'QUEEN');
+          const ai = j.ai_endpoint || 'local';
+          status.innerText = 'Autonomy: ' + (enabled ? 'ON' : 'OFF') + ' | Decision: ' + owner + ' | AI: ' + ai;
+        }
+      }catch(e){ /* ignore */ }
+    }
+
+    async function toggleAutonomy(){
+      try{
+        const res = await fetch(api('/autonomy?' + cb()));
+        const st = await res.json();
+        const next = !(st && st.enabled);
+        const body = 'enabled=' + (next ? 'true' : 'false');
+        const update = await fetch(api('/autonomy'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+        const j = await update.json();
+        if (!j || j.error) alert('Failed: ' + (j.error || 'unknown'));
+        await loadAutonomy();
+      }catch(e){ alert('Failed: ' + e); }
+    }
+    async function sendOpenClawChat(){
+      try{
+        const input = document.getElementById('openclawChatInput');
+        const endpoint = document.getElementById('openclawChatEndpoint');
+        const token = document.getElementById('openclawChatToken');
+        const log = document.getElementById('openclawChatLog');
+        const sanitize = (text) => String(text || '').replace(/[\r\n]+/g, ' ');
+        const appendLog = (prefix, text) => {
+          if (!log) return;
+          const clean = sanitize(text);
+          log.textContent += `\n${prefix}${clean}`;
+          log.scrollTop = log.scrollHeight;
+        };
+        const message = (input && input.value ? input.value.trim() : '');
+        if (!message) return;
+        appendLog('You: ', message);
+        if (input) input.value = '';
+        const payload = {
+          message,
+          endpoint: endpoint ? endpoint.value : '',
+          token: token ? token.value : '',
+        };
+        const res = await fetch(api('/openclaw/chat'), {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data && data.response) {
+          appendLog('OpenClaw: ', data.response);
+        } else {
+          appendLog('OpenClaw: ', data.error || 'No response');
+        }
+      }catch(e){
+        const log = document.getElementById('openclawChatLog');
+        if (log) {
+          const clean = String(e || '').replace(/[\r\n]+/g, ' ');
+          log.textContent += '\nOpenClaw: ' + clean;
+          log.scrollTop = log.scrollHeight;
+        }
+      }
     }
     async function saveLimits(){
       const maxNotional = ((document.getElementById('cfgMaxNotional') || {}).value || '');
@@ -3463,7 +3615,7 @@ async function loadPerformance() {
       }catch(e){ /* ignore */ }
     }
 
-    loadPrice(); loadAltPrices(); loadMetrics(); loadMarketSnapshot(); loadAnalytics(); loadSwarmGuard(); loadOverride(); loadBuzzSummary(); loadCoinSelection(); loadRegime(); loadCouncil(); loadCycle(); loadGovernance(); loadTrades(); loadSignals(); loadDecisionChain(); loadIntents(); loadRisk(); loadPerformance(); loadAlerts(); loadAudit(); loadRiskTimeline(); loadDexPending(); pollBuzz();
+    loadPrice(); loadAltPrices(); loadMetrics(); loadMarketSnapshot(); loadAnalytics(); loadSwarmGuard(); loadOverride(); loadAutonomy(); loadBuzzSummary(); loadCoinSelection(); loadRegime(); loadCouncil(); loadCycle(); loadGovernance(); loadTrades(); loadSignals(); loadDecisionChain(); loadIntents(); loadRisk(); loadPerformance(); loadAlerts(); loadAudit(); loadRiskTimeline(); loadDexPending(); pollBuzz();
     tickClock(); loadHealth(); loadWallet(); loadStatus();
     setInterval(tickClock, 1000);
     setInterval(loadHealth, 10000);
@@ -3478,6 +3630,7 @@ async function loadPerformance() {
     setInterval(loadAnalytics, 7000);
     setInterval(loadSwarmGuard, 7000);
     setInterval(loadOverride, 10000);
+    setInterval(loadAutonomy, 10000);
     setInterval(loadBuzzSummary, 10000);
     setInterval(loadCoinSelection, 10000);
     setInterval(loadRegime, 7000);
@@ -3616,6 +3769,7 @@ async function loadPerformance() {
             ONCHAIN_CHAIN_NAME=onchain_chain_name,
             ONCHAIN_EXPLORER_URL=onchain_explorer,
             WATCH_ADDRESS=watch_addr,
+            OPENCLAW_CHAT_ENDPOINT=_html.escape(openclaw_chat_endpoint or ""),
             ALT_MARKETS_JSON=json.dumps(alt_markets),
             ALT_CHARTS_HTML=alt_charts_html,
 
@@ -4327,6 +4481,15 @@ async function loadPerformance() {
         except Exception:
             pass
         return {}
+
+    def _parse_bool(self, value) -> bool:
+        """Convert common truthy string values to bool."""
+        try:
+            if isinstance(value, bool):
+                return value
+            return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
+        except Exception:
+            return False
 
     def _latest_buzz_payload(self, typ: str) -> dict:
         """Fetch latest payload for a given buzz type from cache or DB."""
@@ -5312,5 +5475,3 @@ async function loadPerformance() {
         if self.thread:
             logging.info("UI Agent stopping...")
             self.thread = None
-
-

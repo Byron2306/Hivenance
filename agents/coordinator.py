@@ -1735,8 +1735,8 @@ class SwarmCoordinator:
                                     "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
                                     "payload": decision,
                                 })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.exception("Error during OpenClaw autonomy decision", exc_info=e)
 
                 # Governance decision (Queen)
                 if decision is None:
@@ -1751,10 +1751,8 @@ class SwarmCoordinator:
                                     ask = t.get("ask")
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
-                            except Exception as e:
-                                # Skip spread calculation if ticker fetch fails (e.g., API unavailable,
-                                # network issues). exec_quality remains empty; governance can proceed.
-                                logging.debug(f"Failed to fetch ticker for spread calculation: {e}")
+                            except Exception:
+                                logging.exception("Error fetching ticker for execution quality")
                             try:
                                 exec_agent = self.agents.get("execution")
                                 if exec_agent and hasattr(exec_agent, "health_snapshot"):
@@ -1763,10 +1761,8 @@ class SwarmCoordinator:
                                         exec_quality["order_unconfirmed_ms"] = hs.get("order_unconfirmed_ms")
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
-                            except Exception as e:
-                                # Skip health snapshot if agent is unavailable or method fails.
-                                # Governance can still proceed with partial exec_quality data.
-                                logging.debug(f"Failed to retrieve execution health snapshot: {e}")
+                            except Exception:
+                                logging.exception("Error getting execution agent health snapshot")
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):

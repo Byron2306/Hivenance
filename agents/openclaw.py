@@ -188,7 +188,7 @@ class OpenClawAgent:
             return {"error": "message_required"}
         if not self._is_valid_endpoint(endpoint):
             return {"error": "invalid_endpoint"}
-        token = token or self.chat_token
+        token = token if token is not None else self.chat_token
         format_type = (format_type or self.chat_format or "hf_space").lower()
         headers = {"Content-Type": "application/json"}
         if token:

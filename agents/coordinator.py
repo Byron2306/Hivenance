@@ -1752,6 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
+                                # Best-effort metric: silently skip if ticker data unavailable
                                 pass
                             try:
                                 exec_agent = self.agents.get("execution")
@@ -1762,12 +1763,14 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
+                                # Best-effort metric: silently skip if health snapshot unavailable
                                 pass
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
                             except Exception:
+                                # Best-effort metric: fall back to empty dict if logging unavailable
                                 perf_metrics = {}
                             portfolio = {
                                 "base_free": base_free,
@@ -1781,12 +1784,14 @@ class SwarmCoordinator:
                                     "payload": decision,
                                 })
                     except Exception:
+                        # Governance failure: fall back to None to allow legacy strategy
                         decision = None
 
                 # Cycle snapshot/update (2 min per symbol by default)
                 try:
                     self._update_cycle(self.cfg.symbol, latest_price, proposals, decision)
                 except Exception:
+                    # Non-critical update: silently skip if cycle update fails
                     pass
 
                 # Nurse review (periodic)
@@ -1794,6 +1799,7 @@ class SwarmCoordinator:
                     if self.agents.get("nurse"):
                         self._last_nurse = self.agents["nurse"].review()
                 except Exception:
+                    # Non-critical review: silently skip if nurse agent unavailable
                     pass
 
                 # Inject nurse risk metrics into council decision (best-effort)
@@ -1803,6 +1809,7 @@ class SwarmCoordinator:
                         if metrics:
                             council_decision.setdefault("risk", {}).setdefault("metrics", {}).update(metrics)
                 except Exception:
+                    # Best-effort injection: silently skip if risk metrics unavailable
                     pass
 
                 sig = (decision or {}).get("action") or "HOLD"
@@ -1817,6 +1824,7 @@ class SwarmCoordinator:
                         decision_strategy = getattr(self.cfg, "strategy_type", None)
                         decision_reason = "LEGACY_STRATEGY"
                     except Exception:
+                        # Legacy strategy failure: retain governance decision or default HOLD
                         pass
 
                 # Ratio-based suggestion gate: rebalance based on wallet allocation

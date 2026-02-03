@@ -1735,8 +1735,8 @@ class SwarmCoordinator:
                                     "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
                                     "payload": decision,
                                 })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.exception("Error during OpenClaw autonomy decision", exc_info=e)
 
                 # Governance decision (Queen)
                 if decision is None:

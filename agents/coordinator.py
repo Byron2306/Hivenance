@@ -1735,8 +1735,8 @@ class SwarmCoordinator:
                                     "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
                                     "payload": decision,
                                 })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.exception("Error during OpenClaw autonomy decision", exc_info=e)
 
                 # Governance decision (Queen)
                 if decision is None:
@@ -1752,8 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
-                                # Silently ignore ticker fetch failures; spread metrics are optional
-                                pass
+                                logging.exception("Error fetching ticker for execution quality")
                             try:
                                 exec_agent = self.agents.get("execution")
                                 if exec_agent and hasattr(exec_agent, "health_snapshot"):
@@ -1763,8 +1762,7 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
-                                # Silently ignore health snapshot failures; these metrics are optional
-                                pass
+                                logging.exception("Error getting execution agent health snapshot")
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):

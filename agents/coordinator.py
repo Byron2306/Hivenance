@@ -1735,8 +1735,8 @@ class SwarmCoordinator:
                                     "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
                                     "payload": decision,
                                 })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.exception("Error during OpenClaw autonomy decision", exc_info=e)
 
                 # Governance decision (Queen)
                 if decision is None:
@@ -1754,6 +1754,7 @@ class SwarmCoordinator:
                             except Exception:
                                 # Best-effort: spread data is optional for governance decisions
                                 pass
+                                logging.exception("Error fetching ticker for execution quality")
                             try:
                                 exec_agent = self.agents.get("execution")
                                 if exec_agent and hasattr(exec_agent, "health_snapshot"):
@@ -1765,12 +1766,17 @@ class SwarmCoordinator:
                             except Exception:
                                 # Best-effort: health metrics are optional for governance decisions
                                 pass
+                                logging.exception("Error getting execution agent health snapshot")
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
                             except Exception:
                                 # Best-effort: performance metrics are optional for governance decisions
+                            except Exception as e:
+                                # Default to empty metrics if logging agent is unavailable or fails.
+                                # Governance can still make decisions without performance metrics.
+                                logging.debug(f"Failed to retrieve performance metrics: {e}")
                                 perf_metrics = {}
                             portfolio = {
                                 "base_free": base_free,

@@ -1736,6 +1736,7 @@ class SwarmCoordinator:
                                     "payload": decision,
                                 })
                     except Exception:
+                        # OpenClaw autonomy decision is optional; continue without it if it fails
                         pass
 
                 # Governance decision (Queen)

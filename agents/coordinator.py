@@ -1752,6 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
+                                # Spread data is optional; continue without it if unavailable
                                 pass
                             try:
                                 exec_agent = self.agents.get("execution")
@@ -1762,6 +1763,7 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
+                                # Health metrics are optional; continue without them if unavailable
                                 pass
                             perf_metrics = {}
                             try:

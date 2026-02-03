@@ -1752,6 +1752,8 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
+                                # Best-effort: spread data is optional for governance decisions
+                                pass
                                 logging.exception("Error fetching ticker for execution quality")
                             try:
                                 exec_agent = self.agents.get("execution")
@@ -1762,11 +1764,15 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
+                                # Best-effort: health metrics are optional for governance decisions
+                                pass
                                 logging.exception("Error getting execution agent health snapshot")
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
+                            except Exception:
+                                # Best-effort: performance metrics are optional for governance decisions
                             except Exception as e:
                                 # Default to empty metrics if logging agent is unavailable or fails.
                                 # Governance can still make decisions without performance metrics.

@@ -730,7 +730,7 @@ class UIAgent:
                     try:
                         self._update_config_partial({"openclaw_autonomy_enabled": bool(enabled)})
                     except Exception:
-                        pass
+                        logging.exception("Failed to update openclaw_autonomy_enabled config in autonomy_toggle")
                 cfg = getattr(self.coordinator, "cfg", None)
                 state = bool(getattr(cfg, "openclaw_autonomy_enabled", False)) if cfg else False
                 owner = "OPENCLAW" if state else "QUEEN"

@@ -1752,7 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
-                                pass
+                                logging.exception("Error fetching ticker for execution quality")
                             try:
                                 exec_agent = self.agents.get("execution")
                                 if exec_agent and hasattr(exec_agent, "health_snapshot"):
@@ -1762,7 +1762,7 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
-                                pass
+                                logging.exception("Error getting execution agent health snapshot")
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):

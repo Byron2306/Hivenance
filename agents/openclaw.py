@@ -120,7 +120,7 @@ class OpenClawAgent:
                         "approved": False,
                     }
             except Exception:
-                pass
+                logging.exception("Error while processing council_decision in OpenClawAgent; falling back to proposals")
 
         best = None
         if proposals:
@@ -188,6 +188,7 @@ class OpenClawAgent:
             return {"error": "message_required"}
         if not self._is_valid_endpoint(endpoint):
             return {"error": "invalid_endpoint"}
+        token = token if token is not None else self.chat_token
         format_type = (format_type or self.chat_format or "hf_space").lower()
         headers = {"Content-Type": "application/json"}
         if token:

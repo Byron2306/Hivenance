@@ -1752,6 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
+                                # Spread calculation is optional; continue without it if fetching ticker fails
                                 pass
                             try:
                                 exec_agent = self.agents.get("execution")
@@ -1762,6 +1763,7 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
+                                # Health snapshot is optional; continue without it if retrieval fails
                                 pass
                             perf_metrics = {}
                             try:
@@ -1787,6 +1789,7 @@ class SwarmCoordinator:
                 try:
                     self._update_cycle(self.cfg.symbol, latest_price, proposals, decision)
                 except Exception:
+                    # Cycle update is best-effort; continue if it fails
                     pass
 
                 # Nurse review (periodic)
@@ -1794,6 +1797,7 @@ class SwarmCoordinator:
                     if self.agents.get("nurse"):
                         self._last_nurse = self.agents["nurse"].review()
                 except Exception:
+                    # Nurse review is best-effort; continue if it fails
                     pass
 
                 # Inject nurse risk metrics into council decision (best-effort)
@@ -1803,6 +1807,7 @@ class SwarmCoordinator:
                         if metrics:
                             council_decision.setdefault("risk", {}).setdefault("metrics", {}).update(metrics)
                 except Exception:
+                    # Risk metrics injection is optional; continue if it fails
                     pass
 
                 sig = (decision or {}).get("action") or "HOLD"
@@ -1817,6 +1822,7 @@ class SwarmCoordinator:
                         decision_strategy = getattr(self.cfg, "strategy_type", None)
                         decision_reason = "LEGACY_STRATEGY"
                     except Exception:
+                        # Legacy strategy fallback is optional; continue with current signal if it fails
                         pass
 
                 # Ratio-based suggestion gate: rebalance based on wallet allocation
@@ -1840,6 +1846,7 @@ class SwarmCoordinator:
                                 decision_reason = (decision_reason or "RATIO_GATE") + f" | RATIO_GATE({base_ratio:.2f}->{desired})"
                                 sig = desired
                 except Exception:
+                    # Ratio gate is optional; continue without it if calculation fails
                     pass
 
                 # Manual override toggle (from UI)
@@ -1854,6 +1861,7 @@ class SwarmCoordinator:
                         else:
                             decision_reason = (decision_reason or "OVERRIDE") + " | OVERRIDE_REQUEST"
                 except Exception:
+                    # Override handling is optional; continue without it if it fails
                     pass
                 policy_snapshot = {
                     "cooldown_sec": getattr(self.cfg, "strategy_cooldown", None),
@@ -1876,6 +1884,7 @@ class SwarmCoordinator:
                         if gov_size > 0:
                             position_size = gov_size
                     except Exception:
+                        # Governance position size override is optional; use default if parsing fails
                         pass
 
                 # Action-aware sizing: use base balance for SELL, quote balance for BUY
@@ -1899,6 +1908,7 @@ class SwarmCoordinator:
                             if notional < min_usd:
                                 position_size = float(quote_order) / float(latest_price)
                 except Exception:
+                    # Action-aware sizing is optional; continue with current position size if it fails
                     pass
 
                 # SwarmGuard phase 1: liquidity/fee/regime gating
@@ -1949,6 +1959,7 @@ class SwarmCoordinator:
                                     payload["evidence"] = verdict.get("evidence")
                                 sg.emit(payload)
                             except Exception:
+                                # SwarmGuard emission is optional; continue if it fails
                                 pass
                             if verdict.get("decision") == "VETO":
                                 guard_veto_reason = verdict.get("reason") or "SWARMGUARD_VETO"
@@ -1958,8 +1969,10 @@ class SwarmCoordinator:
                                     position_size = float(verdict.get("position_size") or position_size)
                                     decision_reason = (decision_reason or "SWARMGUARD") + f" | {verdict.get('reason')}"
                                 except Exception:
+                                    # SwarmGuard throttle adjustment is optional; continue with current size if it fails
                                     pass
                 except Exception:
+                    # SwarmGuard evaluation is optional; continue without it if it fails
                     pass
 
                 # Clamp position sizing to configured min/max USD notional
@@ -2000,6 +2013,7 @@ class SwarmCoordinator:
                         position_size = float(max_usd) / float(latest_price)
                         decision_reason = (decision_reason or "SIZE_CLAMPED") + f" (max_usd={max_usd})"
                 except Exception:
+                    # Position size clamping is optional; continue with current size if it fails
                     pass
 
                 base_sym = self.agents["execution"].base_asset
@@ -2017,6 +2031,7 @@ class SwarmCoordinator:
                             vol_24h = cg_data.get('volume_24h')
                             change_24h = cg_data.get('change_24h')
                     except Exception:
+                        # CoinGecko data is optional; continue without it if fetching fails
                         cg_data = None
                 cg_note = f" | CoinGecko {base_sym}/USD={cg_price:.2f}" if cg_price else ""
                 sentiment = self.agents["sentiment"].get_sentiment(base_sym) if self.agents.get("sentiment") else None

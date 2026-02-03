@@ -3641,7 +3641,7 @@ async function loadPerformance() {
             base_url = ""
             account = ""
         if not base_url:
-            base_url = "http://localhost:9009"
+          base_url = "http://localhost:49152"
         if not account:
             account = "hivenance-system"
         return base_url, account
@@ -3651,9 +3651,9 @@ async function loadPerformance() {
         base_url, _ = self._buzz_config()
         urls = [base_url]
         if "localhost" in base_url or "127.0.0.1" in base_url:
-            urls.append("http://host.docker.internal:9009")
-            urls.append("http://127.0.0.1:9009")
-            urls.append("http://localhost:9009")
+          urls.append("http://host.docker.internal:49152")
+          urls.append("http://127.0.0.1:49152")
+          urls.append("http://localhost:49152")
         # de-dup preserving order
         out = []
         for u in urls:

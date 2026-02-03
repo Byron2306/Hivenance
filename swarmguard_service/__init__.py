@@ -1,1 +1,0 @@
-# SwarmGuard service package

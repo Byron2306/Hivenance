@@ -1,204 +1,146 @@
 from __future__ import annotations
+
+import hmac
+import hashlib
 import json
+import os
 import time
 import sqlite3
-from typing import Optional, Dict, Any
-from fastapi import FastAPI, Request, HTTPException
-import os
+from typing import Any, Dict, Optional
+
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
-from .db import BuzzDB
-from .auth import verify_signature
 
-# Configure via env in real deployment
-HMAC_SHARED_SECRET = os.environ.get("BUZZ_SHARED_SECRET", "") or os.environ.get("HIVE_SHARED_SECRET", "") or "CHANGE_ME"
-db = BuzzDB("buzzservice.db")
-
-app = FastAPI(title="BuzzService v1", version="1.0")
+from buzzservice.buzz_client import BuzzServiceClient
+from swarmguard_service.enforce import enforce
+from swarmguard_service.idempotency_db import IdempotencyDB
+from swarmguard_service.rules_v1 import load_rules
 
 
-class LockReq(BaseModel):
-    account: str
-    amount: int
-    reason: str = ""
-    request_id: str = Field(..., description="Idempotency key")
+HMAC_SHARED_SECRET = os.environ.get("SWARMGUARD_HMAC_SECRET", "CHANGE_ME")
+BUZZ_BASE_URL = os.environ.get("BUZZ_BASE_URL", "http://localhost:49152")
+BUZZ_ACCOUNT = os.environ.get("BUZZ_ACCOUNT", "hivenance-system")
+BUZZ_SERVICE_NAME = os.environ.get("BUZZ_SERVICE_NAME", "swarmguard")
+BUZZ_FAIL_OPEN = os.environ.get("BUZZ_FAIL_OPEN", "0") == "1"
+IDEMPOTENCY_DB_PATH = os.environ.get("SWARMGUARD_DB", "swarmguard.db")
+RULES_PATH = os.environ.get("SWARMGUARD_RULES_PATH", "config/swarmguard_rules_v1.json")
+
+app = FastAPI(title="SwarmGuard v1", version="1.0")
+rules = load_rules(RULES_PATH)
+idem = IdempotencyDB(IDEMPOTENCY_DB_PATH)
+buzz = BuzzServiceClient(BUZZ_BASE_URL, HMAC_SHARED_SECRET, service_name=BUZZ_SERVICE_NAME)
 
 
-class ReleaseReq(BaseModel):
-    account: str
-    amount: int
-    reason: str = ""
-    request_id: str = Field(..., description="Idempotency key")
+class OracleRegime(BaseModel):
+    name: str
+    confidence: float = 0.5
 
 
-class SlashReq(BaseModel):
-    account: str
-    amount: int
-    reason: str = ""
-    request_id: str = Field(..., description="Idempotency key")
+class EnforceReq(BaseModel):
+    request_id: str = Field(..., description="Idempotency key for this enforce call")
+    symbol: str
+    council_decision: Dict[str, Any]
+    oracle_regime: OracleRegime
+    action: str = "PLACE_ORDER"
+    risk: Optional[Dict[str, Any]] = None
 
 
-class CreditReq(BaseModel):
-    account: str
-    amount: int
-    reason: str = ""
-    request_id: str = Field(..., description="Idempotency key")
+def _default_risk_metrics() -> Dict[str, Any]:
+    return {
+        "order_unconfirmed_ms": 0,
+        "api_failures_60s": 0,
+        "override_attempt": False,
+        "override_reason": "",
+        "alpha_age_minutes": 0,
+        "worker_loss_streak": 0,
+    }
 
 
-async def require_hmac(req: Request) -> bytes:
+def _merge_risk(req_risk: Optional[Dict[str, Any]], council: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    metrics = _default_risk_metrics()
+    if req_risk and isinstance(req_risk, dict):
+        metrics.update(req_risk.get("metrics", {}) or {})
+    if council and isinstance(council, dict):
+        c_risk = (council.get("risk") or {}).get("metrics") or {}
+        for k, v in c_risk.items():
+            metrics.setdefault(k, v)
+    return metrics
+
+
+def _verify_hmac(body_bytes: bytes, signature_hex: str) -> None:
+    if not signature_hex:
+        raise HTTPException(status_code=401, detail="Missing auth signature")
+    mac = hmac.new(HMAC_SHARED_SECRET.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(mac, signature_hex):
+        raise HTTPException(status_code=401, detail="Invalid HMAC signature")
+
+
+@app.post("/rules/enforce")
+async def rules_enforce(req: Request):
     raw = await req.body()
     sig = req.headers.get("x-hive-sig", "")
     svc = req.headers.get("x-hive-service", "")
     if not sig or not svc:
-        raise HTTPException(401, "Missing auth headers")
-    if not verify_signature(raw, sig, HMAC_SHARED_SECRET):
-        raise HTTPException(401, "Invalid signature")
-    return raw
+        raise HTTPException(status_code=401, detail="Missing auth headers")
+    _verify_hmac(raw, sig)
 
+    data = json.loads(raw.decode("utf-8"))
+    payload = EnforceReq(**data)
 
-def idem_return_or_none(request_id: str) -> Optional[Dict[str, Any]]:
-    return db.idem_get(request_id)
+    existing = idem.get(payload.request_id)
+    if existing is not None:
+        return existing
 
+    allowed, permit, reasons = enforce(
+        rules=rules,
+        council=payload.council_decision,
+        oracle=payload.oracle_regime.model_dump(),
+    )
+    risk_metrics = _merge_risk(payload.risk, payload.council_decision)
 
-def idem_store(request_id: str, response: Dict[str, Any]) -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "type": "ENFORCEMENT_RESULT",
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(time.time()))),
+        "symbol": payload.symbol,
+        "allowed": allowed,
+        "permit": permit if allowed else None,
+        "reason_codes": reasons,
+        "request_id": payload.request_id,
+        "risk": {
+            "triggered": [],
+            "vetoed": False if allowed else True,
+            "evidence": risk_metrics,
+        },
+    }
+
+    if allowed:
+        rec = str(payload.council_decision.get("recommendation", "ALLOW_SMALL"))
+        stake_amount = int(rules.get("buzz_staking", {}).get(rec, 0))
+        stake_req_id = f"buzz-{payload.request_id}"
+        try:
+            receipt = buzz.lock(BUZZ_ACCOUNT, stake_amount, rec, stake_req_id)
+            result["buzz"] = {
+                "stake_required": True,
+                "stake_amount": stake_amount,
+                "stake_reason": rec,
+                "ledger_request_id": stake_req_id,
+                "receipt": receipt,
+            }
+        except Exception as exc:
+            if not BUZZ_FAIL_OPEN:
+                raise HTTPException(status_code=503, detail=f"BuzzService unavailable: {exc}")
+            result["buzz"] = {
+                "stake_required": True,
+                "stake_amount": stake_amount,
+                "stake_reason": rec,
+                "ledger_request_id": stake_req_id,
+                "receipt": {"status": "deferred", "error": str(exc)},
+            }
+
     try:
-        db.idem_put_atomic(request_id, response, int(time.time()))
+        idem.put_atomic(payload.request_id, result, int(time.time()))
     except sqlite3.IntegrityError:
-        existing = db.idem_get(request_id)
-        return existing if existing else response
-    return response
+        stored = idem.get(payload.request_id)
+        return stored if stored else result
 
-
-@app.get("/v1/accounts/{account}")
-def get_account(account: str):
-    return {"type": "ACCOUNT", **db.get_account(account)}
-
-
-@app.get("/v1/ledger/{account}")
-def get_ledger(account: str, limit: int = 100):
-    return {"type": "LEDGER", "account": account, "entries": db.get_ledger(account, limit=limit)}
-
-@app.get("/")
-def root():
-    return {
-        "service": "BuzzService",
-        "version": "1.0",
-        "endpoints": [
-            "/v1/accounts/{account}",
-            "/v1/ledger/{account}",
-            "/v1/stakes/lock",
-            "/v1/stakes/release",
-            "/v1/stakes/slash",
-            "/v1/admin/credit",
-        ],
-    }
-
-@app.get("/buzz")
-def buzz_alias():
-    return {"detail": "Use the UI at /buzz on the main app (port 5000)."}
-
-
-@app.post("/v1/admin/credit")
-async def admin_credit(req: Request):
-    raw = await require_hmac(req)
-    data = CreditReq(**json.loads(raw.decode("utf-8")))
-
-    existing = idem_return_or_none(data.request_id)
-    if existing is not None:
-        return existing
-
-    try:
-        bal = db.credit(data.account, data.amount, request_id=data.request_id, ref=data.reason)
-    except Exception as e:
-        raise HTTPException(400, str(e))
-
-    resp = {
-        "type": "CREDIT_RECEIPT",
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "account": data.account,
-        "amount": data.amount,
-        "reason": data.reason,
-        "balance": bal,
-        "request_id": data.request_id
-    }
-    return idem_store(data.request_id, resp)
-
-
-@app.post("/v1/stakes/lock")
-async def lock_stake(req: Request):
-    raw = await require_hmac(req)
-    data = LockReq(**json.loads(raw.decode("utf-8")))
-
-    existing = idem_return_or_none(data.request_id)
-    if existing is not None:
-        return existing
-
-    try:
-        bal = db.lock(data.account, data.amount, request_id=data.request_id, ref=data.reason)
-    except Exception as e:
-        raise HTTPException(400, str(e))
-
-    resp = {
-        "type": "STAKE_LOCKED",
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "account": data.account,
-        "amount": data.amount,
-        "reason": data.reason,
-        "balance": bal,
-        "lock_id": f"lock-{data.request_id}",
-        "request_id": data.request_id
-    }
-    return idem_store(data.request_id, resp)
-
-
-@app.post("/v1/stakes/release")
-async def release_stake(req: Request):
-    raw = await require_hmac(req)
-    data = ReleaseReq(**json.loads(raw.decode("utf-8")))
-
-    existing = idem_return_or_none(data.request_id)
-    if existing is not None:
-        return existing
-
-    try:
-        bal = db.release(data.account, data.amount, request_id=data.request_id, ref=data.reason)
-    except Exception as e:
-        raise HTTPException(400, str(e))
-
-    resp = {
-        "type": "STAKE_RELEASED",
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "account": data.account,
-        "amount": data.amount,
-        "reason": data.reason,
-        "balance": bal,
-        "lock_id": f"lock-{data.request_id}",
-        "request_id": data.request_id
-    }
-    return idem_store(data.request_id, resp)
-
-
-@app.post("/v1/stakes/slash")
-async def slash_stake(req: Request):
-    raw = await require_hmac(req)
-    data = SlashReq(**json.loads(raw.decode("utf-8")))
-
-    existing = idem_return_or_none(data.request_id)
-    if existing is not None:
-        return existing
-
-    try:
-        bal = db.slash(data.account, data.amount, request_id=data.request_id, ref=data.reason)
-    except Exception as e:
-        raise HTTPException(400, str(e))
-
-    resp = {
-        "type": "STAKE_SLASHED",
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "account": data.account,
-        "amount": data.amount,
-        "reason": data.reason,
-        "balance": bal,
-        "lock_id": f"lock-{data.request_id}",
-        "request_id": data.request_id
-    }
-    return idem_store(data.request_id, resp)
+    return result

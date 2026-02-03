@@ -15,7 +15,6 @@ from agents.network_agent import NetworkAgent
 from agents.data_store_agent import DataStoreAgent
 from agents.performance_agent import PerformanceAgent
 from agents.security_agent import SecurityAgent
-from agents.openclaw import OpenClawAgent
 from agents.oracle_regime import RegimeOracle
 from agents.council import StrategyCouncil
 from agents.nurse import NurseAgent
@@ -309,18 +308,6 @@ class SwarmCoordinator:
             logging.info("Security Agent enabled.")
         else:
             self.agents["security"] = None
-
-        # OpenClaw Agent (custom local agent)
-        try:
-            agent = OpenClawAgent(coordinator=self, cfg={"heartbeat_sec": getattr(self.cfg, 'openclaw_heartbeat_sec', 5)})
-            self.agents["openclaw"] = agent
-            try:
-                agent.start()
-                logging.info("OpenClaw Agent initialized and started.")
-            except Exception:
-                logging.exception("OpenClaw Agent failed to start")
-        except Exception:
-            self.agents["openclaw"] = None
 
         # Set initial health
         for name in self.agents:

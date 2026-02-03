@@ -1,5 +1,5 @@
 param(
-  [int]$Port = 9009,
+  [int]$Port = 49152,
   [string]$SharedSecret = ""
 )
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..")

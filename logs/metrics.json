@@ -2,8 +2,9 @@
   "buzz": {
     "type": "buzz.analytics.snapshot",
     "source": "ANALYTICS",
-    "ts": 1769890260523,
-    "seq": 22
+    "ts": 1769787628591,
+    "seq": 1877,
+    "id": "bebf6c0b-a732-4ac4-a720-e2a71895eca5"
   },
   "payload": {
     "window_sec": 300,
@@ -15,7 +16,7 @@
     "p95_latency_ms": 0,
     "market_stale_events": 0,
     "wallet_stale_events": 0,
-    "equity_usd_est": 0.0,
+    "equity_usd_est": 18.42068584768508,
     "equity_change_pct": 0.0,
     "daily_pnl_pct": 0.0,
     "drawdown_pct": 0.0

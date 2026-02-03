@@ -1770,6 +1770,7 @@ class SwarmCoordinator:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
                             except Exception:
+                                # Silently ignore errors when fetching optional performance metrics
                                 perf_metrics = {}
                             portfolio = {
                                 "base_free": base_free,

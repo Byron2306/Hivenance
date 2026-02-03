@@ -1752,6 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
+                                # Silently ignore ticker fetch errors - spread_pct is optional metric
                                 pass
                             try:
                                 exec_agent = self.agents.get("execution")
@@ -1762,6 +1763,7 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception:
+                                # Silently ignore health snapshot errors - these metrics are optional
                                 pass
                             perf_metrics = {}
                             try:

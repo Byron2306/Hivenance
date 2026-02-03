@@ -1349,7 +1349,6 @@ class UIAgent:
         wallet_eth = self._get_wallet_snapshot().get('ETH', 'N/A')
         watch_addr = ""
         openclaw_chat_endpoint = getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
-        openclaw_chat_token = getattr(self.coordinator.cfg, "openclaw_chat_token", "")
         try:
             watch_addr = (self._load_api_keys() or {}).get("watch_address", "") or ""
         except Exception:

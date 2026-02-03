@@ -1736,6 +1736,7 @@ class SwarmCoordinator:
                                     "payload": decision,
                                 })
                     except Exception:
+                        # Silently ignore autonomy decision errors - allows fallback to standard governance
                         pass
 
                 # Governance decision (Queen)
@@ -1770,6 +1771,7 @@ class SwarmCoordinator:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
                             except Exception:
+                                # Fallback to empty metrics - governance can proceed without performance metrics
                                 perf_metrics = {}
                             portfolio = {
                                 "base_free": base_free,

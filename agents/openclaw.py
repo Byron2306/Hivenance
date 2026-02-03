@@ -121,7 +121,6 @@ class OpenClawAgent:
                     }
             except Exception:
                 logging.exception("Error while processing council_decision in OpenClawAgent; falling back to proposals")
-                pass
 
         best = None
         if proposals:

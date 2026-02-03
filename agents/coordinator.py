@@ -1736,6 +1736,7 @@ class SwarmCoordinator:
                                     "payload": decision,
                                 })
                     except Exception:
+                        # Autonomous decision errors are non-fatal; governance will fall back to Queen decision
                         pass
 
                 # Governance decision (Queen)

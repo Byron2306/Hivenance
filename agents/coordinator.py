@@ -1767,7 +1767,10 @@ class SwarmCoordinator:
                             try:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
-                            except Exception:
+                            except Exception as e:
+                                # Default to empty metrics if logging agent is unavailable or fails.
+                                # Governance can still make decisions without performance metrics.
+                                logging.debug(f"Failed to retrieve performance metrics: {e}")
                                 perf_metrics = {}
                             portfolio = {
                                 "base_free": base_free,

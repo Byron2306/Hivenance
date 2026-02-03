@@ -1751,8 +1751,10 @@ class SwarmCoordinator:
                                     ask = t.get("ask")
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                # Silently skip spread calculation if ticker fetch fails
+                                # (e.g., API unavailable, network issues). exec_quality remains empty.
+                                logging.debug(f"Failed to fetch ticker for spread calculation: {e}")
                             try:
                                 exec_agent = self.agents.get("execution")
                                 if exec_agent and hasattr(exec_agent, "health_snapshot"):
@@ -1761,13 +1763,18 @@ class SwarmCoordinator:
                                         exec_quality["order_unconfirmed_ms"] = hs.get("order_unconfirmed_ms")
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                # Silently skip health snapshot if agent is unavailable or method fails.
+                                # Governance can still proceed with partial exec_quality data.
+                                logging.debug(f"Failed to retrieve execution health snapshot: {e}")
                             perf_metrics = {}
                             try:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
-                            except Exception:
+                            except Exception as e:
+                                # Default to empty metrics if logging agent is unavailable or fails.
+                                # Governance can still make decisions without performance metrics.
+                                logging.debug(f"Failed to retrieve performance metrics: {e}")
                                 perf_metrics = {}
                             portfolio = {
                                 "base_free": base_free,

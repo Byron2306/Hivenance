@@ -1752,6 +1752,7 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception:
+                                # Silently ignore failures fetching ticker data - spread_pct is optional
                                 pass
                             try:
                                 exec_agent = self.agents.get("execution")

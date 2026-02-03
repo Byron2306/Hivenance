@@ -1752,8 +1752,8 @@ class SwarmCoordinator:
                                     if bid and ask and bid > 0:
                                         exec_quality["spread_pct"] = (ask - bid) / bid
                             except Exception as e:
-                                # Silently skip spread calculation if ticker fetch fails
-                                # (e.g., API unavailable, network issues). exec_quality remains empty.
+                                # Skip spread calculation if ticker fetch fails (e.g., API unavailable,
+                                # network issues). exec_quality remains empty; governance can proceed.
                                 logging.debug(f"Failed to fetch ticker for spread calculation: {e}")
                             try:
                                 exec_agent = self.agents.get("execution")
@@ -1764,7 +1764,7 @@ class SwarmCoordinator:
                                     if "api_failures_60s" in hs:
                                         exec_quality["api_failures_60s"] = hs.get("api_failures_60s")
                             except Exception as e:
-                                # Silently skip health snapshot if agent is unavailable or method fails.
+                                # Skip health snapshot if agent is unavailable or method fails.
                                 # Governance can still proceed with partial exec_quality data.
                                 logging.debug(f"Failed to retrieve execution health snapshot: {e}")
                             perf_metrics = {}

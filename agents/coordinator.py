@@ -3079,6 +3079,10 @@ class SwarmCoordinator:
                 except Exception:
                     pass
 
+                # regime snapshot (get before council collection)
+                exec_agent = self._get_exec_for_symbol(sym)
+                regime_snapshot = self._get_regime_for_symbol(sym, exec_agent)
+                
                 # proposals via council
                 proposals = []
                 if self.agents.get("council") and self.strategy_workers:
@@ -3092,9 +3096,7 @@ class SwarmCoordinator:
                         perf_by_worker={},
                     )
 
-                # regime snapshot
-                exec_agent = self._get_exec_for_symbol(sym)
-                regime_snapshot = self._get_regime_for_symbol(sym, exec_agent)
+                # emit regime snapshot
                 if regime_snapshot:
                     try:
                         self.share_data("buzz.regime.snapshot", {

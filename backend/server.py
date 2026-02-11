@@ -271,6 +271,7 @@ async def push_alert(request: Request):
     await manager.broadcast(alert)
     return {"ok": True, "broadcast_to": len(manager.active_connections)}
 
-# ============ Mount Original Flask UI ============
+# ============ Mount Original Flask UI under /api ============
+# The platform routes /api/* to backend port 8001
 # This serves the ORIGINAL dashboard with bee agents, oracles, strategy workers, etc.
-app.mount("/", WSGIMiddleware(ui_agent.app))
+app.mount("/api", WSGIMiddleware(ui_agent.app))

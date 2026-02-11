@@ -2465,7 +2465,7 @@ class SwarmCoordinator:
                         "created_ts": time.time(),
                         "strategy": decision_strategy or "UNKNOWN",
                         "regime": self._last_regime or "UNKNOWN",
-                        "signal_strength": current_signal_strength if 'current_signal_strength' in dir() else 0.0
+                        "signal_strength": 0.0  # Updated by learning engine
                     }
 
                     # Emit coordinator decision into shared store for UI/debug

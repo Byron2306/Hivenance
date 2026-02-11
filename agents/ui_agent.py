@@ -812,6 +812,301 @@ class UIAgent:
                 logging.exception("audit.json error")
                 return jsonify({"rows": [], "error": str(e)}), 500
 
+        # ============================================================
+        # NEW: Learning Engine & Safety System API Endpoints
+        # ============================================================
+        
+        @self.app.route("/learning/status.json")
+        def learning_status_json():
+            """Get learning engine status and statistics."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                health = learning.get_system_health()
+                top_coins = learning.get_top_coins(10)
+                worker_weights = learning.get_worker_weights()
+                
+                return jsonify({
+                    "health": health,
+                    "top_coins": [{"symbol": s, "score": sc} for s, sc in top_coins],
+                    "worker_weights": worker_weights,
+                    "auto_trade_enabled": learning.auto_trade_enabled,
+                    "approval_threshold_usd": learning.approval_threshold_usd,
+                    "risk_tolerance": learning.risk_tolerance
+                })
+            except Exception as e:
+                logging.exception("learning/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/learning/coin/<symbol>.json")
+        def learning_coin_json(symbol):
+            """Get detailed learning report for a specific coin."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                report = learning.get_coin_report(symbol)
+                return jsonify(report)
+            except Exception as e:
+                logging.exception(f"learning/coin/{symbol}.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/learning/auto_trade", methods=["GET", "POST"])
+        def learning_auto_trade():
+            """Toggle auto-trade mode."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                if request.method == "POST":
+                    data = request.json if request.is_json else request.form.to_dict()
+                    enabled = str(data.get("enabled", "false")).lower() in ("true", "1", "yes")
+                    learning.set_auto_trade(enabled)
+                
+                return jsonify({
+                    "auto_trade_enabled": learning.auto_trade_enabled,
+                    "approval_threshold_usd": learning.approval_threshold_usd
+                })
+            except Exception as e:
+                logging.exception("learning/auto_trade error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/learning/risk_tolerance", methods=["POST"])
+        def learning_risk_tolerance():
+            """Set risk tolerance level."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                data = request.json if request.is_json else request.form.to_dict()
+                level = float(data.get("level", 0.5))
+                learning.set_risk_tolerance(level)
+                
+                return jsonify({"risk_tolerance": learning.risk_tolerance})
+            except Exception as e:
+                logging.exception("learning/risk_tolerance error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/approvals/pending.json")
+        def approvals_pending_json():
+            """Get pending trade approvals."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"pending": [], "error": "learning_engine_disabled"})
+                
+                pending = learning.get_pending_approvals()
+                return jsonify({"pending": pending})
+            except Exception as e:
+                logging.exception("approvals/pending.json error")
+                return jsonify({"pending": [], "error": str(e)}), 500
+        
+        @self.app.route("/approvals/action", methods=["POST"])
+        def approvals_action():
+            """Approve or reject a pending trade."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"ok": False, "error": "learning_engine_disabled"}), 400
+                
+                data = request.json if request.is_json else request.form.to_dict()
+                trade_id = data.get("trade_id")
+                action = str(data.get("action", "")).upper()
+                
+                if not trade_id:
+                    return jsonify({"ok": False, "error": "trade_id_required"}), 400
+                if action not in ("APPROVE", "REJECT"):
+                    return jsonify({"ok": False, "error": "action_must_be_APPROVE_or_REJECT"}), 400
+                
+                approved = action == "APPROVE"
+                ok = learning.process_approval(trade_id, approved, approved_by="USER_UI")
+                
+                return jsonify({"ok": ok, "trade_id": trade_id, "action": action})
+            except Exception as e:
+                logging.exception("approvals/action error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+        
+        @self.app.route("/safety/status.json")
+        def safety_status_json():
+            """Get safety system status."""
+            try:
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if not safety:
+                    return jsonify({"error": "safety_system_disabled"}), 400
+                
+                status = safety.get_safety_status()
+                return jsonify(status)
+            except Exception as e:
+                logging.exception("safety/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/safety/audit.json")
+        def safety_audit_json():
+            """Get safety audit trail."""
+            try:
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if not safety:
+                    return jsonify({"entries": [], "error": "safety_system_disabled"})
+                
+                limit = int(request.args.get("limit", 50))
+                entries = safety.get_audit_trail(limit)
+                return jsonify({"entries": entries})
+            except Exception as e:
+                logging.exception("safety/audit.json error")
+                return jsonify({"entries": [], "error": str(e)}), 500
+        
+        @self.app.route("/safety/circuit_breaker", methods=["GET", "POST"])
+        def safety_circuit_breaker():
+            """Get or reset circuit breaker status."""
+            try:
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if not safety:
+                    return jsonify({"error": "safety_system_disabled"}), 400
+                
+                if request.method == "POST":
+                    data = request.json if request.is_json else request.form.to_dict()
+                    action = str(data.get("action", "")).upper()
+                    reason = data.get("reason", "manual_reset")
+                    
+                    if action == "RESET":
+                        safety.reset_circuit_breaker(reason)
+                
+                status = safety.get_safety_status()
+                return jsonify({
+                    "circuit_breaker_active": status.get("circuit_breaker_active"),
+                    "circuit_breaker_reason": status.get("circuit_breaker_reason"),
+                    "safety_level": status.get("safety_level")
+                })
+            except Exception as e:
+                logging.exception("safety/circuit_breaker error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/gas/status.json")
+        def gas_status_json():
+            """Get gas optimizer status and savings."""
+            try:
+                gas_opt = self.coordinator.agents.get("gas_optimizer") if self.coordinator else None
+                if not gas_opt:
+                    return jsonify({"error": "gas_optimizer_disabled"}), 400
+                
+                report = gas_opt.get_gas_report()
+                timing = gas_opt.get_optimal_timing()
+                pending = gas_opt.get_pending_batch()
+                
+                return jsonify({
+                    "report": report,
+                    "timing": timing,
+                    "pending_batch": pending
+                })
+            except Exception as e:
+                logging.exception("gas/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/gas/execute_batch", methods=["POST"])
+        def gas_execute_batch():
+            """Force execute pending batch."""
+            try:
+                gas_opt = self.coordinator.agents.get("gas_optimizer") if self.coordinator else None
+                if not gas_opt:
+                    return jsonify({"ok": False, "error": "gas_optimizer_disabled"}), 400
+                
+                batch_id = gas_opt.force_batch_execute()
+                return jsonify({"ok": bool(batch_id), "batch_id": batch_id})
+            except Exception as e:
+                logging.exception("gas/execute_batch error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+        
+        @self.app.route("/adaptive_selector/status.json")
+        def adaptive_selector_status_json():
+            """Get adaptive coin selector status."""
+            try:
+                selector = self.coordinator.agents.get("adaptive_selector") if self.coordinator else None
+                if not selector:
+                    return jsonify({"error": "adaptive_selector_disabled"}), 400
+                
+                report = selector.get_selection_report()
+                return jsonify(report)
+            except Exception as e:
+                logging.exception("adaptive_selector/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/adaptive_selector/rotate", methods=["POST"])
+        def adaptive_selector_rotate():
+            """Force coin rotation."""
+            try:
+                selector = self.coordinator.agents.get("adaptive_selector") if self.coordinator else None
+                if not selector:
+                    return jsonify({"ok": False, "error": "adaptive_selector_disabled"}), 400
+                
+                selected = selector.force_rotation()
+                return jsonify({"ok": True, "selected_coins": selected})
+            except Exception as e:
+                logging.exception("adaptive_selector/rotate error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+        
+        @self.app.route("/mobile/dashboard.json")
+        def mobile_dashboard_json():
+            """Combined endpoint for mobile IDE - all essential data in one call."""
+            try:
+                result = {
+                    "ts": int(time.time() * 1000)
+                }
+                
+                # Learning status
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if learning:
+                    result["learning"] = {
+                        "health": learning.get_system_health(),
+                        "top_coins": [{"symbol": s, "score": sc} for s, sc in learning.get_top_coins(5)],
+                        "auto_trade": learning.auto_trade_enabled,
+                        "pending_approvals": len(learning.get_pending_approvals())
+                    }
+                
+                # Safety status
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if safety:
+                    result["safety"] = safety.get_safety_status()
+                
+                # Gas status
+                gas_opt = self.coordinator.agents.get("gas_optimizer") if self.coordinator else None
+                if gas_opt:
+                    result["gas"] = gas_opt.get_gas_report()
+                
+                # Pending approvals
+                if learning:
+                    result["pending_approvals"] = learning.get_pending_approvals()
+                
+                # Wallet info
+                try:
+                    wallet = self.coordinator.agents.get("wallet")
+                    if wallet and hasattr(wallet, "get_snapshot"):
+                        snapshot = wallet.get_snapshot() or {}
+                        result["wallet"] = {
+                            "equity_usd": snapshot.get("equity_usd_est", 0.0),
+                            "balances": snapshot.get("balances", [])
+                        }
+                except Exception:
+                    pass
+                
+                # Market info
+                try:
+                    latest_price = self.coordinator.data_cache.get("latest_price", 0.0)
+                    result["market"] = {
+                        "symbol": getattr(self.coordinator.cfg, "symbol", ""),
+                        "price": latest_price
+                    }
+                except Exception:
+                    pass
+                
+                return jsonify(result)
+            except Exception as e:
+                logging.exception("mobile/dashboard.json error")
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route("/control/mode", methods=["POST"])
         def control_mode():

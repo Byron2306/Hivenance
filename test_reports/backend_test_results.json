@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-02-11T13:18:09.882819",
+  "tests_run": 13,
+  "tests_passed": 10,
+  "tests_failed": 3,
+  "success_rate": 76.92307692307693,
+  "test_results": [
+    {
+      "name": "Learning Engine Initialization",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Learning Engine Coin Tracking",
+      "status": "FAILED",
+      "error": "Test returned False"
+    },
+    {
+      "name": "Gas Optimizer Initialization",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Gas Optimizer Batching",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Safety System Initialization",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Safety System Validation",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Safety System Circuit Breaker",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Adaptive Coin Selector Initialization",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Adaptive Coin Selector Evaluation",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "Coordinator Initialization",
+      "status": "FAILED",
+      "error": "Test returned False"
+    },
+    {
+      "name": "Approval Threshold Functionality",
+      "status": "FAILED",
+      "error": "Test returned False"
+    },
+    {
+      "name": "Auto-Trade Toggle",
+      "status": "PASSED",
+      "error": null
+    },
+    {
+      "name": "API Endpoints Structure",
+      "status": "PASSED",
+      "error": null
+    }
+  ]
+}

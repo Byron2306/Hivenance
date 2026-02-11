@@ -35,7 +35,7 @@ class SafetyLevel(Enum):
 class SafetyCheckResult:
     """Result of a single safety check."""
     check_name: str
-    passed: bool
+    passed: bool = False
     level: SafetyLevel = SafetyLevel.GREEN
     message: str = ""
     data: Dict = field(default_factory=dict)

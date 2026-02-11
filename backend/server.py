@@ -611,3 +611,146 @@ async def dashboard():
 </body>
 </html>
 """
+
+
+# ============ WEBSOCKET ENDPOINTS ============
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time updates."""
+    await manager.connect(websocket)
+    try:
+        # Send initial state
+        await websocket.send_json({
+            "type": "init",
+            "data": state,
+            "timestamp": int(time.time() * 1000)
+        })
+        
+        while True:
+            # Wait for messages from client
+            try:
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=1.0)
+                
+                # Handle client commands
+                if data.get("action") == "set_mode":
+                    mode = data.get("mode", "").upper()
+                    if mode in ("SIMPLE", "GOVERNED"):
+                        state["mode"] = mode
+                        await manager.broadcast({
+                            "type": "mode_change",
+                            "data": {"mode": mode},
+                            "timestamp": int(time.time() * 1000)
+                        })
+                
+                elif data.get("action") == "toggle_auto_trade":
+                    state["auto_trade"] = not state["auto_trade"]
+                    await manager.broadcast({
+                        "type": "auto_trade_change",
+                        "data": {"auto_trade": state["auto_trade"]},
+                        "timestamp": int(time.time() * 1000)
+                    })
+                
+                elif data.get("action") == "ping":
+                    await websocket.send_json({"type": "pong", "timestamp": int(time.time() * 1000)})
+                    
+            except asyncio.TimeoutError:
+                # No message received, continue loop
+                pass
+                
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logging.error(f"WebSocket error: {e}")
+        manager.disconnect(websocket)
+
+# Background task to simulate real-time data updates
+async def broadcast_updates():
+    """Broadcast state updates every 2 seconds."""
+    while True:
+        await asyncio.sleep(2)
+        
+        if manager.active_connections:
+            # Simulate price changes
+            btc_change = random.uniform(-0.5, 0.5)
+            
+            # Update worker weights slightly
+            for worker in state["worker_weights"]:
+                state["worker_weights"][worker] = round(
+                    max(0.8, min(1.5, state["worker_weights"][worker] + random.uniform(-0.01, 0.01))), 4
+                )
+            
+            # Update P&L
+            state["safety"]["daily_pnl"] = round(state["safety"]["daily_pnl"] + random.uniform(-0.5, 1.0), 4)
+            
+            update = {
+                "type": "update",
+                "data": {
+                    "mode": state["mode"],
+                    "auto_trade": state["auto_trade"],
+                    "safety": state["safety"],
+                    "worker_weights": state["worker_weights"],
+                    "learning": state["learning"],
+                    "prices": {
+                        "BTC/USD": round(42000 + random.uniform(-500, 500), 2),
+                        "ETH/USD": round(2200 + random.uniform(-50, 50), 2),
+                    }
+                },
+                "timestamp": int(time.time() * 1000)
+            }
+            await manager.broadcast(update)
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on server startup."""
+    asyncio.create_task(broadcast_updates())
+    logging.info("Started WebSocket broadcast task")
+
+# Trade event endpoint - for other agents to push trade updates
+@app.post("/api/ws/trade_event")
+async def push_trade_event(request: Request):
+    """Push a trade event to all WebSocket clients."""
+    data = await request.json()
+    
+    event = {
+        "type": "trade",
+        "data": {
+            "symbol": data.get("symbol", "UNKNOWN"),
+            "side": data.get("side", "BUY"),
+            "price": data.get("price", 0),
+            "quantity": data.get("quantity", 0),
+            "pnl": data.get("pnl", 0),
+            "status": data.get("status", "EXECUTED"),
+        },
+        "timestamp": int(time.time() * 1000)
+    }
+    
+    await manager.broadcast(event)
+    
+    # Update learning stats
+    state["learning"]["total_trades"] += 1
+    if data.get("pnl", 0) > 0:
+        state["learning"]["winning_trades"] += 1
+    state["learning"]["win_rate"] = state["learning"]["winning_trades"] / state["learning"]["total_trades"]
+    
+    return {"ok": True, "broadcast_to": len(manager.active_connections)}
+
+# Alert endpoint - push alerts to all clients
+@app.post("/api/ws/alert")
+async def push_alert(request: Request):
+    """Push an alert to all WebSocket clients."""
+    data = await request.json()
+    
+    alert = {
+        "type": "alert",
+        "data": {
+            "level": data.get("level", "INFO"),
+            "message": data.get("message", ""),
+            "source": data.get("source", "system"),
+        },
+        "timestamp": int(time.time() * 1000)
+    }
+    
+    await manager.broadcast(alert)
+    return {"ok": True, "broadcast_to": len(manager.active_connections)}
+

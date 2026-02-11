@@ -23,6 +23,24 @@ from agents.queen import GovernanceQueen
 from agents.strategy_workers import SMAWorker, RSIWorker, BreakoutWorker, MomentumWorker
 from typing import Optional, Dict, Any
 
+# Import new learning and safety systems
+try:
+    from agents.learning_engine import LearningEngine
+except ImportError:
+    LearningEngine = None
+try:
+    from agents.adaptive_coin_selector import AdaptiveCoinSelector
+except ImportError:
+    AdaptiveCoinSelector = None
+try:
+    from agents.gas_optimizer import GasOptimizer
+except ImportError:
+    GasOptimizer = None
+try:
+    from agents.safety_system import FoolproofSafetySystem
+except ImportError:
+    FoolproofSafetySystem = None
+
 
 class SwarmCoordinator:
     def __init__(self, cfg):

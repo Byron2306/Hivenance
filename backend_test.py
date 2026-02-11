@@ -485,6 +485,12 @@ class CryptoTradingSystemTester:
                     self.sma_slow = 50
                     self.max_position_base = 0.1
                     
+                    # Strategy worker settings
+                    self.rsi_window = 14
+                    self.rsi_oversold = 30
+                    self.rsi_overbought = 70
+                    self.lookback = 20
+                    
                     # Learning Engine settings
                     self.approval_threshold_usd = 10.0
                     self.max_position_pct = 0.10
@@ -505,6 +511,12 @@ class CryptoTradingSystemTester:
                     self.max_daily_loss_pct = 0.05
                     self.max_drawdown_pct = 0.10
                     self.max_trades_per_hour = 10
+                    
+                    # Network settings
+                    self.redis_host = "localhost"
+                    self.redis_port = 6379
+                    self.redis_db = 0
+                    self.redis_password = None
                     
                     # UI and other settings
                     self.ui_enabled = False

@@ -50,13 +50,8 @@ class UIAgent:
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
                 resp.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers", "Content-Type")
                 return resp
-            # Canonicalize host to avoid split caches (localhost vs 127.0.0.1)
-            try:
-                host = request.host or ""
-                if host.startswith(f"localhost:{self.port}") or host.startswith(f"0.0.0.0:{self.port}"):
-                    return redirect(f"http://127.0.0.1:{self.port}{request.full_path}")
-            except Exception:
-                pass
+            # Skip redirect when mounted behind reverse proxy (FastAPI/WSGI)
+            # The original redirect caused loops in proxy setups
             if not self.allowed_ips:
                 return
             remote = request.remote_addr

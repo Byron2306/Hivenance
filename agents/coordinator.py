@@ -2365,12 +2365,98 @@ class SwarmCoordinator:
                         logging.info("BUY skipped: insufficient quote balance.")
                         continue
 
-                    # Create intent and client_order_id
+                    trade_value_usd = buy_qty * latest_price
+                    
+                    # ============================================================
+                    # NEW: Multi-layer safety validation (FOOLPROOF)
+                    # ============================================================
+                    safety = self.agents.get('safety')
+                    learning = self.agents.get('learning')
+                    gas_optimizer = self.agents.get('gas_optimizer')
+                    
+                    # Pre-generate intent_id for tracking
                     self._intent_counter += 1
                     intent_id = f"intent-{int(time.time())}-{self.cfg.symbol}-{self._intent_counter}"
+                    
+                    # Validate through safety system
+                    if safety:
+                        validation = safety.validate_trade(
+                            trade_id=intent_id,
+                            symbol=self.cfg.symbol,
+                            action="BUY",
+                            quantity=buy_qty,
+                            price=latest_price,
+                            wallet_balance_usd=quote_free,
+                            current_positions=[]  # Would fetch from position tracker
+                        )
+                        
+                        if not validation.approved:
+                            logging.warning(f"Safety BLOCKED trade {intent_id}: {validation.rejection_reasons}")
+                            try:
+                                self.share_data('buzz.safety.blocked', {
+                                    "intent_id": intent_id,
+                                    "symbol": self.cfg.symbol,
+                                    "action": "BUY",
+                                    "amount_usd": trade_value_usd,
+                                    "safety_level": validation.safety_level.value,
+                                    "reasons": validation.rejection_reasons,
+                                    "checks_failed": validation.checks_failed
+                                })
+                            except Exception:
+                                pass
+                            continue
+                        
+                        # Apply recommended size from safety
+                        if validation.recommended_size < trade_value_usd:
+                            adjusted_qty = validation.recommended_size / latest_price
+                            logging.info(f"Safety adjusted trade size: {buy_qty:.6f} -> {adjusted_qty:.6f}")
+                            buy_qty = adjusted_qty
+                            trade_value_usd = validation.recommended_size
+                    
+                    # Check gas efficiency
+                    if gas_optimizer:
+                        is_efficient, gas_msg = gas_optimizer.is_trade_gas_efficient(trade_value_usd)
+                        if not is_efficient:
+                            logging.warning(f"Gas inefficient trade: {gas_msg}")
+                            # Consider batching instead
+                            if gas_optimizer.should_batch(trade_value_usd):
+                                batch_id = gas_optimizer.add_to_batch({
+                                    "trade_id": intent_id,
+                                    "symbol": self.cfg.symbol,
+                                    "action": "BUY",
+                                    "quantity": buy_qty,
+                                    "price": latest_price,
+                                    "notional_usd": trade_value_usd
+                                })
+                                logging.info(f"Trade batched for gas efficiency: {batch_id}")
+                                continue
+                    
+                    # Check if learning engine requires approval
+                    if learning and learning.should_require_approval(trade_value_usd, validation if safety else None):
+                        approval = learning.request_approval(
+                            trade_id=intent_id,
+                            symbol=self.cfg.symbol,
+                            action="BUY",
+                            amount_usd=trade_value_usd,
+                            validation=validation if safety else None,
+                            timeout_sec=300
+                        )
+                        logging.info(f"Trade pending approval: {intent_id} amount=${trade_value_usd:.2f}")
+                        self.share_data('buzz.approval.pending', {
+                            "intent_id": intent_id,
+                            "symbol": self.cfg.symbol,
+                            "action": "BUY",
+                            "amount_usd": trade_value_usd,
+                            "timeout_sec": 300
+                        })
+                        continue
+                    
+                    # Update trade value after safety adjustments
+                    trade_value_usd = buy_qty * latest_price
+
                     client_order_id = f"{intent_id}-A"
 
-                    # store intent minimal record
+                    # store intent minimal record with learning data
                     self.intents[intent_id] = {
                         "symbol": self.cfg.symbol,
                         "action": "BUY",
@@ -2378,7 +2464,10 @@ class SwarmCoordinator:
                         "price": latest_price,
                         "client_order_id": client_order_id,
                         "state": "SENT",
-                        "created_ts": time.time()
+                        "created_ts": time.time(),
+                        "strategy": decision_strategy or "UNKNOWN",
+                        "regime": self._last_regime or "UNKNOWN",
+                        "signal_strength": current_signal_strength if 'current_signal_strength' in dir() else 0.0
                     }
 
                     # Emit coordinator decision into shared store for UI/debug

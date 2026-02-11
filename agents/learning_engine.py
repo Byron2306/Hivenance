@@ -643,12 +643,19 @@ class LearningEngine:
     ) -> Dict[str, Any]:
         """Request approval for a trade and return approval request details."""
         with self._lock:
+            validation_dict = {}
+            if validation:
+                try:
+                    validation_dict = asdict(validation)
+                except Exception:
+                    validation_dict = {"raw": str(validation)}
+            
             request = {
                 "trade_id": trade_id,
                 "symbol": symbol,
                 "action": action,
                 "amount_usd": amount_usd,
-                "validation": asdict(validation),
+                "validation": validation_dict,
                 "requested_at": time.time(),
                 "expires_at": time.time() + timeout_sec,
                 "status": "PENDING",

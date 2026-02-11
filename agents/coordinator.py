@@ -2683,7 +2683,8 @@ class SwarmCoordinator:
                 try:
                     logging.exception(f"Loop error: {e}")
                 except Exception:
-                    import traceback, sys
+                    import traceback
+                    import sys
                     traceback.print_exc(file=sys.stderr)
 
             time.sleep(self.cfg.poll_seconds)

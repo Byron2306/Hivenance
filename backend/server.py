@@ -1,23 +1,19 @@
 """
 Backend server that runs the ORIGINAL Hivenance Flask UI.
-Serves on port 8001 as required by the Emergent platform.
 """
 import sys
 import os
-import time
 
-# Add app root to path
 sys.path.insert(0, '/app')
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.wsgi import WSGIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from agents.ui_agent import UIAgent
 
 class Config:
-    """Minimal config for standalone UI mode."""
     def __init__(self):
         self.feed_buffer_trades = 500
         self.feed_buffer_logs = 1000
@@ -30,7 +26,6 @@ class Config:
         self.governance_mode = "GOVERNED"
 
 class Coordinator:
-    """Minimal coordinator for standalone UI mode."""
     def __init__(self):
         self.cfg = Config()
         self.agents = {}
@@ -44,14 +39,13 @@ class Coordinator:
     def share_data(self, key, value):
         self.data_cache[key] = value
 
-# Initialize coordinator and Flask UI
+# Initialize
 coordinator = Coordinator()
 ui_agent = UIAgent(coordinator=coordinator, host="0.0.0.0", port=8001)
 
-# Create FastAPI wrapper
-app = FastAPI(title="Hivenance Trading System")
+# Create FastAPI
+app = FastAPI(title="Hivenance")
 
-# Add CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -60,17 +54,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cache buster - unique path that changes
-CACHE_BUSTER = str(int(time.time()))
-
-@app.get("/api/v2")
-async def api_v2_redirect():
-    """Redirect to dashboard with cache buster."""
-    return RedirectResponse(url=f"/api/dashboard/{CACHE_BUSTER}/")
-
-# Mount the original Flask UI at a unique path to bypass cache
-app.mount(f"/api/dashboard/{CACHE_BUSTER}", WSGIMiddleware(ui_agent.app))
-
-# Also mount at standard locations
-app.mount("/api/dashboard", WSGIMiddleware(ui_agent.app))
+# Mount Flask UI at root - this serves at localhost:8001/
 app.mount("/", WSGIMiddleware(ui_agent.app))

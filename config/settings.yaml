@@ -169,3 +169,30 @@ buzz_slash_pct_killswitch: 0.05
 buzz_slash_pct_security: 0.05
 buzz_loss_streak_threshold: 3
 buzz_loss_streak_slash_bonus_pct: 0.05
+
+# ============================================================
+# Learning Engine Settings
+# ============================================================
+learning_enabled: true
+approval_threshold_usd: 10.0
+auto_trade_enabled: false
+risk_tolerance: 0.5
+max_position_pct: 0.10
+max_daily_loss_pct: 0.05
+max_drawdown_pct: 0.10
+max_trades_per_hour: 10
+
+# ============================================================
+# Gas Optimization Settings
+# ============================================================
+gas_batch_enabled: true
+gas_batch_threshold_usd: 5.0
+max_gas_pct: 0.05
+
+# ============================================================
+# Adaptive Coin Selector Settings
+# ============================================================
+adaptive_selection_enabled: true
+min_volume_usd: 50000
+max_tracked_coins: 10
+coin_rotation_interval_sec: 3600

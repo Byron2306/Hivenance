@@ -9,6 +9,7 @@ User wants a foolproof governance layer crypto agentic AI system that:
 - Allows phone communication with Queen for trade authorization
 - Has full auto-trade toggle capability
 - Learns and adapts over time
+- **Flexible governance modes** - SIMPLE (fast) vs GOVERNED (safe)
 
 ## Architecture Overview
 
@@ -46,6 +47,22 @@ User wants a foolproof governance layer crypto agentic AI system that:
    - Position limits based on wallet size
    - Comprehensive audit trail
 
+## Governance Modes (NEW - Feb 2026)
+
+### SIMPLE Mode ⚡
+- Fast execution with minimal checks
+- Skip council votes for quick decisions
+- Reduced validation layers
+- Best for: Trending markets, experienced users
+
+### GOVERNED Mode 🛡️
+- Full safety validation pipeline
+- All 8 validation layers active
+- Council approval required
+- Best for: Volatile markets, risk-averse users
+
+**Toggle via UI or API:** `POST /api/mode {"mode": "SIMPLE|GOVERNED"}`
+
 ## User Personas
 1. **Active Trader** - Wants to monitor and approve trades manually
 2. **Passive Investor** - Wants full auto-trade with safety limits
@@ -58,7 +75,7 @@ User wants a foolproof governance layer crypto agentic AI system that:
 - Maximum 10 trades per hour
 - Auto-trade toggle capability
 
-## What's Been Implemented (Jan 2026)
+## What's Been Implemented
 
 ### Phase 1: Learning Core ✅
 - [x] Profit margin tracking per coin
@@ -81,6 +98,10 @@ User wants a foolproof governance layer crypto agentic AI system that:
 - [x] Rate limiting
 
 ### Phase 4: API Endpoints ✅
+- [x] /api/status - Main status endpoint
+- [x] /api/mode - Governance mode toggle
+- [x] /api/auto_trade - Auto-trade toggle
+- [x] /api/safety/reset - Circuit breaker reset
 - [x] /learning/status.json
 - [x] /learning/auto_trade
 - [x] /safety/status.json
@@ -88,6 +109,17 @@ User wants a foolproof governance layer crypto agentic AI system that:
 - [x] /gas/status.json
 - [x] /approvals/pending.json
 - [x] /mobile/dashboard.json
+
+### Phase 5: Web UI ✅ (Feb 2026)
+- [x] Fixed UI to be accessible in preview
+- [x] SIMPLE/GOVERNED mode toggle in UI
+- [x] Safety status dashboard
+- [x] Learning engine metrics display
+- [x] Gas optimizer status
+- [x] Worker performance display
+- [x] Top performing coins display
+- [x] Enable Auto-Trade button
+- [x] Refresh button
 
 ## Prioritized Backlog
 
@@ -135,5 +167,5 @@ User wants a foolproof governance layer crypto agentic AI system that:
 5. Implement voice command support (optional)
 
 ---
-*Last Updated: Jan 2026*
-*Version: 2.0.0 - Learning & Safety Release*
+*Last Updated: Feb 2026*
+*Version: 2.1.0 - UI Fix & Governance Mode Release*

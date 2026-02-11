@@ -1,9 +1,10 @@
 """
-Backend server that runs the ORIGINAL Hivenance Flask UI via ASGI.
+Backend server that runs the ORIGINAL Hivenance Flask UI.
 Serves on port 8001 as required by the Emergent platform.
 """
 import sys
 import os
+import time
 
 # Add app root to path
 sys.path.insert(0, '/app')
@@ -11,6 +12,7 @@ sys.path.insert(0, '/app')
 from fastapi import FastAPI
 from fastapi.middleware.wsgi import WSGIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from agents.ui_agent import UIAgent
 
@@ -58,5 +60,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount the original Flask UI at root - this serves your complete dashboard
+# Cache buster - unique path that changes
+CACHE_BUSTER = str(int(time.time()))
+
+@app.get("/api/v2")
+async def api_v2_redirect():
+    """Redirect to dashboard with cache buster."""
+    return RedirectResponse(url=f"/api/dashboard/{CACHE_BUSTER}/")
+
+# Mount the original Flask UI at a unique path to bypass cache
+app.mount(f"/api/dashboard/{CACHE_BUSTER}", WSGIMiddleware(ui_agent.app))
+
+# Also mount at standard locations
+app.mount("/api/dashboard", WSGIMiddleware(ui_agent.app))
 app.mount("/", WSGIMiddleware(ui_agent.app))

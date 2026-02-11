@@ -253,6 +253,84 @@ class SwarmCoordinator:
             self.strategy_workers = []
             logging.exception("Failed to initialize strategy workers")
 
+        # ============================================================
+        # NEW: Learning Engine - Adaptive profit tracking & strategy evolution
+        # ============================================================
+        try:
+            if LearningEngine:
+                self.agents["learning"] = LearningEngine(coordinator=self, db_path="data/learning.db")
+                # Set learning parameters from config
+                self.agents["learning"].approval_threshold_usd = getattr(self.cfg, "approval_threshold_usd", 10.0)
+                self.agents["learning"].max_position_pct_of_wallet = getattr(self.cfg, "max_position_pct", 0.10)
+                self.agents["learning"].risk_tolerance = getattr(self.cfg, "risk_tolerance", 0.5)
+                auto_trade = getattr(self.cfg, "auto_trade_enabled", False)
+                self.agents["learning"].set_auto_trade(auto_trade)
+                logging.info("Learning Engine initialized - Adaptive profit tracking enabled")
+            else:
+                self.agents["learning"] = None
+        except Exception:
+            self.agents["learning"] = None
+            logging.exception("Failed to initialize Learning Engine")
+
+        # ============================================================
+        # NEW: Gas Optimizer - Minimize transaction costs
+        # ============================================================
+        try:
+            if GasOptimizer:
+                self.agents["gas_optimizer"] = GasOptimizer(coordinator=self)
+                # Configure gas settings
+                self.agents["gas_optimizer"].batch_enabled = getattr(self.cfg, "gas_batch_enabled", True)
+                self.agents["gas_optimizer"].batch_threshold_usd = getattr(self.cfg, "gas_batch_threshold_usd", 5.0)
+                self.agents["gas_optimizer"].max_gas_pct = getattr(self.cfg, "max_gas_pct", 0.05)
+                logging.info("Gas Optimizer initialized - Base L2 primary, batch trading enabled")
+            else:
+                self.agents["gas_optimizer"] = None
+        except Exception:
+            self.agents["gas_optimizer"] = None
+            logging.exception("Failed to initialize Gas Optimizer")
+
+        # ============================================================
+        # NEW: Adaptive Coin Selector - Profit-first coin selection
+        # ============================================================
+        try:
+            if AdaptiveCoinSelector:
+                self.agents["adaptive_selector"] = AdaptiveCoinSelector(
+                    coordinator=self,
+                    learning_engine=self.agents.get("learning")
+                )
+                # Configure selection parameters
+                self.agents["adaptive_selector"].min_volume_usd = getattr(self.cfg, "min_volume_usd", 50000)
+                self.agents["adaptive_selector"].max_coins = getattr(self.cfg, "max_tracked_coins", 10)
+                self.agents["adaptive_selector"].rotation_interval_sec = getattr(self.cfg, "coin_rotation_interval_sec", 3600)
+                logging.info("Adaptive Coin Selector initialized - Profit-first selection enabled")
+            else:
+                self.agents["adaptive_selector"] = None
+        except Exception:
+            self.agents["adaptive_selector"] = None
+            logging.exception("Failed to initialize Adaptive Coin Selector")
+
+        # ============================================================
+        # NEW: Foolproof Safety System - Multi-layer trade validation
+        # ============================================================
+        try:
+            if FoolproofSafetySystem:
+                self.agents["safety"] = FoolproofSafetySystem(
+                    coordinator=self,
+                    learning_engine=self.agents.get("learning"),
+                    gas_optimizer=self.agents.get("gas_optimizer")
+                )
+                # Configure safety limits
+                self.agents["safety"].max_position_pct = getattr(self.cfg, "max_position_pct", 0.10)
+                self.agents["safety"].max_daily_loss_pct = getattr(self.cfg, "max_daily_loss_pct", 0.05)
+                self.agents["safety"].max_drawdown_pct = getattr(self.cfg, "max_drawdown_pct", 0.10)
+                self.agents["safety"].max_trades_per_hour = getattr(self.cfg, "max_trades_per_hour", 10)
+                logging.info("Foolproof Safety System initialized - Multi-layer validation enabled")
+            else:
+                self.agents["safety"] = None
+        except Exception:
+            self.agents["safety"] = None
+            logging.exception("Failed to initialize Safety System")
+
         # Execution Agent
         self.agents["execution"] = None  # Will be set in initialize
 

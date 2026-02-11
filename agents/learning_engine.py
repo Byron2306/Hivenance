@@ -615,15 +615,18 @@ class LearningEngine:
             
             return result
     
-    def should_require_approval(self, trade_usd: float, validation: TradeValidation) -> bool:
+    def should_require_approval(self, trade_usd: float, validation=None) -> bool:
         """Determine if a trade needs manual approval."""
         if self.auto_trade_enabled:
             # Auto-trade mode: only require approval for large trades
             if trade_usd > self.approval_threshold_usd:
                 return True
             # Or if validation had any failures
-            if len(validation.layers_failed) > 1:
-                return True
+            if validation:
+                # Support both TradeValidation (layers_failed) and TradeValidationResult (checks_failed)
+                failures = getattr(validation, 'layers_failed', None) or getattr(validation, 'checks_failed', [])
+                if len(failures) > 1:
+                    return True
             return False
         else:
             # Manual mode: always require approval above threshold

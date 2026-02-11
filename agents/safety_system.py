@@ -45,7 +45,7 @@ class SafetyCheckResult:
 class TradeValidationResult:
     """Complete validation result for a trade."""
     trade_id: str
-    approved: bool
+    approved: bool = False
     safety_level: SafetyLevel = SafetyLevel.GREEN
     checks_passed: List[str] = field(default_factory=list)
     checks_failed: List[str] = field(default_factory=list)

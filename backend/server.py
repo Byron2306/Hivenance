@@ -1,15 +1,16 @@
 """
 Backend server that runs the ORIGINAL Hivenance Flask UI.
+The Flask app is mounted at /api/ which is where the platform routes backend requests.
 """
 import sys
 import os
 
 sys.path.insert(0, '/app')
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.wsgi import WSGIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import RedirectResponse
 
 from agents.ui_agent import UIAgent
 
@@ -54,5 +55,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Flask UI at root - this serves at localhost:8001/
-app.mount("/", WSGIMiddleware(ui_agent.app))
+# Redirect root to /api/
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/api/")
+
+# Mount Flask UI at /api/ - this is where external requests are routed
+app.mount("/api", WSGIMiddleware(ui_agent.app))

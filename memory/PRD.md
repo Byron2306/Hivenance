@@ -63,18 +63,6 @@ User wants a foolproof governance layer crypto agentic AI system that:
 
 **Toggle via UI or API:** `POST /api/mode {"mode": "SIMPLE|GOVERNED"}`
 
-## User Personas
-1. **Active Trader** - Wants to monitor and approve trades manually
-2. **Passive Investor** - Wants full auto-trade with safety limits
-
-## Core Requirements (Static)
-- Trade on Base L2 for minimal gas costs
-- Maximum position size: 10% of wallet
-- Approval required for trades >$10 (configurable)
-- Circuit breaker after 5 consecutive losses
-- Maximum 10 trades per hour
-- Auto-trade toggle capability
-
 ## What's Been Implemented
 
 ### Phase 1: Learning Core ✅
@@ -102,70 +90,61 @@ User wants a foolproof governance layer crypto agentic AI system that:
 - [x] /api/mode - Governance mode toggle
 - [x] /api/auto_trade - Auto-trade toggle
 - [x] /api/safety/reset - Circuit breaker reset
-- [x] /learning/status.json
-- [x] /learning/auto_trade
-- [x] /safety/status.json
-- [x] /safety/circuit_breaker
-- [x] /gas/status.json
-- [x] /approvals/pending.json
-- [x] /mobile/dashboard.json
+- [x] /api/ws - WebSocket real-time updates
 
-### Phase 5: Web UI ✅ (Feb 2026)
-- [x] Fixed UI to be accessible in preview
-- [x] SIMPLE/GOVERNED mode toggle in UI
-- [x] Safety status dashboard
-- [x] Learning engine metrics display
-- [x] Gas optimizer status
-- [x] Worker performance display
-- [x] Top performing coins display
-- [x] Enable Auto-Trade button
-- [x] Refresh button
+### Phase 5: WebSocket Implementation ✅ (Feb 2026)
+- [x] Real-time status broadcasting
+- [x] Mode change events
+- [x] Trade event streaming
+- [x] Alert system
+- [x] Auto-reconnection support
+
+### Phase 6: UI Dashboard ⚠️ (Feb 2026)
+- [x] Original Flask dashboard with bee agents, oracles, strategy workers
+- [x] Governance mode toggle (SIMPLE/GOVERNED)
+- [x] Safety status display
+- [x] Learning engine metrics
+- [x] Gas optimizer stats
+- [ ] **BLOCKED: Platform CDN caching issue** - External preview caching old UI version
+
+## Known Issues
+
+### Platform CDN Cache Issue
+- **Status:** ACTIVE BLOCKER
+- **Description:** The platform's CDN/proxy is caching an old version of the UI
+- **Impact:** External preview URL shows simplified "Hive Trading System" instead of original Flask dashboard
+- **Local status:** Works correctly - original dashboard accessible at localhost:8001/api/
+- **Resolution:** Waiting for platform cache to expire, or need platform team intervention
+
+## Wallet Setup Status
+- **WalletConnect:** Configured with project ID
+- **Wallet Address:** NOT CONNECTED - User needs to connect wallet
+- **Network:** Configured for Kraken exchange, Base L2 for on-chain
 
 ## Prioritized Backlog
 
-### P0 - Critical (Next Session)
-- [ ] Telegram Bot integration for phone notifications
-- [ ] SMS authorization via Twilio
-- [ ] Mobile-responsive UI dashboard
+### P0 - Critical (Current Blockers)
+- [ ] **Platform cache issue** - Need cache invalidation for UI to show correctly
+- [ ] Wallet connection setup
 
 ### P1 - High Priority
-- [ ] Real-time profit/loss WebSocket streaming
-- [ ] Voice command for trade authorization
-- [ ] Push notifications for trade alerts
+- [ ] Telegram Bot integration for phone notifications
+- [ ] WebSocket integration in UI (frontend needs update)
+- [ ] Mobile-responsive dashboard
 
 ### P2 - Medium Priority
+- [ ] Real-time trade streaming display
 - [ ] Historical performance charts
-- [ ] Backtesting on historical data
-- [ ] Multiple wallet support
+- [ ] Voice command support
 
-## Can This System Generate Profit?
-
-### Honest Assessment
-**YES, it CAN generate profit IF:**
-1. **Gas costs are minimized** ✅ (Base L2: ~$0.001/tx)
-2. **High-volatility coins are selected with good timing** - System learns over time
-3. **Risk management prevents large drawdowns** ✅ (Circuit breaker, position limits)
-4. **Market has sufficient inefficiencies** - Works best in trending markets
-
-**Risk Factors:**
-- No trading system guarantees profit
-- Small stake sizes mean small absolute profits
-- High volatility = high risk both ways
-- Market conditions can change
-
-### Expected Performance
-- Target win rate: >55% (breakeven at ~50% with proper sizing)
-- Target profit factor: >1.2
-- Maximum drawdown: 10% before circuit breaker
-- Daily loss limit: 5% of wallet
-
-## Next Tasks List
-1. Implement Telegram bot for phone authorization
-2. Add WebSocket for real-time updates to mobile
-3. Create responsive mobile UI dashboard
-4. Add historical performance visualization
-5. Implement voice command support (optional)
+## Files of Reference
+- `/app/backend/server.py` - FastAPI server with WebSocket support
+- `/app/agents/ui_agent.py` - Original Flask dashboard with bee agents
+- `/app/agents/learning_engine.py` - Adaptive learning system
+- `/app/agents/safety_system.py` - Multi-layer validation
+- `/app/agents/gas_optimizer.py` - Gas optimization
+- `/app/config/settings.yaml` - System configuration
 
 ---
 *Last Updated: Feb 2026*
-*Version: 2.1.0 - UI Fix & Governance Mode Release*
+*Version: 2.2.0 - WebSocket & UI Update (CDN cache blocked)*

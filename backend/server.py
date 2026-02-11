@@ -1,5 +1,5 @@
 """
-Backend server that runs the ORIGINAL Hivenance Flask UI.
+Backend server that runs the ORIGINAL Hivenance Flask UI via ASGI.
 Serves on port 8001 as required by the Emergent platform.
 """
 import sys
@@ -7,6 +7,10 @@ import os
 
 # Add app root to path
 sys.path.insert(0, '/app')
+
+from fastapi import FastAPI
+from fastapi.middleware.wsgi import WSGIMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 from agents.ui_agent import UIAgent
 
@@ -38,13 +42,21 @@ class Coordinator:
     def share_data(self, key, value):
         self.data_cache[key] = value
 
-# Initialize and create the Flask app
+# Initialize coordinator and Flask UI
 coordinator = Coordinator()
 ui_agent = UIAgent(coordinator=coordinator, host="0.0.0.0", port=8001)
 
-# Export the Flask app for uvicorn
-app = ui_agent.app
+# Create FastAPI wrapper
+app = FastAPI(title="Hivenance Trading System")
 
-if __name__ == "__main__":
-    print("Starting Hivenance UI on http://0.0.0.0:8001")
-    ui_agent.app.run(host="0.0.0.0", port=8001, debug=False, use_reloader=False)
+# Add CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount the original Flask UI at root - this serves your complete dashboard
+app.mount("/", WSGIMiddleware(ui_agent.app))

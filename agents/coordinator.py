@@ -1271,6 +1271,55 @@ class SwarmCoordinator:
                 intent['state'] = 'DONE'
                 intent['final_status'] = status
                 logging.info(f"Intent {intent_id} finished with status {status}")
+                
+                # ============================================================
+                # NEW: Record trade outcome in Learning Engine
+                # ============================================================
+                try:
+                    learning = self.agents.get('learning')
+                    safety = self.agents.get('safety')
+                    
+                    if status == "FILLED" and learning:
+                        # Calculate profit (simplified - in production use actual exit price)
+                        entry_price = float(intent.get('price', 0) or 0)
+                        exit_price = float(p.get('avg_price', entry_price) or entry_price)
+                        quantity = float(intent.get('qty', 0) or 0)
+                        gas_cost = float(p.get('fees', 0) or p.get('gas_cost', 0) or 0)
+                        symbol = intent.get('symbol', '')
+                        worker = intent.get('strategy', 'UNKNOWN')
+                        action = intent.get('action', 'BUY')
+                        regime = intent.get('regime', 'UNKNOWN')
+                        
+                        # Record in learning engine
+                        learning.record_trade_outcome(
+                            symbol=symbol,
+                            worker=worker,
+                            action=action,
+                            entry_price=entry_price,
+                            exit_price=exit_price,
+                            quantity=quantity,
+                            gas_cost_usd=gas_cost,
+                            regime=regime,
+                            signal_strength=float(intent.get('signal_strength', 0) or 0)
+                        )
+                        
+                        # Calculate profit for safety system
+                        if action.upper() == "BUY":
+                            profit = (exit_price - entry_price) * quantity - gas_cost
+                        else:
+                            profit = (entry_price - exit_price) * quantity - gas_cost
+                        
+                        is_win = profit > 0
+                        
+                        # Record in safety system
+                        if safety:
+                            safety.record_trade_result(intent_id, profit, is_win)
+                        
+                        logging.info(f"Learning recorded: {symbol} {action} profit=${profit:.4f} win={is_win}")
+                        
+                except Exception:
+                    logging.exception("Failed to record trade outcome in learning engine")
+                
                 # Write to logging/data_store if present
                 try:
                     trade = {

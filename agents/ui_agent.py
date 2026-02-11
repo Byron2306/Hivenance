@@ -2341,7 +2341,7 @@ class UIAgent:
         const appendLog = (prefix, text) => {
           if (!log) return;
           const clean = sanitize(text);
-          log.textContent += `\n${prefix}${clean}`;
+          log.textContent += `\n$${prefix}$${clean}`;
           log.scrollTop = log.scrollHeight;
         };
         const message = (input && input.value ? input.value.trim() : '');

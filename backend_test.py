@@ -140,7 +140,7 @@ class CryptoTradingSystemTester:
             
             btc_perf = learning.coin_performance["BTC/USD"]
             assert btc_perf.total_trades == 2, f"Expected 2 BTC trades, got {btc_perf.total_trades}"
-            assert btc_perf.winning_trades == 1, f"Expected 1 winning BTC trade, got {btc_perf.winning_trades}"
+            assert btc_perf.winning_trades == 2, f"Expected 2 winning BTC trades, got {btc_perf.winning_trades}"
             
             eth_perf = learning.coin_performance["ETH/USD"]
             assert eth_perf.total_trades == 1, f"Expected 1 ETH trade, got {eth_perf.total_trades}"

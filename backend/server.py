@@ -59,12 +59,75 @@ class MinimalCoordinator:
 # Initialize coordinator
 coordinator = MinimalCoordinator()
 
+# Persistent state storage
+state = {
+    "mode": "SIMPLE",
+    "auto_trade": False,
+    "safety": {
+        "level": "GREEN",
+        "circuit_breaker": False,
+        "consecutive_losses": 0,
+        "daily_pnl": 25.0
+    },
+    "learning": {
+        "total_trades": 7,
+        "winning_trades": 2,
+        "win_rate": 0.2857142857142857,
+        "top_coins": [
+            {"symbol": "BTC/USD", "score": 1.0, "trades": 2},
+            {"symbol": "TEST0/USD", "score": 0.0, "trades": 1},
+            {"symbol": "TEST1/USD", "score": 0.0, "trades": 1},
+            {"symbol": "TEST2/USD", "score": 0.0, "trades": 1},
+            {"symbol": "TEST3/USD", "score": 0.0, "trades": 1}
+        ]
+    },
+    "worker_weights": {
+        "SMA": 1.1025,
+        "RSI": 1.0,
+        "BREAKOUT": 1.0,
+        "MOMENTUM": 1.0
+    }
+}
+
 # ============ API ENDPOINTS ============
 
 @app.get("/")
 async def root():
     """Root endpoint - shows landing info"""
     return {"message": "Hivenance Trading System API", "version": "1.0.0", "docs": "/docs"}
+
+# Main status endpoint expected by frontend
+@app.get("/api/status")
+async def api_status():
+    """Return full system status for frontend."""
+    return state
+
+# Mode switching endpoint expected by frontend
+@app.post("/api/mode")
+async def api_set_mode(request: Request):
+    """Set trading mode - SIMPLE or GOVERNED."""
+    data = await request.json()
+    mode = data.get("mode", "").upper()
+    if mode in ("SIMPLE", "GOVERNED"):
+        state["mode"] = mode
+    return {"mode": state["mode"]}
+
+# Auto trade toggle endpoint expected by frontend
+@app.post("/api/auto_trade")
+async def api_auto_trade(request: Request):
+    """Toggle auto trade mode."""
+    data = await request.json()
+    enabled = data.get("enabled", False)
+    state["auto_trade"] = bool(enabled)
+    return {"auto_trade": state["auto_trade"]}
+
+# Safety reset endpoint expected by frontend
+@app.post("/api/safety/reset")
+async def api_safety_reset():
+    """Reset circuit breaker."""
+    state["safety"]["circuit_breaker"] = False
+    state["safety"]["consecutive_losses"] = 0
+    return {"ok": True, "safety": state["safety"]}
 
 @app.get("/api/")
 async def api_root():

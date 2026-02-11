@@ -638,7 +638,7 @@ class LearningEngine:
         symbol: str,
         action: str,
         amount_usd: float,
-        validation: TradeValidation,
+        validation=None,
         timeout_sec: int = 300
     ) -> Dict[str, Any]:
         """Request approval for a trade and return approval request details."""

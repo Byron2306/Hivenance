@@ -1,84 +1,70 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 function App() {
+  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const iframeRef = useRef(null);
 
   useEffect(() => {
-    // Check if backend is available
-    const checkBackend = async () => {
+    const fetchStatus = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/status.json`);
+        const res = await fetch(`${API_URL}/api/status`);
         if (res.ok) {
-          setLoading(false);
-        } else {
-          setError('Backend not responding');
-          setLoading(false);
+          const data = await res.json();
+          setStatus(data);
         }
       } catch (e) {
-        // Still try to load - the Flask UI might work
-        setLoading(false);
+        console.error('Status fetch error:', e);
       }
+      setLoading(false);
     };
-    checkBackend();
+    
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
+    return () => clearInterval(interval);
   }, []);
-
-  // Redirect to the Flask dashboard
-  useEffect(() => {
-    if (!loading && !error) {
-      window.location.href = `${API_URL}/api/`;
-    }
-  }, [loading, error]);
 
   if (loading) {
     return (
-      <div style={styles.loading}>
+      <div style={styles.container}>
         <div style={styles.spinner}></div>
-        <p style={styles.text}>Loading Hivenance Dashboard...</p>
+        <p>Loading Hivenance...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div style={styles.loading}>
-        <p style={styles.errorText}>⚠️ {error}</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          style={styles.btn}
-        >
-          Retry
-        </button>
-        <p style={styles.text}>
-          Or try: <a href={`${API_URL}/api/`} style={styles.link}>Open Dashboard Directly</a>
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div style={styles.loading}>
-      <div style={styles.spinner}></div>
-      <p style={styles.text}>Redirecting to Dashboard...</p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div style={styles.container}>
+      <iframe 
+        src={`${API_URL}/api/`}
+        style={styles.iframe}
+        title="Hivenance Dashboard"
+        frameBorder="0"
+      />
     </div>
   );
 }
 
 const styles = {
-  loading: {
-    minHeight: '100vh',
+  container: {
+    width: '100vw',
+    height: '100vh',
+    margin: 0,
+    padding: 0,
+    overflow: 'hidden',
+    background: '#071026',
     display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#071026',
     color: '#ffd24a',
-    fontFamily: "'Segoe UI', 'Inter', sans-serif",
+    fontFamily: "'Segoe UI', sans-serif",
+  },
+  iframe: {
+    width: '100%',
+    height: '100%',
+    border: 'none',
   },
   spinner: {
     width: '50px',
@@ -87,31 +73,6 @@ const styles = {
     borderTopColor: '#ffd24a',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
-    marginBottom: '20px',
-  },
-  text: {
-    fontSize: '1rem',
-    color: '#d9c786',
-  },
-  errorText: {
-    fontSize: '1.2rem',
-    color: '#ff6b6b',
-    marginBottom: '20px',
-  },
-  btn: {
-    padding: '12px 30px',
-    background: '#ffd24a',
-    color: '#071026',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginBottom: '20px',
-  },
-  link: {
-    color: '#ffd24a',
-    textDecoration: 'underline',
   },
 };
 

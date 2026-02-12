@@ -337,12 +337,16 @@ class LearningEngine:
         """Persist current state to database."""
         import sqlite3
         try:
+            with self._lock:
+                coin_snapshot = list(self.coin_performance.items())
+                worker_snapshot = list(self.worker_performance.items())
+
             conn = sqlite3.connect(self.db_path)
             c = conn.cursor()
             ts = time.time()
             
             # Save coin performance
-            for symbol, perf in self.coin_performance.items():
+            for symbol, perf in coin_snapshot:
                 c.execute("""
                     INSERT INTO coin_performance 
                     (symbol, ts, total_trades, winning_trades, total_profit_usd, 
@@ -353,7 +357,7 @@ class LearningEngine:
                       perf.gas_cost_total, perf.score, perf.best_regime))
             
             # Save worker performance
-            for name, perf in self.worker_performance.items():
+            for name, perf in worker_snapshot:
                 c.execute("""
                     INSERT INTO worker_performance
                     (worker_name, ts, total_signals, winning_signals, current_weight, regime)
@@ -845,6 +849,58 @@ class LearningEngine:
         except Exception:
             pass
     
+
+    def record_cycle_feedback(self, symbol: str, regime_snapshot: Dict[str, Any], proposals: List[Dict[str, Any]], council_decision: Dict[str, Any], buzz_cycle: Dict[str, Any]):
+        """Learn from each strategy cycle (even before execution).
+
+        Uses council winner/score + optional buzz cycle stakes to adapt worker weights
+        so the swarm "race" informs future signal weighting.
+        """
+        with self._lock:
+            regime = str((regime_snapshot or {}).get("regime") or "UNKNOWN")
+            winner = str((council_decision or {}).get("winner") or "")
+            score = float((council_decision or {}).get("score") or 0.0)
+
+            stake_map = {}
+            if isinstance(buzz_cycle, dict):
+                stake_map = (buzz_cycle.get("stakes") or buzz_cycle.get("worker_stakes") or {}) if isinstance(buzz_cycle, dict) else {}
+
+            for p in proposals or []:
+                worker = str(p.get("strategy") or "")
+                if not worker:
+                    continue
+                if worker not in self.worker_performance:
+                    self.worker_performance[worker] = WorkerPerformance(name=worker)
+                wp = self.worker_performance[worker]
+                wp.total_signals += 1
+                wp.last_update_ts = time.time()
+
+                # race outcome signal (winner gets small positive reinforcement)
+                if winner and worker == winner and score > 0:
+                    wp.winning_signals += 1
+                    wp.total_profit_usd += max(0.0, score - 0.5)
+                elif winner and worker != winner and score > 0:
+                    wp.losing_signals += 1
+                    wp.total_loss_usd += max(0.0, 0.5 - score)
+
+                # integrate buzz stake pressure if available (bounded impact)
+                try:
+                    stake = float(stake_map.get(worker) or 0.0)
+                except Exception:
+                    stake = 0.0
+                if stake > 0:
+                    wp.base_weight = max(0.2, min(2.0, wp.base_weight * (1.0 + min(0.15, stake / 500.0))))
+
+                # keep simple regime hit-rate memory
+                if regime:
+                    prev = float(wp.regime_accuracy.get(regime, 0.5) or 0.5)
+                    hit = 1.0 if (winner and worker == winner) else 0.0
+                    wp.regime_accuracy[regime] = (prev * 0.9) + (hit * 0.1)
+
+                wp.calculate_adaptive_weight()
+
+            self._last_learning_update = time.time()
+
     def get_coin_report(self, symbol: str) -> Dict[str, Any]:
         """Get detailed performance report for a coin."""
         with self._lock:

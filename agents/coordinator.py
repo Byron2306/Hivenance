@@ -2,6 +2,7 @@ import time
 import logging
 import threading
 import os
+import requests
 from agents.market_data import MarketData, CoinGeckoData, SentimentData, TrendAnalysis, KrakenMarketData
 from agents.strategy import SMACrossoverStrategy, RSIStrategy, MACDStrategy
 from agents.execution import BinanceTrader, KrakenTrader
@@ -15,13 +16,13 @@ from agents.network_agent import NetworkAgent
 from agents.data_store_agent import DataStoreAgent
 from agents.performance_agent import PerformanceAgent
 from agents.security_agent import SecurityAgent
-from agents.openclaw import OpenClawAgent
 from agents.oracle_regime import RegimeOracle
 from agents.council import StrategyCouncil
 from agents.nurse import NurseAgent
 from agents.queen import GovernanceQueen
 from agents.strategy_workers import SMAWorker, RSIWorker, BreakoutWorker, MomentumWorker
 from typing import Optional, Dict, Any
+import uuid
 
 # Import new learning and safety systems
 try:
@@ -87,6 +88,7 @@ class SwarmCoordinator:
         self._last_council = None
         self._last_nurse = None
         self._last_worker_proposals = None
+        self._tg_update_offset = 0
         self.override_request = {"enabled": False, "reason": ""}
         # Buzz governance staking (queen/council/oracle/kill/security)
         self._buzz_client = None
@@ -302,6 +304,10 @@ class SwarmCoordinator:
                 self.agents["adaptive_selector"].min_volume_usd = getattr(self.cfg, "min_volume_usd", 50000)
                 self.agents["adaptive_selector"].max_coins = getattr(self.cfg, "max_tracked_coins", 10)
                 self.agents["adaptive_selector"].rotation_interval_sec = getattr(self.cfg, "coin_rotation_interval_sec", 3600)
+                self.agents["adaptive_selector"].min_liquidity_usd = getattr(self.cfg, "adaptive_min_liquidity_usd", 10000)
+                self.agents["adaptive_selector"].max_spread_pct = getattr(self.cfg, "adaptive_max_spread_pct", 0.03)
+                self.agents["adaptive_selector"].min_volatility_pct = getattr(self.cfg, "adaptive_min_volatility_pct", 0.20)
+                self.agents["adaptive_selector"].max_volatility_pct = getattr(self.cfg, "adaptive_max_volatility_pct", 1.00)
                 logging.info("Adaptive Coin Selector initialized - Profit-first selection enabled")
             else:
                 self.agents["adaptive_selector"] = None
@@ -406,25 +412,8 @@ class SwarmCoordinator:
         else:
             self.agents["security"] = None
 
-        # OpenClaw Agent (custom local agent)
-        try:
-            agent = OpenClawAgent(
-                coordinator=self,
-                cfg={
-                    "heartbeat_sec": getattr(self.cfg, "openclaw_heartbeat_sec", 5),
-                    "openclaw_chat_endpoint": getattr(self.cfg, "openclaw_chat_endpoint", ""),
-                    "openclaw_chat_token": getattr(self.cfg, "openclaw_chat_token", ""),
-                    "openclaw_chat_format": getattr(self.cfg, "openclaw_chat_format", "hf_space"),
-                },
-            )
-            self.agents["openclaw"] = agent
-            try:
-                agent.start()
-                logging.info("OpenClaw Agent initialized and started.")
-            except Exception:
-                logging.exception("OpenClaw Agent failed to start")
-        except Exception:
-            self.agents["openclaw"] = None
+        # OpenClaw removed: autonomy handled by QUEEN governance only.
+        self.agents["openclaw"] = None
 
         # Set initial health
         for name in self.agents:
@@ -1851,37 +1840,30 @@ class SwarmCoordinator:
                 except Exception:
                     council_decision = None
 
-                decision = None
-                # OpenClaw autonomy override: allow the autonomous agent to drive decisions
-                if getattr(self.cfg, "openclaw_autonomy_enabled", False):
-                    try:
-                        openclaw = self.agents.get("openclaw")
-                        if openclaw and hasattr(openclaw, "decide"):
-                            autonomy_decision = openclaw.decide(
-                                council_decision=council_decision,
-                                proposals=proposals,
-                                regime_snapshot=regime_snapshot,
-                                cfg=self.cfg,
+                # Learning after each strategy cycle: update worker priors and publish summary
+                try:
+                    learning = self.agents.get("learning")
+                    if learning and hasattr(learning, "record_cycle_feedback"):
+                        learning.record_cycle_feedback(
+                            symbol=self.cfg.symbol,
+                            regime_snapshot=regime_snapshot or {},
+                            proposals=proposals or [],
+                            council_decision=council_decision or {},
+                            buzz_cycle=(self.get_shared_data("buzz.cycle.snapshot") or getattr(self, "_buzz_cycle_snapshot", {}) or {}),
+                        )
+                        # optional: pass direct worker stake map from buzz cycle state
+                        if hasattr(self, "_buzz_cycle_stakes") and isinstance(self._buzz_cycle_stakes, dict):
+                            learning.record_cycle_feedback(
+                                symbol=self.cfg.symbol,
+                                regime_snapshot=regime_snapshot or {},
+                                proposals=proposals or [],
+                                council_decision=council_decision or {},
+                                buzz_cycle={"stakes": dict(self._buzz_cycle_stakes)},
                             )
-                            if autonomy_decision:
-                                approved = bool(autonomy_decision.get("approved"))
-                                decision = {
-                                    "approved": approved,
-                                    "action": autonomy_decision.get("action") or "HOLD",
-                                    "strategy": autonomy_decision.get("strategy") or "OPENCLAW",
-                                    "position_size": None,
-                                    "rationale": autonomy_decision.get("rationale") or "OPENCLAW_AUTONOMY",
-                                    "signal_id": autonomy_decision.get("signal_id"),
-                                    "svs": autonomy_decision.get("score"),
-                                    "ts": int(time.time() * 1000),
-                                    "autonomy": True,
-                                }
-                                self.share_data("buzz.governance.decision", {
-                                    "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
-                                    "payload": decision,
-                                })
-                    except Exception as e:
-                        logging.exception("Error during OpenClaw autonomy decision", exc_info=e)
+                except Exception:
+                    logging.exception("learning cycle feedback failed")
+
+                decision = None
 
                 # Governance decision (Queen)
                 if decision is None:
@@ -2452,6 +2434,10 @@ class SwarmCoordinator:
                     # Update trade value after safety adjustments
                     trade_value_usd = buy_qty * latest_price
 
+                    if not self._queen_telegram_confirm(action="BUY", symbol=self.cfg.symbol, qty=buy_qty, price=latest_price, reason=decision_reason or "POLICY_OK"):
+                        logging.warning("QUEEN Telegram veto/timeout for BUY")
+                        continue
+
                     client_order_id = f"{intent_id}-A"
 
                     # store intent minimal record with learning data
@@ -2600,6 +2586,11 @@ class SwarmCoordinator:
                         sell_qty = min(position_size, base_free)
                         if sell_qty <= 0:
                             continue
+
+                        if not self._queen_telegram_confirm(action="SELL", symbol=self.cfg.symbol, qty=sell_qty, price=latest_price, reason=decision_reason or "POLICY_OK"):
+                            logging.warning("QUEEN Telegram veto/timeout for SELL")
+                            continue
+
                         self._intent_counter += 1
                         intent_id = f"intent-{int(time.time())}-{self.cfg.symbol}-{self._intent_counter}"
                         client_order_id = f"{intent_id}-A"
@@ -2688,6 +2679,80 @@ class SwarmCoordinator:
                     traceback.print_exc(file=sys.stderr)
 
             time.sleep(self.cfg.poll_seconds)
+
+
+    def _telegram_confirmation_enabled(self) -> bool:
+        return bool(getattr(self.cfg, "queen_telegram_confirm_enabled", False))
+
+    def _send_telegram_message(self, text: str) -> bool:
+        token = getattr(self.cfg, "telegram_bot_token", None)
+        chat_id = getattr(self.cfg, "telegram_chat_id", None)
+        if not token or not chat_id:
+            return False
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            resp = requests.post(url, json={"chat_id": str(chat_id), "text": text}, timeout=8)
+            return bool(resp.ok)
+        except Exception:
+            return False
+
+    def _await_telegram_confirmation(self, request_id: str, timeout_sec: int) -> Optional[bool]:
+        token = getattr(self.cfg, "telegram_bot_token", None)
+        chat_id = str(getattr(self.cfg, "telegram_chat_id", "") or "")
+        if not token or not chat_id:
+            return None
+        deadline = time.time() + max(5, int(timeout_sec or 60))
+        while time.time() < deadline:
+            try:
+                url = f"https://api.telegram.org/bot{token}/getUpdates"
+                params = {"timeout": 10}
+                if self._tg_update_offset:
+                    params["offset"] = self._tg_update_offset
+                resp = requests.get(url, params=params, timeout=15)
+                if not resp.ok:
+                    time.sleep(1)
+                    continue
+                updates = (resp.json() or {}).get("result") or []
+                for upd in updates:
+                    uid = upd.get("update_id")
+                    if uid is not None:
+                        self._tg_update_offset = int(uid) + 1
+                    msg = upd.get("message") or {}
+                    msg_chat = str((msg.get("chat") or {}).get("id") or "")
+                    if msg_chat != chat_id:
+                        continue
+                    txt = str(msg.get("text") or "").strip().lower()
+                    if request_id.lower() in txt:
+                        if txt.startswith('/approve') or txt.startswith('approve'):
+                            return True
+                        if txt.startswith('/reject') or txt.startswith('reject'):
+                            return False
+                time.sleep(1)
+            except Exception:
+                time.sleep(2)
+        return None
+
+    def _queen_telegram_confirm(self, *, action: str, symbol: str, qty: float, price: float, reason: str = "") -> bool:
+        if not self._telegram_confirmation_enabled():
+            return True
+        request_id = f"Q-{uuid.uuid4().hex[:8]}"
+        notional = float(qty or 0.0) * float(price or 0.0)
+        text = (
+            f"QUEEN CONFIRM {request_id}\n"
+            f"Action: {action} {symbol}\n"
+            f"Qty: {qty:.8f} @ {price:.6f}\n"
+            f"Notional: ${notional:.4f}\n"
+            f"Reason: {reason or 'POLICY_OK'}\n\n"
+            f"Reply: /approve {request_id} OR /reject {request_id}"
+        )
+        sent = self._send_telegram_message(text)
+        if not sent:
+            return bool(getattr(self.cfg, "queen_telegram_fail_open", False))
+        timeout_sec = int(getattr(self.cfg, "queen_telegram_confirm_timeout_sec", 90) or 90)
+        decision = self._await_telegram_confirmation(request_id, timeout_sec)
+        if decision is None:
+            return bool(getattr(self.cfg, "queen_telegram_fail_open", False))
+        return bool(decision)
 
     def _call_with_timeout(self, fn, timeout: float = 3.0, *args, **kwargs):
         """Call a blocking function in a thread with a timeout. Returns None on timeout or exception."""

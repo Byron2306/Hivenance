@@ -44,6 +44,28 @@ docker compose down
 
 ---
 
+## One-command local live install (recommended for your PC)
+
+From repo root:
+
+```bash
+chmod +x install_live.sh
+./install_live.sh
+```
+
+Then edit `.env.live` with your real keys/wallet values and start live mode:
+
+```bash
+source .venv/bin/activate
+export CRYPTSWARM_SETTINGS_PATH=config/settings.live.yaml
+export CRYPTSWARM_LIVE=1
+python3 start_vamp.py
+```
+
+Open `http://localhost:5000/` (or legacy `http://localhost:5000/api/`).
+
+---
+
 ## Option 2: Python-only local run (no Docker)
 
 ### 1) Install deps

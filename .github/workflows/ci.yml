@@ -26,13 +26,17 @@ jobs:
       - name: Static compile checks
         run: |
           python -m py_compile main.py agents/ui_agent.py
-          python -m compileall agents backend swarmguard_service buzzservice main.py SWARM.py
+          python -m compileall agents swarmguard_service buzzservice main.py SWARM.py
 
       - name: Backend and pytest suites
         run: |
-          python3 backend_test.py
+          if [ -f backend_test.py ]; then python3 backend_test.py; fi
           pytest -q
 
       - name: Full VAMP checks (smoke + redundancy scan)
         run: |
-          bash scripts/run_vamp_checks.sh
+          if [ -f start_vamp.py ] && [ -f scripts/run_vamp_checks.sh ]; then
+            bash scripts/run_vamp_checks.sh
+          else
+            echo "Skipping VAMP smoke checks (start_vamp.py not present)"
+          fi

@@ -20,7 +20,7 @@ daily_loss_throttle_pct: -0.25
 data_store_enabled: true
 db_path: data/swarm_data.db
 dex_provider: 1inch
-dry_run: false
+dry_run: true
 encryption_key_file: config/encryption.key
 erc20_token_address: ''
 exchange: kraken
@@ -50,7 +50,7 @@ multi_symbols:
 - ETH/USD
 - XCN/USD
 - TOSHI/USD
-network_enabled: true
+network_enabled: false
 nurse_review_interval_sec: 120
 onchain_allowed_pairs:
 - ETH/USD
@@ -81,7 +81,7 @@ onchain_token_addresses:
   XCN:
     address: '0x9c632E6Aaa3eA73f91554f8A3cB2ED2F29605e0C'
     decimals: 18
-oneinch_api_key: S3ivbn8vwXe5o9weK46qwTBoaUsOC20z
+oneinch_api_key: ""  # set via ONEINCH_API_KEY env
 order_type_pref: LIMIT
 performance_enabled: true
 poll_seconds: 10
@@ -196,3 +196,16 @@ adaptive_selection_enabled: true
 min_volume_usd: 50000
 max_tracked_coins: 10
 coin_rotation_interval_sec: 3600
+
+# High-volatility low-stakes adaptive selector tuning
+adaptive_min_liquidity_usd: 5000
+adaptive_max_spread_pct: 0.05
+adaptive_min_volatility_pct: 0.20
+adaptive_max_volatility_pct: 1.00
+
+# Queen Telegram confirmation gate
+queen_telegram_confirm_enabled: false
+queen_telegram_confirm_timeout_sec: 90
+queen_telegram_fail_open: false
+telegram_bot_token: ''
+telegram_chat_id: ''

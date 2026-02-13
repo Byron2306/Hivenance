@@ -3,7 +3,6 @@ import logging
 import threading
 import os
 import requests
-import random
 from agents.market_data import MarketData, CoinGeckoData, SentimentData, TrendAnalysis, KrakenMarketData
 from agents.strategy import SMACrossoverStrategy, RSIStrategy, MACDStrategy
 from agents.execution import BinanceTrader, KrakenTrader

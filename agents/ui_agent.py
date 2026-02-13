@@ -737,25 +737,6 @@ class UIAgent:
                 logging.exception("coin_selection.json error")
                 return jsonify({"payload": {}, "error": str(e)}), 500
 
-        @self.app.route('/coin_selection/pivot', methods=['POST'])
-        def coin_selection_pivot():
-            try:
-                data = request.get_json(silent=True) or {}
-                symbol = (data.get('symbol') or request.form.get('symbol') or '').strip()
-                if not symbol:
-                    return jsonify({"ok": False, "error": "missing_symbol"}), 400
-                if not self.coordinator or not hasattr(self.coordinator, '_switch_symbol'):
-                    return jsonify({"ok": False, "error": "coordinator_unavailable"}), 503
-                if getattr(self.coordinator.cfg, 'onchain_enabled', False):
-                    allowed = getattr(self.coordinator.cfg, 'onchain_allowed_pairs', []) or []
-                    if allowed and symbol not in allowed:
-                        return jsonify({"ok": False, "error": "symbol_not_allowed_onchain", "allowed": allowed}), 400
-                self.coordinator._switch_symbol(symbol)
-                return jsonify({"ok": True, "symbol": getattr(self.coordinator.cfg, 'symbol', symbol)})
-            except Exception as e:
-                logging.exception('coin_selection/pivot error')
-                return jsonify({"ok": False, "error": str(e)}), 500
-
         @self.app.route("/autonomy", methods=["GET", "POST"])
         def autonomy_toggle():
             """OpenClaw removed; autonomy endpoint retained for backward compatibility."""
@@ -1647,6 +1628,7 @@ class UIAgent:
         max_dd = getattr(self.coordinator.cfg, 'max_drawdown_pct', 5)
         wallet_eth = self._get_wallet_snapshot().get('ETH', 'N/A')
         watch_addr = ""
+        openclaw_chat_endpoint = "removed"
         try:
             watch_addr = (self._load_api_keys() or {}).get("watch_address", "") or ""
         except Exception:
@@ -2063,17 +2045,6 @@ class UIAgent:
         <div class="mini" id="learningCycleCoins">Learned coins: |</div>
       </div>
 
-      <div class="card" id="coinSelectionCard" style="margin-top:12px;">
-        <h3>Small-Cap Analyst Bee</h3>
-        <div class="mini" id="coinSelectionTop">Top candidate: |</div>
-        <div class="mini" id="coinSelectionList">Scanned small-cap set: |</div>
-        <div class="mini" id="coinSelectionPivot">Pivot suggestion: waiting for candidate scoring.</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <button class="btn secondary" onclick="rotateAdaptiveSelector()">Scan New Candidates</button>
-          <button class="btn" onclick="approveSuggestedPivot()">Approve Suggested Pivot</button>
-        </div>
-      </div>
-
 
     <div class="card advanced-card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
       <h3>On-chain Trade Approval</h3>
@@ -2239,6 +2210,10 @@ class UIAgent:
       <div class="mini">Changes apply immediately where supported.</div>
     </div>
 
+    <div class="card" id="logCard" style="margin-top:12px;">
+      <h3>Live Logs</h3>
+      <pre class="log-tail">${LOG_TAIL}</pre>
+    </div>
   </div>
 
   <script>

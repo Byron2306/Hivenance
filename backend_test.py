@@ -12,6 +12,7 @@ import logging
 import tempfile
 import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 # Add the app directory to Python path
@@ -756,8 +757,11 @@ def main():
     try:
         results = tester.run_all_tests()
         
-        # Save results to file
-        results_file = "/app/test_reports/backend_test_results.json"
+        # Save results to file (support both containerized /app and local repo execution)
+        repo_root = Path(__file__).resolve().parent
+        reports_dir = repo_root / "test_reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        results_file = reports_dir / "backend_test_results.json"
         with open(results_file, 'w') as f:
             json.dump(results, f, indent=2)
         

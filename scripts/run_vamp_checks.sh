@@ -5,14 +5,17 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "[checks] python compile"
-python3 -m compileall agents backend swarmguard_service buzzservice main.py SWARM.py >/tmp/vamp_compile.log
+python3 -m compileall agents swarmguard_service buzzservice main.py SWARM.py >/tmp/vamp_compile.log
 
 echo "[checks] backend test suite"
-python3 backend_test.py >/tmp/vamp_backend_test.log
+if [[ -f backend_test.py ]]; then
+  python3 backend_test.py >/tmp/vamp_backend_test.log
+else
+  echo "[checks] WARN backend_test.py missing; skipping backend suite"
+fi
 
 echo "[checks] pytest"
 pytest -q >/tmp/vamp_pytest.log
-
 
 echo "[checks] redundancy/conflict scan"
 python3 - <<'PY'

@@ -1647,6 +1647,7 @@ class UIAgent:
         max_dd = getattr(self.coordinator.cfg, 'max_drawdown_pct', 5)
         wallet_eth = self._get_wallet_snapshot().get('ETH', 'N/A')
         watch_addr = ""
+        openclaw_chat_endpoint = "removed"
         try:
             watch_addr = (self._load_api_keys() or {}).get("watch_address", "") or ""
         except Exception:
@@ -2075,6 +2076,7 @@ class UIAgent:
       </div>
 
 
+
     <div class="card advanced-card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
       <h3>On-chain Trade Approval</h3>
       <div class="mini" id="dexStatus">No pending swaps</div>
@@ -2239,6 +2241,10 @@ class UIAgent:
       <div class="mini">Changes apply immediately where supported.</div>
     </div>
 
+    <div class="card" id="logCard" style="margin-top:12px;">
+      <h3>Live Logs</h3>
+      <pre class="log-tail">${LOG_TAIL}</pre>
+    </div>
   </div>
 
   <script>

@@ -108,6 +108,12 @@ class Config:
     svs_min_threshold: float
     nurse_review_interval_sec: int
 
+    # Learning engine controls
+    approval_threshold_usd: float
+    auto_trade_enabled: bool
+    risk_tolerance: float
+    max_position_pct: float
+
     kill_switch_enabled: bool
     daily_loss_throttle_pct: float
     daily_loss_halt_pct: float
@@ -122,6 +128,10 @@ class Config:
     max_consecutive_losses: int
     kill_switch_grace_sec: int
     kill_switch_enforce_stale: bool
+    adaptive_min_liquidity_usd: float
+    adaptive_max_spread_pct: float
+    adaptive_min_volatility_pct: float
+    adaptive_max_volatility_pct: float
 
     ui_enabled: bool
     ui_host: str
@@ -149,8 +159,11 @@ class Config:
     buzz_shared_secret: Optional[str]
     buzz_account: Optional[str]
 
-    openclaw_autonomy_enabled: bool
-    openclaw_autonomy_min_score: float
+    queen_telegram_confirm_enabled: bool
+    queen_telegram_confirm_timeout_sec: int
+    queen_telegram_fail_open: bool
+    telegram_bot_token: Optional[str]
+    telegram_chat_id: Optional[str]
 
     web3_rpc_url: Optional[str]
     watch_address: Optional[str]
@@ -172,16 +185,17 @@ def load_config() -> Config:
         logging.error(f"Error loading API keys: {e}")
         api_keys = {}
 
-    # Load from config/settings.yaml (optional)
+    # Load from config/settings.yaml (optional). Override path with CRYPTSWARM_SETTINGS_PATH.
     settings = {}
+    settings_path = os.getenv('CRYPTSWARM_SETTINGS_PATH', 'config/settings.yaml')
     try:
-        with open('config/settings.yaml', 'r') as f:
-            settings = yaml.safe_load(f)
+        with open(settings_path, 'r') as f:
+            settings = yaml.safe_load(f) or {}
     except FileNotFoundError:
-        logging.warning("config/settings.yaml not found, using default settings")
+        logging.warning(f"{settings_path} not found, using default settings")
         settings = {}
     except Exception as e:
-        logging.error(f"Error loading settings: {e}")
+        logging.error(f"Error loading settings from {settings_path}: {e}")
         settings = {}
 
     return Config(
@@ -280,6 +294,11 @@ def load_config() -> Config:
         svs_min_threshold=settings.get("svs_min_threshold", 0.35),
         nurse_review_interval_sec=settings.get("nurse_review_interval_sec", 120),
 
+        approval_threshold_usd=settings.get("approval_threshold_usd", 10.0),
+        auto_trade_enabled=settings.get("auto_trade_enabled", False),
+        risk_tolerance=settings.get("risk_tolerance", 0.5),
+        max_position_pct=settings.get("max_position_pct", 0.10),
+
         kill_switch_enabled=settings.get("kill_switch_enabled", True),
         daily_loss_throttle_pct=settings.get("daily_loss_throttle_pct", -0.25),
         daily_loss_halt_pct=settings.get("daily_loss_halt_pct", -0.50),
@@ -294,6 +313,10 @@ def load_config() -> Config:
         max_consecutive_losses=settings.get("max_consecutive_losses", 5),
         kill_switch_grace_sec=settings.get("kill_switch_grace_sec", 120),
         kill_switch_enforce_stale=settings.get("kill_switch_enforce_stale", True),
+        adaptive_min_liquidity_usd=settings.get("adaptive_min_liquidity_usd", 10000.0),
+        adaptive_max_spread_pct=settings.get("adaptive_max_spread_pct", 0.03),
+        adaptive_min_volatility_pct=settings.get("adaptive_min_volatility_pct", 0.20),
+        adaptive_max_volatility_pct=settings.get("adaptive_max_volatility_pct", 1.00),
 
         ui_enabled=settings.get("ui_enabled", True),
         ui_host=settings.get("ui_host", "0.0.0.0"),
@@ -321,8 +344,11 @@ def load_config() -> Config:
         buzz_shared_secret=settings.get("buzz_shared_secret", ""),
         buzz_account=settings.get("buzz_account", "hivenance-system"),
 
-        openclaw_autonomy_enabled=settings.get("openclaw_autonomy_enabled", False),
-        openclaw_autonomy_min_score=settings.get("openclaw_autonomy_min_score", 0.55),
+        queen_telegram_confirm_enabled=settings.get("queen_telegram_confirm_enabled", False),
+        queen_telegram_confirm_timeout_sec=settings.get("queen_telegram_confirm_timeout_sec", 90),
+        queen_telegram_fail_open=settings.get("queen_telegram_fail_open", False),
+        telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN") or settings.get("telegram_bot_token") or api_keys.get("telegram_bot_token"),
+        telegram_chat_id=settings.get("telegram_chat_id") or api_keys.get("telegram_chat_id"),
 
         web3_rpc_url=api_keys.get("web3_rpc_url") or settings.get("web3_rpc_url"),
         watch_address=api_keys.get("watch_address") or settings.get("watch_address"),
@@ -344,26 +370,21 @@ def main():
                 cfg.web3_rpc_url = "https://mainnet.base.org"
     except Exception:
         pass
-    # Live mode override: set CRYPTSWARM_LIVE=1 to force live mode behavior.
-    # In live mode we disable dry_run and the killswitch to avoid automatic halts during manual/live operation.
+    # Live mode override: set CRYPTSWARM_LIVE=1 to force live trading behavior.
+    # Safety systems remain enabled; only execution mode/toggles are promoted.
     try:
         live_env = os.getenv('CRYPTSWARM_LIVE') == '1'
     except Exception:
         live_env = False
-    live_cfg_flag = getattr(cfg, 'live_mode', False) if hasattr(cfg, 'live_mode') else False
+    live_cfg_flag = bool(getattr(cfg, 'live_mode', False)) if hasattr(cfg, 'live_mode') else False
     if live_env or live_cfg_flag:
-        logging.warning('Live mode active: disabling dry_run and kill_switch to avoid auto-halting during manual live operation')
+        logging.warning('Live mode active: enabling real execution and auto-trade (safety controls stay ON).')
         try:
             cfg.dry_run = False
         except Exception:
             pass
         try:
-            cfg.kill_switch_enabled = False
-        except Exception:
-            pass
-        # Keep performance agent disabled by default in live mode to reduce background thread risk
-        try:
-            cfg.performance_enabled = False
+            cfg.auto_trade_enabled = True
         except Exception:
             pass
 

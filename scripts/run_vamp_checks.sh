@@ -13,6 +13,18 @@ python3 backend_test.py >/tmp/vamp_backend_test.log
 echo "[checks] pytest"
 pytest -q >/tmp/vamp_pytest.log
 
+
+echo "[checks] redundancy/conflict scan"
+python3 - <<'PY'
+import pathlib
+root = pathlib.Path('.')
+legacy = [p for p in ['run_ui_simple.py','run_ui_server.py','SWARM.py'] if (root/p).exists()]
+if legacy:
+    print(f"[checks] WARN legacy launch surfaces present: {', '.join(legacy)}")
+else:
+    print('[checks] OK no extra legacy launch surfaces detected')
+PY
+
 echo "[checks] smoke startup"
 nohup python3 start_vamp.py >/tmp/vamp_live_smoke.log 2>&1 &
 PID=$!

@@ -3,6 +3,7 @@ import logging
 import threading
 import os
 import requests
+import random
 from agents.market_data import MarketData, CoinGeckoData, SentimentData, TrendAnalysis, KrakenMarketData
 from agents.strategy import SMACrossoverStrategy, RSIStrategy, MACDStrategy
 from agents.execution import BinanceTrader, KrakenTrader
@@ -93,6 +94,9 @@ class SwarmCoordinator:
         # Buzz governance staking (queen/council/oracle/kill/security)
         self._buzz_client = None
         self._buzz_actor_last = {}
+        # Synthetic candle fallback for offline/mock runs
+        self._synthetic_series = []
+        self._synthetic_times = []
         self._buzz_actor_amounts = {}
         self._buzz_actor_cooldowns = {}
         self._buzz_actor_active = {}
@@ -1748,17 +1752,47 @@ class SwarmCoordinator:
                 # Fetch closes and volumes; handle failures gracefully
                 try:
                     close_times, closes = self.agents["market_data"].fetch_closes(self.cfg.lookback)
-                except Exception:
+                except Exception as e:
+                    logging.warning(f"Candle fetch_closes failed: {e}")
                     close_times, closes = [], []
 
                 try:
                     volumes = self.agents["market_data"].fetch_volumes(self.cfg.lookback)
-                except Exception:
+                except Exception as e:
+                    logging.warning(f"Candle fetch_volumes failed: {e}")
                     volumes = []
                 if not close_times:
-                    logging.warning("No candles returned; retrying.")
-                    time.sleep(self.cfg.poll_seconds)
-                    continue
+                    # fallback to ticker price so loop can continue operating in degraded mode
+                    try:
+                        lp = float(self.agents["market_data"].fetch_latest_price())
+                        close_times, closes = [int(time.time() * 1000)], [lp]
+                        volumes = volumes or [0.0]
+                        logging.warning("No candles returned; using latest ticker fallback.")
+                    except Exception:
+                        # ultimate fallback: synthetic candles for dry-run/testing environments
+                        if getattr(self.cfg, "dry_run", True):
+                            try:
+                                now_ms = int(time.time() * 1000)
+                                seed = self._synthetic_series[-1] if self._synthetic_series else float(self.get_shared_data("latest_price") or 100.0)
+                                drift = random.uniform(-0.003, 0.003)
+                                nxt = max(0.0001, seed * (1.0 + drift))
+                                self._synthetic_series.append(nxt)
+                                self._synthetic_times.append(now_ms)
+                                max_len = max(10, int(getattr(self.cfg, "lookback", 500) or 500))
+                                self._synthetic_series = self._synthetic_series[-max_len:]
+                                self._synthetic_times = self._synthetic_times[-max_len:]
+                                close_times, closes = list(self._synthetic_times), list(self._synthetic_series)
+                                if not volumes or len(volumes) != len(close_times):
+                                    volumes = [0.0] * len(close_times)
+                                logging.warning("No candles returned; using synthetic dry-run candles fallback.")
+                            except Exception:
+                                logging.warning("No candles returned; retrying.")
+                                time.sleep(self.cfg.poll_seconds)
+                                continue
+                        else:
+                            logging.warning("No candles returned; retrying.")
+                            time.sleep(self.cfg.poll_seconds)
+                            continue
 
                 latest_close_time = close_times[-1]
                 latest_price = closes[-1]

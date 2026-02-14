@@ -108,6 +108,12 @@ class Config:
     svs_min_threshold: float
     nurse_review_interval_sec: int
 
+    # Learning engine controls
+    approval_threshold_usd: float
+    auto_trade_enabled: bool
+    risk_tolerance: float
+    max_position_pct: float
+
     kill_switch_enabled: bool
     daily_loss_throttle_pct: float
     daily_loss_halt_pct: float
@@ -179,16 +185,17 @@ def load_config() -> Config:
         logging.error(f"Error loading API keys: {e}")
         api_keys = {}
 
-    # Load from config/settings.yaml (optional)
+    # Load from config/settings.yaml (optional). Override path with CRYPTSWARM_SETTINGS_PATH.
     settings = {}
+    settings_path = os.getenv('CRYPTSWARM_SETTINGS_PATH', 'config/settings.yaml')
     try:
-        with open('config/settings.yaml', 'r') as f:
-            settings = yaml.safe_load(f)
+        with open(settings_path, 'r') as f:
+            settings = yaml.safe_load(f) or {}
     except FileNotFoundError:
-        logging.warning("config/settings.yaml not found, using default settings")
+        logging.warning(f"{settings_path} not found, using default settings")
         settings = {}
     except Exception as e:
-        logging.error(f"Error loading settings: {e}")
+        logging.error(f"Error loading settings from {settings_path}: {e}")
         settings = {}
 
     return Config(
@@ -287,6 +294,11 @@ def load_config() -> Config:
         svs_min_threshold=settings.get("svs_min_threshold", 0.35),
         nurse_review_interval_sec=settings.get("nurse_review_interval_sec", 120),
 
+        approval_threshold_usd=settings.get("approval_threshold_usd", 10.0),
+        auto_trade_enabled=settings.get("auto_trade_enabled", False),
+        risk_tolerance=settings.get("risk_tolerance", 0.5),
+        max_position_pct=settings.get("max_position_pct", 0.10),
+
         kill_switch_enabled=settings.get("kill_switch_enabled", True),
         daily_loss_throttle_pct=settings.get("daily_loss_throttle_pct", -0.25),
         daily_loss_halt_pct=settings.get("daily_loss_halt_pct", -0.50),
@@ -358,26 +370,21 @@ def main():
                 cfg.web3_rpc_url = "https://mainnet.base.org"
     except Exception:
         pass
-    # Live mode override: set CRYPTSWARM_LIVE=1 to force live mode behavior.
-    # In live mode we disable dry_run and the killswitch to avoid automatic halts during manual/live operation.
+    # Live mode override: set CRYPTSWARM_LIVE=1 to force live trading behavior.
+    # Safety systems remain enabled; only execution mode/toggles are promoted.
     try:
         live_env = os.getenv('CRYPTSWARM_LIVE') == '1'
     except Exception:
         live_env = False
-    live_cfg_flag = getattr(cfg, 'live_mode', False) if hasattr(cfg, 'live_mode') else False
+    live_cfg_flag = bool(getattr(cfg, 'live_mode', False)) if hasattr(cfg, 'live_mode') else False
     if live_env or live_cfg_flag:
-        logging.warning('Live mode active: disabling dry_run and kill_switch to avoid auto-halting during manual live operation')
+        logging.warning('Live mode active: enabling real execution and auto-trade (safety controls stay ON).')
         try:
             cfg.dry_run = False
         except Exception:
             pass
         try:
-            cfg.kill_switch_enabled = False
-        except Exception:
-            pass
-        # Keep performance agent disabled by default in live mode to reduce background thread risk
-        try:
-            cfg.performance_enabled = False
+            cfg.auto_trade_enabled = True
         except Exception:
             pass
 

@@ -1,4 +1,6 @@
-from agents.user_interface import launch_ui_only
+"""Compatibility launcher: use main Flask UI/full coordinator startup."""
+
+from main import main
 
 if __name__ == '__main__':
-    launch_ui_only()
+    main()

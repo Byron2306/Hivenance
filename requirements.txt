@@ -11,3 +11,5 @@ redis
 psutil
 cryptography
 ccxt
+
+pytest

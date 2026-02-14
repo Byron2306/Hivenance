@@ -1,6 +1,7 @@
 import requests
 import ccxt
 import logging
+import time
 from binance.client import Client
 from typing import Tuple, List, Optional
 
@@ -62,24 +63,67 @@ class KrakenMarketData:
         self.client = client
         self.symbol = symbol
         self.interval = self.INTERVAL_MAP.get(interval, "1m")
+        self._last_ohlcv = []
         try:
             self.client.load_markets()
         except Exception:
             pass
+        self.symbol = self._resolve_symbol(self.symbol)
+
+    def _resolve_symbol(self, symbol: str) -> str:
+        try:
+            markets = getattr(self.client, 'markets', None) or {}
+            if symbol in markets:
+                return symbol
+            target = str(symbol).replace('/', '').upper()
+            for m in markets.keys():
+                if str(m).replace('/', '').upper() == target:
+                    return m
+        except Exception:
+            pass
+        return symbol
+
+    def _fetch_ohlcv_with_retry(self, limit: int):
+        last_err = None
+        symbols = []
+        for s in [self.symbol, self._resolve_symbol(self.symbol)]:
+            if s and s not in symbols:
+                symbols.append(s)
+        for sym in symbols:
+            for attempt in range(3):
+                try:
+                    ohlcv = self.client.fetch_ohlcv(sym, timeframe=self.interval, limit=limit)
+                    if ohlcv:
+                        self._last_ohlcv = ohlcv
+                        self.symbol = sym
+                        return ohlcv
+                except Exception as e:
+                    last_err = e
+                time.sleep(0.2 * (attempt + 1))
+        if self._last_ohlcv:
+            return self._last_ohlcv[-limit:]
+        if last_err:
+            logging.warning(f"Kraken OHLCV fetch failed for {self.symbol}: {last_err}")
+        return []
 
     def fetch_closes(self, limit: int) -> Tuple[List[int], List[float]]:
-        ohlcv = self.client.fetch_ohlcv(self.symbol, timeframe=self.interval, limit=limit)
+        ohlcv = self._fetch_ohlcv_with_retry(limit)
         close_times = [int(c[0]) for c in ohlcv]
         closes = [float(c[4]) for c in ohlcv]
         return close_times, closes
 
     def fetch_volumes(self, limit: int) -> List[float]:
-        ohlcv = self.client.fetch_ohlcv(self.symbol, timeframe=self.interval, limit=limit)
+        ohlcv = self._fetch_ohlcv_with_retry(limit)
         return [float(c[5]) for c in ohlcv]
 
     def fetch_latest_price(self) -> float:
-        ticker = self.client.fetch_ticker(self.symbol)
-        return float(ticker["last"])
+        try:
+            ticker = self.client.fetch_ticker(self.symbol)
+            return float(ticker["last"])
+        except Exception:
+            if self._last_ohlcv:
+                return float(self._last_ohlcv[-1][4])
+            raise
 
     def average_volume(self, closes: List[float]) -> float:
         if closes:

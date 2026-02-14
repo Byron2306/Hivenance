@@ -48,6 +48,7 @@ class RegimeOracle:
             "regime": label,
             "confidence": confidence,
             "features": features,
+            "scores": scores,
             "regime_change": changed,
         }
 

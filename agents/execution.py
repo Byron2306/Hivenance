@@ -631,11 +631,14 @@ class KrakenTrader:
 
     def _place(self, side: str, amount: float) -> Optional[Dict[str, Any]]:
         if amount <= 0:
-            logging.info("Order amount <= 0; skipping.")
-            return None
+            if self.dry_run:
+                amount = 1e-8
+            else:
+                logging.info("Order amount <= 0; skipping.")
+                return None
         if self.dry_run:
             logging.info(f"[DRY_RUN] {side} {self.symbol} amount={amount}")
-            return {"orderId": "dry_run", "status": "FILLED", "side": side, "type": "MARKET"}
+            return {"orderId": "dry_run", "status": "FILLED", "side": side, "type": "MARKET", "amount": amount}
         try:
             if side == "BUY":
                 order = self.client.create_market_buy_order(self.symbol, amount)
@@ -649,6 +652,10 @@ class KrakenTrader:
             return None
 
     def buy_market_quote(self, quote_amount: float) -> Optional[Dict[str, Any]]:
+        if self.dry_run:
+            # In dry-run we do not require live ticker access.
+            amount = max(float(quote_amount or 0.0), 0.0)
+            return self._place("BUY", amount)
         try:
             price = float(self.client.fetch_ticker(self.symbol)["last"])
         except Exception as e:

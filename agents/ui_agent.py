@@ -73,6 +73,13 @@ class UIAgent:
         def dashboard():
             return self._render_dashboard()
 
+        @self.app.route("/api")
+        @self.app.route("/api/")
+        def api_dashboard_alias():
+            """Backwards-compatible UI mount for older /api links."""
+            return redirect("/")
+
+
         @self.app.route("/swarmguard")
         def swarmguard_page():
             return self._render_swarmguard_page()
@@ -157,6 +164,14 @@ class UIAgent:
                 logging.exception("tape.json error")
                 return jsonify({"error": str(e)}), 500
 
+
+        @self.app.route("/api/trades.json")
+        @self.app.route("/trades.json")
+        def trades_json_alias():
+            """Compatibility alias for tape feed."""
+            return tape_json()
+
+        @self.app.route("/api/wallet.json")
         @self.app.route("/wallet.json")
         def wallet_json():
             try:
@@ -323,6 +338,7 @@ class UIAgent:
                 logging.exception("governance.json error")
                 return jsonify({"payload": {}, "error": str(e)}), 500
 
+        @self.app.route("/api/intents.json")
         @self.app.route("/intents.json")
         def intents_json():
             try:
@@ -414,6 +430,7 @@ class UIAgent:
                 logging.exception("performance.json error")
                 return jsonify({"row": {}, "error": str(e)}), 500
 
+        @self.app.route("/api/analytics.json")
         @self.app.route("/analytics.json")
         def analytics_json():
             try:
@@ -703,10 +720,41 @@ class UIAgent:
         def coin_selection_json():
             try:
                 payload = self._latest_buzz_payload("buzz.coin.selection") or {}
+                active_symbol = getattr(getattr(self.coordinator, 'cfg', None), 'symbol', None)
+                monitored = []
+                try:
+                    monitored = self.coordinator._symbol_list() if self.coordinator and hasattr(self.coordinator, '_symbol_list') else []
+                except Exception:
+                    monitored = []
+                payload["active_symbol"] = active_symbol
+                payload["monitored_symbols"] = monitored
+                top = payload.get("top") or []
+                payload["analyst_note"] = (
+                    f"Analyst Bee scanned {len(top)} small-cap candidates; recommend pivot to {(top[0].get('symbol') if top else active_symbol) or '|'}"
+                )
                 return jsonify({"payload": payload})
             except Exception as e:
                 logging.exception("coin_selection.json error")
                 return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route('/coin_selection/pivot', methods=['POST'])
+        def coin_selection_pivot():
+            try:
+                data = request.get_json(silent=True) or {}
+                symbol = (data.get('symbol') or request.form.get('symbol') or '').strip()
+                if not symbol:
+                    return jsonify({"ok": False, "error": "missing_symbol"}), 400
+                if not self.coordinator or not hasattr(self.coordinator, '_switch_symbol'):
+                    return jsonify({"ok": False, "error": "coordinator_unavailable"}), 503
+                if getattr(self.coordinator.cfg, 'onchain_enabled', False):
+                    allowed = getattr(self.coordinator.cfg, 'onchain_allowed_pairs', []) or []
+                    if allowed and symbol not in allowed:
+                        return jsonify({"ok": False, "error": "symbol_not_allowed_onchain", "allowed": allowed}), 400
+                self.coordinator._switch_symbol(symbol)
+                return jsonify({"ok": True, "symbol": getattr(self.coordinator.cfg, 'symbol', symbol)})
+            except Exception as e:
+                logging.exception('coin_selection/pivot error')
+                return jsonify({"ok": False, "error": str(e)}), 500
 
         @self.app.route("/autonomy", methods=["GET", "POST"])
         def autonomy_toggle():
@@ -772,6 +820,7 @@ class UIAgent:
         # NEW: Learning Engine & Safety System API Endpoints
         # ============================================================
         
+        @self.app.route("/api/learning/status.json")
         @self.app.route("/learning/status.json")
         def learning_status_json():
             """Get learning engine status and statistics."""
@@ -1811,6 +1860,14 @@ class UIAgent:
 
     .meter > span { display:block; height:100%; background:#ffd24a; }
 
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; }
+    .pipeline-panel { border-top:1px solid rgba(255,255,255,0.08); padding-top:8px; }
+    .oracle-gauges { display:grid; grid-template-columns:repeat(3,minmax(110px,1fr)); gap:10px; }
+    .gauge-card { text-align:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:8px; }
+    .gauge { width:68px; height:68px; margin:0 auto 6px; border-radius:50%; background:conic-gradient(#ffd24a 0deg, rgba(255,255,255,0.08) 0deg 360deg); border:4px solid rgba(255,255,255,0.08); }
+    .oracle-bars-compact { margin-top:10px; display:grid; gap:6px; }
+    .oracle-bars-compact .oracle-bar { display:grid; grid-template-columns:140px 1fr 90px; gap:8px; align-items:center; }
+
     @media(max-width: 980px){ .app-shell{grid-template-columns:1fr;} .sidebar{position:relative;} #agentOutputs{grid-template-columns:1fr;} }
 
   </style>
@@ -1825,7 +1882,7 @@ class UIAgent:
         <a href="#risk">Risk</a>
         <a href="#performance">Performance</a>
         <a href="#config">Config</a>
-        <a href="#audit">Audit</a>
+        <a href="#pipeline">Pipeline</a>
         <a href="/swarmguard">SwarmGuard</a>
         <a href="/buzz">BuzzCoin</a>
         <a href="#" onclick="toggleFocusMode(); return false;">Toggle Focus Mode</a>
@@ -1915,36 +1972,34 @@ class UIAgent:
               <div class="oracle-conf" id="regimeConf">--</div>
             </div>
           </div>
-          <div class="oracle-bars">
-            <div class="oracle-bar"><span>trend</span><div class="meter"><span id="regimeBar-trend"></span></div><span id="regimeVal-trend">|</span></div>
-            <div class="oracle-bar"><span>vol</span><div class="meter"><span id="regimeBar-vol"></span></div><span id="regimeVal-vol">|</span></div>
-            <div class="oracle-bar"><span>spread</span><div class="meter"><span id="regimeBar-spread"></span></div><span id="regimeVal-spread">|</span></div>
-            <div class="oracle-bar"><span>mean</span><div class="meter"><span id="regimeBar-mean_cross"></span></div><span id="regimeVal-mean_cross">|</span></div>
-            <div class="oracle-bar"><span>bb</span><div class="meter"><span id="regimeBar-bb_width"></span></div><span id="regimeVal-bb_width">|</span></div>
-            <div class="oracle-bar"><span>volume</span><div class="meter"><span id="regimeBar-volume"></span></div><span id="regimeVal-volume">|</span></div>
+          <div class="oracle-gauges" id="oracleGauges">
+            <div class="gauge-card"><div class="gauge" id="regimeConfGauge-0"></div><div class="mini" id="regimeConfLabel-0">Regime A</div><div class="mini" id="regimeConfVal-0">|</div></div>
+            <div class="gauge-card"><div class="gauge" id="regimeConfGauge-1"></div><div class="mini" id="regimeConfLabel-1">Regime B</div><div class="mini" id="regimeConfVal-1">|</div></div>
+            <div class="gauge-card"><div class="gauge" id="regimeConfGauge-2"></div><div class="mini" id="regimeConfLabel-2">Regime C</div><div class="mini" id="regimeConfVal-2">|</div></div>
+            <div class="gauge-card"><div class="gauge" id="regimeConfGauge-3"></div><div class="mini" id="regimeConfLabel-3">Regime D</div><div class="mini" id="regimeConfVal-3">|</div></div>
+          </div>
+          <div class="oracle-bars-compact">
+            <div class="oracle-bar"><span>Trend strength</span><div class="meter"><span id="regimeBar-trend"></span></div><span id="regimeVal-trend">|</span></div>
+            <div class="oracle-bar"><span>Volatility</span><div class="meter"><span id="regimeBar-vol"></span></div><span id="regimeVal-vol">|</span></div>
+            <div class="oracle-bar"><span>Spread risk</span><div class="meter"><span id="regimeBar-spread"></span></div><span id="regimeVal-spread">|</span></div>
+            <div class="oracle-bar"><span>Mean-reversion</span><div class="meter"><span id="regimeBar-mean_cross"></span></div><span id="regimeVal-mean_cross">|</span></div>
+            <div class="oracle-bar"><span>Breakout pressure</span><div class="meter"><span id="regimeBar-bb_width"></span></div><span id="regimeVal-bb_width">|</span></div>
+            <div class="oracle-bar"><span>Participation</span><div class="meter"><span id="regimeBar-volume"></span></div><span id="regimeVal-volume">|</span></div>
           </div>
         </div>
       </div>
       <div class="card" id="councilCard">
-        <h3>Council (Competition)</h3>
+        <h3>Council Race (Streamlined)</h3>
         <div class="mini" id="councilSummary">No proposals yet</div>
         <div class="mini" id="councilRaceMeta">Leader: | Queen: |</div>
         <div class="mini" id="cycleMeta">Cycle: |</div>
         <div class="cycle-bar"><span id="cycleProgress"></span></div>
-        <div class="stake-strip" id="cycleStakes"></div>
         <div class="race" id="councilRace"></div>
-        <div class="cycle-score" id="cycleScore"></div>
+        <div class="stake-strip" id="cycleStakes"></div>
         <div class="cycle-payout" id="cyclePayout"></div>
       </div>
     </div>
 
-    <div class="row">
-      <div class="card">
-        <h3>Strategy Competition</h3>
-        <div class="mini">Live race view replaces redundant tables/strips.</div>
-        <div class="leaderboard" id="strategyBoard" style="display:none;"></div>
-      </div>
-    </div>
 
     <div class="card" id="queenCard" style="margin-top:12px;">
       <h3>Queen Rationale</h3>
@@ -1981,15 +2036,11 @@ class UIAgent:
       <div class="mini" id="swarmguardLine">Decision: | Reason: |</div>
       <div class="mini" id="swarmguardSize">Adjusted Size: |</div>
       <div class="mini" id="overrideStatus">Override: OFF</div>
-      <div class="mini" id="autonomyStatus">Autonomy: OFF | Decision: QUEEN | AI: local</div>
-      <div class="mini" id="safetyResetStatus">Safety: Ready</div>
+            <div class="mini" id="safetyResetStatus">Safety: Ready</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <input id="overrideReason" class="input" placeholder="Override reason (optional)" style="flex:1; min-width:200px;">
         <button id="overrideToggleBtn" class="btn secondary" onclick="toggleOverride()">Enable Override</button>
         <button id="safetyResetBtn" class="btn" onclick="safetyReset()">Safety Reset</button>
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button id="autonomyToggleBtn" class="btn secondary" onclick="toggleAutonomy()" aria-label="Toggle OpenClaw autonomous trade control on or off">Toggle Autonomous Control</button>
       </div>
       <div class="mini" style="margin-top:6px;"><a class="link" href="/swarmguard">Open SwarmGuard details</a></div>
     </div>
@@ -2006,11 +2057,24 @@ class UIAgent:
       <div class="mini" style="margin-top:6px;"><a class="link" href="/buzz">Open BuzzCoin ledger</a></div>
     </div>
 
-      <div class="card" id="coinSelectionCard" style="margin-top:12px;">
-        <h3>Coin Selection</h3>
-        <div class="mini" id="coinSelectionTop">Top: |</div>
-        <div class="mini" id="coinSelectionList">Candidates: |</div>
+      <div class="card" id="learningCard" style="margin-top:12px;">
+        <h3>Learning Cycle Digest</h3>
+        <div class="mini" id="learningCycleHeadline">Cycle insight: waiting for learning snapshot...</div>
+        <div class="mini" id="learningCycleWorkers">Top workers: |</div>
+        <div class="mini" id="learningCycleCoins">Learned coins: |</div>
       </div>
+
+      <div class="card" id="coinSelectionCard" style="margin-top:12px;">
+        <h3>Small-Cap Analyst Bee</h3>
+        <div class="mini" id="coinSelectionTop">Top candidate: |</div>
+        <div class="mini" id="coinSelectionList">Scanned small-cap set: |</div>
+        <div class="mini" id="coinSelectionPivot">Pivot suggestion: waiting for candidate scoring.</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <button class="btn secondary" onclick="rotateAdaptiveSelector()">Scan New Candidates</button>
+          <button class="btn" onclick="approveSuggestedPivot()">Approve Suggested Pivot</button>
+        </div>
+      </div>
+
 
 
     <div class="card advanced-card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
@@ -2029,30 +2093,57 @@ class UIAgent:
       <div class="card">
         <h3>Market Price (live)</h3>
         <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
-        ${ALT_CHARTS_HTML}
+        <div class="mini-charts" id="altChartsContainer" style="display:none;"></div>
       </div>
     </div>
 
     <div class="card" style="margin-top:12px;">
       <h3>Agent Outputs</h3>
-      <div id="agentOutputs">${AGENT_OUTPUTS}</div>
+      <div id="agentOutputs">${AGENT_OUTPUTS}</div><div class="mini" id="agentOutputsHint">Bee cards render immediately and pulse on major events.</div>
     </div>
 
     
-    <div class="card" style="margin-top:12px;">
-      <h3>Signals (latest)</h3>
-      <table>
-        <thead><tr><th>Time</th><th>Strategy</th><th>Action</th><th>Confidence</th><th>Notes</th></tr></thead>
-        <tbody id="signalsBody"><tr><td colspan="5" class="empty">No signals</td></tr></tbody>
-      </table>
+    <div class="card" id="pipeline" style="margin-top:12px;">
+      <h3>Execution Pipeline</h3>
+      <div class="mini" id="pipelineSummary">Signals: 0 | Decisions: 0 | Intents: 0 | Vetoes: 0</div>
+      <div class="tabs" style="margin-top:8px;">
+        <button class="btn secondary" onclick="showPipelineTab('signals')">Signals</button>
+        <button class="btn secondary" onclick="showPipelineTab('decisions')">Decision Chain</button>
+        <button class="btn secondary" onclick="showPipelineTab('intents')">Intents & Orders</button>
+        <button class="btn secondary" onclick="showPipelineTab('vetoes')">Vetoes</button>
+        <button class="btn secondary" onclick="showPipelineTab('trades')">Trades</button>
+      </div>
+      <div id="pipeline-signals" class="pipeline-panel" style="margin-top:8px;">
+        <table>
+          <thead><tr><th>Time</th><th>Strategy</th><th>Action</th><th>Confidence</th><th>Notes</th></tr></thead>
+          <tbody id="signalsBody"><tr><td colspan="5" class="empty">No signals</td></tr></tbody>
+        </table>
+      </div>
+      <div id="pipeline-decisions" class="pipeline-panel" style="display:none; margin-top:8px;">
+        <table>
+          <thead><tr><th>Time</th><th>Signal</th><th>Gate</th><th>Order</th><th>Execution</th><th>Outcome</th></tr></thead>
+          <tbody id="decisionChainBody"><tr><td colspan="6" class="empty">Waiting for decisions...</td></tr></tbody>
+        </table>
+      </div>
+      <div id="pipeline-intents" class="pipeline-panel" style="display:none; margin-top:8px;">
+        <table>
+          <thead><tr><th>Intent ID</th><th>Strategy</th><th>Action</th><th>State</th><th>Timer</th><th>Cancel</th></tr></thead>
+          <tbody id="intentsBody"><tr><td colspan="6" class="empty">Waiting for decisions...</td></tr></tbody>
+        </table>
+      </div>
+      <div id="pipeline-vetoes" class="pipeline-panel" style="display:none; margin-top:8px;">
+        <table>
+          <thead><tr><th>Time</th><th>Signal</th><th>Reason</th></tr></thead>
+          <tbody id="vetoBody"><tr><td colspan="3" class="empty">No vetoes</td></tr></tbody>
+        </table>
+      </div>
+      <div id="pipeline-trades" class="pipeline-panel" style="display:none; margin-top:8px;">
+        <table>
+          <thead><tr><th>Time</th><th>Pair</th><th>Side</th><th>Qty</th><th>Price</th><th>Venue</th></tr></thead>
+          <tbody id="recentTradesBody">${TRADE_ROWS}</tbody>
+        </table>
+      </div>
     </div>
-
-<div class="card" style="margin-top:12px;">
-      <h3>Decision Chain (latest)</h3>
-      <table>
-        <thead><tr><th>Time</th><th>Signal</th><th>Gate</th><th>Order</th><th>Execution</th><th>Outcome</th></tr></thead>
-        <tbody id="decisionChainBody"><tr><td colspan="6" class="empty">Waiting for decisions...</td></tr></tbody>
-      </table>
 
     <div id="rawJsonModal" class="modal">
       <div class="modal-card">
@@ -2063,30 +2154,10 @@ class UIAgent:
         <pre id="rawJsonBody" class="log-tail" style="max-height:60vh;">|</pre>
       </div>
     </div>
-    </div>
-
-    <div class="card" style="margin-top:12px;">
-      <h3>Recent Trades</h3>
-      <table>
-        <thead><tr><th>Time</th><th>Pair</th><th>Side</th><th>Qty</th><th>Price</th><th>Venue</th></tr></thead>
-        <tbody id="recentTradesBody">${TRADE_ROWS}</tbody>
-      </table>
-    </div>
-
-    <div class="card" style="margin-top:12px;">
-      <h3>Vetoed Decisions</h3>
-      <table>
-        <thead><tr><th>Time</th><th>Signal</th><th>Reason</th></tr></thead>
-        <tbody id="vetoBody"><tr><td colspan="3" class="empty">No vetoes</td></tr></tbody>
-      </table>
-    </div>
 
     <div class="card" id="intents" style="margin-top:12px;">
-      <h3>Intents & Orders</h3>
-      <table>
-        <thead><tr><th>Intent ID</th><th>Strategy</th><th>Action</th><th>State</th><th>Timer</th><th>Cancel</th></tr></thead>
-        <tbody id="intentsBody"><tr><td colspan="6" class="empty">Waiting for decisions...</td></tr></tbody>
-      </table>
+      <h3>Intent Actions</h3>
+      <div class="mini">Use the pipeline tab above to review intent/order state details.</div>
     
     <div id="intentDrawer" class="drawer">
       <div class="drawer-header">
@@ -2169,19 +2240,6 @@ class UIAgent:
       </div>
       <div class="mini">Changes apply immediately where supported.</div>
     </div>
-<div class="card" id="audit" style="margin-top:12px;">
-      <h3>Audit Log (recent)</h3>
-      <div class="filters">
-        <input id="auditFilterType" placeholder="Type" />
-        <input id="auditFilterSource" placeholder="Source" />
-        <input id="auditFilterSeverity" placeholder="Severity" />
-        <input id="auditFilterIntent" placeholder="Intent ID / Trace" />
-      </div>
-      <table>
-        <thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead>
-        <tbody id="auditBody"><tr><td colspan="3" class="empty">No audit events</td></tr></tbody>
-      </table>
-    </div>
 
     <div class="card" id="logCard" style="margin-top:12px;">
       <h3>Live Logs</h3>
@@ -2224,10 +2282,34 @@ class UIAgent:
         if (base) lastAssetPrices[base.toUpperCase()] = p;
       }catch(e){}
     }
-    const ALT_MARKETS = ${ALT_MARKETS_JSON};
+    let ALT_MARKETS = ${ALT_MARKETS_JSON};
     const altCharts = {};
 
     
+
+    function showPipelineTab(tab){
+      ['signals','decisions','intents','vetoes','trades'].forEach(k => {
+        const el = document.getElementById('pipeline-' + k);
+        if (el) el.style.display = (k === tab ? 'block' : 'none');
+      });
+    }
+
+    function updatePipelineSummary(){
+      const countRows = (id) => {
+        const body = document.getElementById(id);
+        if (!body) return 0;
+        const rows = Array.from(body.querySelectorAll('tr')).filter(r => !r.classList.contains('empty'));
+        if (!rows.length && body.innerText.toLowerCase().includes('no ')) return 0;
+        return rows.length;
+      };
+      const sig = countRows('signalsBody');
+      const dec = countRows('decisionChainBody');
+      const it = countRows('intentsBody');
+      const veto = countRows('vetoBody');
+      const el = document.getElementById('pipelineSummary');
+      if (el) el.innerText = `Signals: $${sig} | Decisions: $${dec} | Intents: $${it} | Vetoes: $${veto}`;
+    }
+
     async function setDryRun(on){
       try{
         const body = `dry_run=$${on ? 'true' : 'false'}`;
@@ -2267,169 +2349,80 @@ class UIAgent:
       }catch(e){ alert('Failed: ' + e); }
     }
 
-    async function loadAutonomy(){
-      try{
-        const res = await fetch(api('/autonomy?' + cb()));
-        const j = await res.json();
-        const btn = document.getElementById('autonomyToggleBtn');
-        if (!btn) return;
-        const enabled = !!j.enabled;
-        btn.innerText = enabled ? 'Disable Autonomous Control' : 'Enable Autonomous Control';
-        btn.setAttribute('aria-label', enabled ? 'Disable OpenClaw autonomous trade control' : 'Enable OpenClaw autonomous trade control');
-        btn.classList.toggle('secondary', !enabled);
-        const status = document.getElementById('autonomyStatus');
-        if (status) {
-          const owner = j.decision_owner || (enabled ? 'OPENCLAW' : 'QUEEN');
-          const ai = j.ai_endpoint || 'local';
-          status.innerText = 'Autonomy: ' + (enabled ? 'ON' : 'OFF') + ' | Decision: ' + owner + ' | AI: ' + ai;
-        }
-      }catch(e){ /* ignore */ }
+
+    function normalizeMarketId(symbol, idx){
+      const base = String(symbol || ('M' + idx)).split('/')[0] || ('M' + idx);
+      const clean = base.replace(/[^a-zA-Z0-9]/g, '') || ('M' + idx);
+      return clean + '_' + idx;
     }
 
-    async function toggleAutonomy(){
-      try{
-        const res = await fetch(api('/autonomy?' + cb()));
-        const st = await res.json();
-        const next = !(st && st.enabled);
-        const body = 'enabled=' + (next ? 'true' : 'false');
-        const update = await fetch(api('/autonomy'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
-        const j = await update.json();
-        if (!j || j.error) alert('Failed: ' + (j.error || 'unknown'));
-        await loadAutonomy();
-      }catch(e){ alert('Failed: ' + e); }
-    }
-    async function sendOpenClawChat(){
-      try{
-        const input = document.getElementById('openclawChatInput');
-        const endpoint = document.getElementById('openclawChatEndpoint');
-        const token = document.getElementById('openclawChatToken');
-        const log = document.getElementById('openclawChatLog');
-        const sanitize = (text) => String(text || '').replace(/[\r\n]+/g, ' ');
-        const appendLog = (prefix, text) => {
-          if (!log) return;
-          const clean = sanitize(text);
-          log.textContent += `\n$${prefix}$${clean}`;
-          log.scrollTop = log.scrollHeight;
-        };
-        const message = (input && input.value ? input.value.trim() : '');
-        if (!message) return;
-        appendLog('You: ', message);
-        if (input) input.value = '';
-        const payload = {
-          message,
-          endpoint: endpoint ? endpoint.value : '',
-          token: token ? token.value : '',
-        };
-        const res = await fetch(api('/openclaw/chat'), {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data && data.response) {
-          appendLog('OpenClaw: ', data.response);
-        } else {
-          appendLog('OpenClaw: ', data.error || 'No response');
-        }
-      }catch(e){
-        const log = document.getElementById('openclawChatLog');
-        if (log) {
-          const clean = String(e || '').replace(/[\r\n]+/g, ' ');
-          log.textContent += '\nOpenClaw: ' + clean;
-          log.scrollTop = log.scrollHeight;
-        }
+    function renderAltMarketCards(markets){
+      const container = document.getElementById('altChartsContainer');
+      if (!container) return;
+      const safe = Array.isArray(markets) ? markets.filter(m => m && m.symbol && m.symbol !== (window.currentSymbol || DEFAULT_SYMBOL)) : [];
+      ALT_MARKETS = safe;
+      Object.keys(altCharts).forEach(k => {
+        try{ altCharts[k].destroy(); }catch(e){}
+        delete altCharts[k];
+      });
+      if (!safe.length){
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
       }
+      container.style.display = 'grid';
+      container.innerHTML = safe.map((m, idx) => `
+        <div class="mini-chart-card">
+          <div class="mini">$${m.label || m.symbol}</div>
+          <div class="mini-chart"><canvas id="priceChart_$${m.id || normalizeMarketId(m.symbol, idx)}"></canvas></div>
+        </div>`).join('');
+      ALT_MARKETS = safe.map((m, idx) => ({...m, id: m.id || normalizeMarketId(m.symbol, idx)}));
     }
-    async function saveLimits(){
-      const maxNotional = ((document.getElementById('cfgMaxNotional') || {}).value || '');
-      const cooldown = ((document.getElementById('cfgCooldown') || {}).value || '');
-      const spread = ((document.getElementById('cfgSpread') || {}).value || '');
-      const throttle = ((document.getElementById('cfgThrottle') || {}).value || '');
-      const orderPref = ((document.getElementById('cfgOrderPref') || {}).value || '');
-      const body = `max_notional=$${encodeURIComponent(maxNotional)}&strategy_cooldown=$${encodeURIComponent(cooldown)}&spread_guard_pct=$${encodeURIComponent(spread)}&throttle_multiplier=$${encodeURIComponent(throttle)}&order_type_pref=$${encodeURIComponent(orderPref)}`;
+
+    async function rotateAdaptiveSelector(){
       try{
-        const res = await fetch(api('/config/limits'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
-        const j = await res.json();
-        if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
-      }catch(e){ alert('Failed: ' + e); }
+        await fetch(api('/adaptive_selector/rotate'), { method:'POST' });
+        await loadCoinSelection();
+      }catch(e){ console.error('adaptive rotate failed', e); }
     }
 
-    async function saveKillSwitch(){
-      const marketStale = ((document.getElementById('cfgMarketStale') || {}).value || '');
-      const walletStale = ((document.getElementById('cfgWalletStale') || {}).value || '');
-      const slip = ((document.getElementById('cfgSlip') || {}).value || '');
-      const throttleClear = ((document.getElementById('cfgThrottleClear') || {}).value || '');
-      const grace = ((document.getElementById('cfgGrace') || {}).value || '');
-      const enforceStale = ((document.getElementById('cfgEnforceStale') || {}).value || '');
-      const body = `market_stale_sec=$${encodeURIComponent(marketStale)}&wallet_stale_sec=$${encodeURIComponent(walletStale)}&slippage_threshold=$${encodeURIComponent(slip)}&throttle_clear_sec=$${encodeURIComponent(throttleClear)}&kill_switch_grace_sec=$${encodeURIComponent(grace)}&kill_switch_enforce_stale=$${encodeURIComponent(enforceStale)}`;
+    async function approveSuggestedPivot(){
       try{
-        const res = await fetch(api('/config/kill_switch'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
-        const j = await res.json();
-        if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
-      }catch(e){ alert('Failed: ' + e); }
+        const res = await fetch(api('/coin_selection.json?' + cb()));
+        const data = await res.json();
+        const p = data.payload || {};
+        const top = (p.top && p.top[0] && p.top[0].symbol) || p.symbol;
+        if (!top) return alert('No pivot candidate available yet.');
+        const r = await fetch(api('/coin_selection/pivot'), {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({symbol: top})
+        });
+        const out = await r.json();
+        const line = document.getElementById('coinSelectionPivot');
+        if (line) line.innerText = out.ok
+          ? ('Pivot approved -> active symbol switched to ' + (out.symbol || top))
+          : ('Pivot request failed: ' + (out.error || 'unknown'));
+        await loadCoinSelection();
+        await loadPrice();
+        await loadAltPrices();
+      }catch(e){ console.error('pivot approve failed', e); }
     }
 
-    async function cancelIntent(intentId){
-      if (!intentId) return;
-      const confirm = prompt('Type CANCEL to confirm');
-      if (!confirm || confirm.toUpperCase() !== 'CANCEL') { alert('Cancel aborted'); return; }
+    async function loadLearningDigest(){
       try{
-        const body = `intent_id=$${encodeURIComponent(intentId)}`;
-        const res = await fetch(api('/intent/cancel'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
-        const j = await res.json().catch(() => ({}));
-        if (!j.ok) {
-          alert('Cancel failed: ' + (j.error || 'unknown'));
-        } else if (j.canceled) {
-          alert('Cancel request sent');
-        } else {
-          alert('No live order found to cancel (request recorded).');
-        }
-        try { loadIntents(); loadDecisionChain(); } catch(e) {}
-      }catch(e){ alert('Cancel failed: ' + e); }
+        const res = await fetch(api('/learning/status.json?' + cb()));
+        const data = await res.json();
+        if (data.error) return;
+        const health = data.health || {};
+        const topWorkers = Object.entries(data.worker_weights || {}).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).slice(0,3);
+        const topCoins = Array.isArray(data.top_coins) ? data.top_coins.slice(0,4) : [];
+        const headline = document.getElementById('learningCycleHeadline');
+        const workers = document.getElementById('learningCycleWorkers');
+        const coins = document.getElementById('learningCycleCoins');
+        if (headline) headline.innerText = 'Cycle insight: confidence=' + Number(health.confidence_score || 0).toFixed(2) + ' | approvals=' + (health.pending_approvals ?? 0) + ' | auto-trade=' + (!!data.auto_trade_enabled ? 'ON' : 'OFF');
+        if (workers) workers.innerText = 'Top workers: ' + (topWorkers.length ? topWorkers.map(([n,w]) => String(n) + ' (' + Number(w).toFixed(2) + ')').join(' | ') : '|');
+        if (coins) coins.innerText = 'Learned coins: ' + (topCoins.length ? topCoins.map(c => String(c.symbol || '|') + ' (' + Number(c.score||0).toFixed(2) + ')').join(' | ') : '|');
+      }catch(e){ console.error('learning digest failed', e); }
     }
-function openRawJson(payload){
-      const modal = document.getElementById('rawJsonModal');
-      const body = document.getElementById('rawJsonBody');
-      if (body) body.innerText = JSON.stringify(payload || {}, null, 2);
-      if (modal) modal.classList.add('open');
-    }
-    function closeRawJson(){
-      const modal = document.getElementById('rawJsonModal');
-      if (modal) modal.classList.remove('open');
-    }
-
-
-    function openIntentDrawer(detailHtml){
-      const drawer = document.getElementById('intentDrawer');
-      const body = document.getElementById('intentDrawerBody');
-      if (body) body.innerHTML = detailHtml || '<div class="mini">No details.</div>';
-      if (drawer) drawer.classList.add('open');
-    }
-    function setIntentActions(intentId){
-      window.__lastIntentId = intentId || null;
-      const btn = document.getElementById('cancelIntentBtn');
-      if (btn) btn.disabled = !intentId;
-    }
-    function closeIntentDrawer(){
-      const drawer = document.getElementById('intentDrawer');
-      if (drawer) drawer.classList.remove('open');
-    }
-
-    function viewMarketSnapshot(){
-      try{
-        const el = document.getElementById('marketSnap');
-        if (!el) return;
-        const card = el.closest('.card');
-        if (card) {
-          card.scrollIntoView({behavior:'smooth', block:'center'});
-          card.classList.add('flash');
-          setTimeout(() => card.classList.remove('flash'), 1200);
-        } else {
-          el.scrollIntoView({behavior:'smooth', block:'center'});
-        }
-      }catch(e){}
-    }
-
 
     async function loadPrice() {
       try {
@@ -2699,12 +2692,22 @@ function openRawJson(payload){
         const top = document.getElementById('coinSelectionTop');
         const list = document.getElementById('coinSelectionList');
         const topSym = p.symbol || (p.top && p.top[0] && p.top[0].symbol) || '|';
-        if (top) top.innerText = 'Top: ' + topSym;
+        if (top) top.innerText = 'Top candidate: ' + topSym;
         if (list) {
           const arr = p.top || [];
           const txt = arr.length ? arr.map(x => (x.symbol || '') + ' (vol=' + (x.volatility ?? 0).toFixed(4) + ')').join(' | ') : '|';
-          list.innerText = 'Candidates: ' + txt;
+          list.innerText = 'Scanned small-cap set: ' + txt;
         }
+        const pivotLine = document.getElementById('coinSelectionPivot');
+        const arr = p.top || [];
+        const suggestion = arr.length ? arr[0] : null;
+        if (pivotLine) {
+          pivotLine.innerText = suggestion
+            ? ('Pivot suggestion: shift focus to ' + (suggestion.symbol || '|') + ' (volatility=' + Number(suggestion.volatility || 0).toFixed(4) + ')')
+            : 'Pivot suggestion: waiting for candidate scoring.';
+        }
+        const dynamicMarkets = arr.slice(0, 4).map((x, i) => ({ symbol: x.symbol, label: x.symbol, color: ['#7fd1ff','#b4ff6a','#ffb86b','#ffd24a'][i % 4] }));
+        renderAltMarketCards(dynamicMarkets);
       }catch(e){ console.error('coin selection load failed', e); }
     }
 
@@ -2859,16 +2862,41 @@ function openRawJson(payload){
           const deg = -90 + Math.max(0, Math.min(1, confNum)) * 180;
           needle.style.transform = 'rotate(' + deg + 'deg)';
         }
+        const scores = p.scores || {};
+        const scoreEntries = Object.entries(scores).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0));
+        const top4 = (scoreEntries.length ? scoreEntries : [['CHOP_RANGE', confNum || 0], ['TREND_UP', 0], ['TREND_DOWN', 0], ['BREAKOUT', 0]]).slice(0,4);
+        for (let i=0;i<4;i++){
+          const item = top4[i] || ['REGIME', 0];
+          const label = String(item[0] || 'REGIME');
+          const raw = Number(item[1] || 0);
+          const pct = Math.max(0, Math.min(1, raw));
+          const gauge = document.getElementById('regimeConfGauge-' + i);
+          const labEl = document.getElementById('regimeConfLabel-' + i);
+          const valEl = document.getElementById('regimeConfVal-' + i);
+          if (gauge){
+            const deg = Math.round(pct * 360);
+            gauge.style.background = 'conic-gradient(#ffd24a ' + deg + 'deg, rgba(255,255,255,0.08) ' + deg + 'deg 360deg)';
+          }
+          if (labEl) labEl.innerText = label;
+          if (valEl) valEl.innerText = Math.round(pct * 100) + '%';
+        }
         const f = p.features || {};
         const keys = ['trend','vol','spread','mean_cross','bb_width','volume'];
+        const normalizeFeature = (k, val) => {
+          const n = Number(val);
+          if (Number.isNaN(n)) return 0;
+          if (k === 'spread') return Math.max(0, Math.min(1, Math.abs(n) * 50));
+          if (k === 'vol') return Math.max(0, Math.min(1, Math.abs(n) * 10));
+          if (k === 'volume') return Math.max(0, Math.min(1, Math.abs(n) / 5));
+          return Math.max(0, Math.min(1, Math.abs(n)));
+        };
         keys.forEach(k => {
           const val = f[k];
-          const n = Number(val);
-          const pct = (!Number.isNaN(n)) ? Math.max(3, Math.min(100, Math.abs(n) * 100)) : 3;
+          const pct = normalizeFeature(k, val);
           const bar = document.getElementById('regimeBar-' + k);
-          if (bar) bar.style.width = pct + '%';
+          if (bar) bar.style.width = Math.max(4, Math.round(pct * 100)) + '%';
           const label = document.getElementById('regimeVal-' + k);
-          if (label) label.innerText = fmtFeature(val);
+          if (label) label.innerText = fmtFeature(val) + ' (' + Math.round(pct * 100) + '%)';
         });
       }catch(e){ console.error('regime load failed', e); }
     }
@@ -2921,8 +2949,15 @@ function openRawJson(payload){
         const res = await fetch(api('/council.json?' + cb()));
         const data = await res.json();
         const p = data.payload || {};
-        const list = p.proposals || [];
-        const sum = 'Proposals: ' + list.length + ' | ' + (p.symbol || '');
+        let list = p.proposals || [];
+        if (!list.length) {
+          list = [
+            {strategy:'WORKER_SMA', signal_strength:0.05, action:'HOLD', _placeholder:true},
+            {strategy:'WORKER_RSI', signal_strength:0.04, action:'HOLD', _placeholder:true},
+            {strategy:'WORKER_MACD', signal_strength:0.03, action:'HOLD', _placeholder:true}
+          ];
+        }
+        const sum = 'Proposals: ' + (p.proposals ? p.proposals.length : 0) + ' | ' + (p.symbol || '') + (p.proposals && p.proposals.length ? '' : ' | waiting for live proposals');
         const el = document.getElementById('councilSummary');
         if (el) el.innerText = sum;
         const raceEl = document.getElementById('councilRace');
@@ -2961,6 +2996,7 @@ function openRawJson(payload){
                 '<span>' + name + '</span>' +
                 (isQueen ? '<span class="race-badge queen">QUEEN</span>' : '') +
                 (tie ? '<span class="race-badge tie">TIE</span>' : '') +
+                (p._placeholder ? '<span class="race-badge">SIM</span>' : '') +
               '</div>' +
               '<div class="race-track">' +
                 '<img class="race-bee ' + cls + '" src="/static/' + icon + '" alt="' + name + '" style="left: calc(' + left + '% - 10px)"/>' +
@@ -2984,8 +3020,7 @@ function openRawJson(payload){
         const newLead = leader ? leader.name : null;
         window.__lastCouncilLeader = newLead;
         // lead change flash handled by race track animation
-      }catch(e){ console.error('council load failed', e); }
-    }
+
 
     async function loadCycle(){
       try{
@@ -3269,6 +3304,7 @@ async function loadTrades() {
           }
         } catch(e) {}
       } catch(err) { console.error('decision chain load failed', err); }
+      updatePipelineSummary();
     }
 
     async function loadIntents() {
@@ -3293,6 +3329,7 @@ async function loadTrades() {
           });
         }
       } catch(err) { console.error('intents load failed', err); }
+      updatePipelineSummary();
     }
 
     
@@ -3360,40 +3397,6 @@ async function loadPerformance() {
           <tr><td>$${r.severity || 'info'}</td><td>$${r.source || ''}</td><td>$${r.reason || ''}</td><td>$${r.action || ''}</td></tr>
         `).join('') : '<tr><td colspan="4" class="empty">No alerts</td></tr>';
       } catch(err) { console.error('alerts load failed', err); }
-    }
-
-    
-    async function loadAudit() {
-      try {
-        const res = await fetch(api('/audit.json?' + cb()));
-        const data = await res.json();
-        let rows = data.rows || [];
-        const typeF = ((document.getElementById('auditFilterType') || {}).value || '').toLowerCase();
-        const srcF = ((document.getElementById('auditFilterSource') || {}).value || '').toLowerCase();
-        const sevF = ((document.getElementById('auditFilterSeverity') || {}).value || '').toLowerCase();
-        const intentF = ((document.getElementById('auditFilterIntent') || {}).value || '').toLowerCase();
-        if (typeF || srcF || sevF || intentF) {
-          rows = rows.filter(r => {
-            const t = String(r.type||'').toLowerCase();
-            const d = String(r.detail||'').toLowerCase();
-            return (!typeF || t.includes(typeF)) && (!srcF || d.includes(srcF)) && (!sevF || d.includes(sevF)) && (!intentF || d.includes(intentF));
-          });
-        }
-        const body = document.getElementById('auditBody');
-        if (!body) return;
-        body.innerHTML = rows.length ? rows.map((r, idx) => `
-          <tr data-idx="$${idx}"><td>$${r.ts || ''}</td><td>$${r.type || ''}</td><td>$${r.detail || ''}</td></tr>
-        `).join('') : '<tr><td colspan="3" class="empty">No audit events</td></tr>';
-        if (rows.length) {
-          body.querySelectorAll('tr').forEach(tr => {
-            tr.style.cursor = 'pointer';
-            tr.addEventListener('click', () => {
-              const i = Number(tr.getAttribute('data-idx')) || 0;
-              openRawJson(rows[i]);
-            });
-          });
-        }
-      } catch(err) { console.error('audit load failed', err); }
     }
 
     const AGENTS = ${AGENTS_JSON};
@@ -3870,7 +3873,8 @@ async function loadPerformance() {
       }catch(e){ /* ignore */ }
     }
 
-    loadPrice(); loadAltPrices(); loadMetrics(); loadMarketSnapshot(); loadAnalytics(); loadSwarmGuard(); loadOverride(); loadAutonomy(); loadBuzzSummary(); loadCoinSelection(); loadRegime(); loadCouncil(); loadCycle(); loadGovernance(); loadTrades(); loadSignals(); loadDecisionChain(); loadIntents(); loadRisk(); loadPerformance(); loadAlerts(); loadAudit(); loadRiskTimeline(); loadDexPending(); pollBuzz();
+    renderAgentOutputs({}, {}); renderAltMarketCards(ALT_MARKETS);
+    loadPrice(); loadAltPrices(); loadMetrics(); loadMarketSnapshot(); loadAnalytics(); loadSwarmGuard(); loadOverride(); loadBuzzSummary(); loadCoinSelection(); loadLearningDigest(); loadRegime(); loadCouncil(); loadCycle(); loadGovernance(); loadTrades(); loadSignals(); loadDecisionChain(); loadIntents(); loadRisk(); loadPerformance(); loadAlerts(); loadRiskTimeline(); loadDexPending(); pollBuzz(); showPipelineTab("signals"); updatePipelineSummary();
     tickClock(); loadHealth(); loadWallet(); loadStatus();
     setInterval(tickClock, 1000);
     setInterval(loadHealth, 10000);
@@ -3885,9 +3889,9 @@ async function loadPerformance() {
     setInterval(loadAnalytics, 7000);
     setInterval(loadSwarmGuard, 7000);
     setInterval(loadOverride, 10000);
-    setInterval(loadAutonomy, 10000);
     setInterval(loadBuzzSummary, 10000);
     setInterval(loadCoinSelection, 10000);
+    setInterval(loadLearningDigest, 10000);
     setInterval(loadRegime, 7000);
     setInterval(loadCouncil, 7000);
     setInterval(loadCycle, 5000);
@@ -3899,7 +3903,6 @@ async function loadPerformance() {
     setInterval(loadRisk, 7000);
     setInterval(loadPerformance, 7000);
     setInterval(loadAlerts, 7000);
-    setInterval(loadAudit, 7000);
     setInterval(loadRiskTimeline, 7000);
   </script>
     </main>
@@ -3940,9 +3943,8 @@ async function loadPerformance() {
         except Exception:
             chain_hex = "0x1"
 
-        # Build secondary market charts from configured symbols (only traded pairs)
+        # Build secondary market watchlist from configured symbols (rendered client-side)
         alt_markets = []
-        alt_charts_html = '<div class="mini-charts" style="display:none;"></div>'
         try:
             cfg_symbols = []
             try:
@@ -3952,45 +3954,20 @@ async function loadPerformance() {
                 cfg_symbols = []
             if not cfg_symbols:
                 cfg_symbols = [symbol] if symbol else []
-            # If on-chain is enabled and allowlist exists, filter to those pairs
-            try:
-                if getattr(self.coordinator.cfg, 'onchain_enabled', False):
-                    allowed = getattr(self.coordinator.cfg, 'onchain_allowed_pairs', []) or []
-                    if allowed:
-                        cfg_symbols = [s for s in cfg_symbols if s in allowed] or cfg_symbols
-            except Exception:
-                pass
-            # unique while preserving order
             seen = set()
             cfg_symbols = [s for s in cfg_symbols if s and not (s in seen or seen.add(s))]
-            alt_symbols = [s for s in cfg_symbols if s != symbol]
             palette = ['#7fd1ff', '#b4ff6a', '#ffb86b', '#ffd24a', '#9fb0d8', '#ff6b6b']
-            for idx, sym in enumerate(alt_symbols):
+            for idx, sym in enumerate(cfg_symbols):
                 base = sym.split('/')[0] if isinstance(sym, str) else str(sym)
                 safe = ''.join([c for c in base if c.isalnum()]) or f"S{idx+1}"
-                # ensure unique ids
-                existing_ids = {m['id'] for m in alt_markets}
-                if safe in existing_ids:
-                    safe = f"{safe}{idx+1}"
                 alt_markets.append({
-                    "id": safe,
+                    "id": f"{safe}_{idx}",
                     "symbol": sym,
                     "label": sym,
                     "color": palette[idx % len(palette)],
                 })
-            if alt_markets:
-                cards = []
-                for m in alt_markets:
-                    cards.append(
-                        f'<div class="mini-chart-card">'
-                        f'<div class="mini">{m["label"]}</div>'
-                        f'<div class="mini-chart"><canvas id="priceChart_{m["id"]}"></canvas></div>'
-                        f'</div>'
-                    )
-                alt_charts_html = '<div class="mini-charts">' + ''.join(cards) + '</div>'
         except Exception:
             alt_markets = []
-            alt_charts_html = '<div class="mini-charts" style="display:none;"></div>'
 
         html = tmpl.substitute(
             MODE='Loading...',
@@ -4024,13 +4001,10 @@ async function loadPerformance() {
             ONCHAIN_CHAIN_NAME=onchain_chain_name,
             ONCHAIN_EXPLORER_URL=onchain_explorer,
             WATCH_ADDRESS=watch_addr,
-            OPENCLAW_CHAT_ENDPOINT=_html.escape(openclaw_chat_endpoint or ""),
             ALT_MARKETS_JSON=json.dumps(alt_markets),
-            ALT_CHARTS_HTML=alt_charts_html,
 
             AGENT_OUTPUTS=agent_outputs_html,
             TRADE_ROWS=trade_rows,
-            LOG_TAIL=log_tail,
             AGENTS_JSON=json.dumps(agents),
             AGENT_HEALTH_JSON=json.dumps(agent_health),
             AGENT_ALIAS_JSON=json.dumps(alias_norm),

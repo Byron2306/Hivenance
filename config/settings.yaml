@@ -20,7 +20,7 @@ daily_loss_throttle_pct: -0.25
 data_store_enabled: true
 db_path: data/swarm_data.db
 dex_provider: 1inch
-dry_run: false
+dry_run: true
 encryption_key_file: config/encryption.key
 erc20_token_address: ''
 exchange: kraken
@@ -50,7 +50,7 @@ multi_symbols:
 - ETH/USD
 - XCN/USD
 - TOSHI/USD
-network_enabled: true
+network_enabled: false
 nurse_review_interval_sec: 120
 onchain_allowed_pairs:
 - ETH/USD

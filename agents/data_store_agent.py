@@ -29,21 +29,30 @@ class DataStoreAgent:
     def _connect(self, check_integrity: bool = True):
         """Establish SQLite connection."""
         try:
-            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            db_dir = os.path.dirname(self.db_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=15)
             try:
                 self.conn.execute("PRAGMA journal_mode=WAL")
                 self.conn.execute("PRAGMA synchronous=NORMAL")
+                self.conn.execute("PRAGMA busy_timeout=15000")
             except Exception:
                 pass
-            if check_integrity and not self._check_integrity():
+            integrity_state = True
+            if check_integrity:
+                integrity_state = self._check_integrity()
+            if integrity_state is False:
                 self._recover_db("quick_check failed")
                 return
+            if integrity_state is None:
+                logging.warning("Data Store integrity check skipped due to transient DB lock/busy state")
             logging.info(f"Data Store Agent connected to {self.db_path}")
         except Exception as e:
             logging.error(f"Failed to connect to database: {e}")
             self.conn = None
 
-    def _check_integrity(self) -> bool:
+    def _check_integrity(self) -> Optional[bool]:
         if not self.conn:
             return False
         try:
@@ -51,8 +60,13 @@ class DataStoreAgent:
             cur.execute("PRAGMA quick_check")
             row = cur.fetchone()
             return bool(row and row[0] == "ok")
-        except Exception:
+        except sqlite3.OperationalError as e:
+            msg = str(e).lower()
+            if "locked" in msg or "busy" in msg:
+                return None
             return False
+        except Exception:
+            return None
 
     def _create_tables(self):
         """Create necessary tables."""

@@ -6,6 +6,7 @@ A multi-agent crypto trading swarm that combines technical analysis strategies, 
 
 ## Table of contents
 
+- [Novelty & market gap analysis](#novelty--market-gap-analysis)
 - [What it does](#what-it-does)
 - [Architecture overview](#architecture-overview)
 - [Agent reference](#agent-reference)
@@ -21,6 +22,44 @@ A multi-agent crypto trading swarm that combines technical analysis strategies, 
 - [Docker deployment](#docker-deployment)
 - [Project structure](#project-structure)
 - [License](#license)
+
+---
+
+## Novelty & market gap analysis
+
+### The problem with existing trading bots
+
+| Category | Examples | Gap |
+|---|---|---|
+| **Simple signal bots** | 3Commas, Pionex, Bitsgap | Single strategy per bot; no regime awareness; no cross-agent accountability; stop working when market structure changes |
+| **Quant frameworks** | Freqtrade, Jesse, Backtrader | Research tools, not production swarms; require manual strategy selection; no on-chain execution; no agent-level staking or governance |
+| **DeFi yield/arbitrage bots** | Hummingbot, MEV bots | Narrow focus (arb or MM); no multi-strategy deliberation; no equity-floor kill switch; not designed for discretionary overlay |
+| **Managed algo funds** | Proprietary HFT / quant funds | Closed, inaccessible, minimum ticket sizes in the six-figure range |
+| **AI trading agents** | Various GPT-wrapper bots | LLM chat over prices; no real order execution pipeline; no formal risk accounting; hallucination risk on financial decisions |
+
+### What Hivenance does differently
+
+1. **Swarm deliberation, not single-strategy conviction** — Rather than betting on one indicator, Hivenance runs four independent strategy workers in parallel. Trades only execute when a quorum of workers agrees (`swarmguard_consensus_min`) and the GovernanceQueen's SVS score clears a threshold. This is structurally more robust than any single-strategy bot under changing market conditions.
+
+2. **Regime-aware execution** — Most bots ignore market structure entirely. The `RegimeOracle` continuously classifies market state across three timeframes (1m / 5m / 1h) into six regimes. Strategies are filtered and weighted by regime alignment, so a SMA crossover signal in a `CHOP_RANGE` regime is suppressed even if it technically triggers.
+
+3. **Agent-level financial accountability via BuzzService** — Every agent that influences a trade stakes Buzz tokens before execution. Profitable outcomes earn rewards; losses trigger slashing. This creates a measurable, auditable cost for each agent's contribution to trading decisions — something no open-source bot framework has.
+
+4. **Unified CEX + on-chain execution** — Most bots are either CEX-only or DEX-only. Hivenance routes orders to whichever venue is better at execution time: Kraken/Binance for liquid pairs, 1inch on Base L2 for on-chain tokens (XCN, TOSHI, WLD), with automatic fallback between them (`onchain_fallback_to_cex`).
+
+5. **Dynamic symbol selection** — `CoinSelector` re-ranks tradeable symbols every 10 minutes by volume and spread. The swarm self-adapts its opportunity set without manual reconfiguration — rare in retail-accessible bots.
+
+6. **Production-grade risk stack** — SwarmGuard (liquidity cap + spread veto + rate limiter + JSON rulebook), KillSwitch (equity floor + drawdown + loss streak), NurseAgent (health monitoring + auto-restart), and SecurityAgent (anomaly detection) are not afterthoughts — they are first-class agents with their own staking.
+
+### Market gap
+
+The intersection of **multi-agent deliberation**, **cross-venue execution (CEX + L2 DEX)**, and **on-chain agent accountability** does not exist in any open-source or retail-accessible trading system today. Most retail bots optimise for ease of setup; Hivenance optimises for correctness of decision-making at runtime.
+
+The addressable gap is specifically the segment of sophisticated retail and semi-professional traders who:
+- Have on-chain assets (Base, Ethereum) and CEX accounts simultaneously
+- Want strategy diversity without running five separate bots
+- Need a formal risk layer (not just a stop-loss) before trusting automation with real capital
+- Are willing to self-host for control and privacy
 
 ---
 

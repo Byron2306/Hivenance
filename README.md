@@ -1,5 +1,10 @@
 # Hivenance
 
+<p align="center">
+  <img src="Hivenance.png" alt="BEAST mascot" width="520" style="max-width: 92%; height: auto;">
+</p>
+
+
 A multi-agent crypto trading swarm that combines technical analysis strategies, on-chain DEX execution, centralised exchange (CEX) trading, regime detection, and a governance layer — all coordinated by a single `SwarmCoordinator`.
 
 ---

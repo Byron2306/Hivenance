@@ -50,13 +50,7 @@ class UIAgent:
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
                 resp.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers", "Content-Type")
                 return resp
-            # Canonicalize host to avoid split caches (localhost vs 127.0.0.1)
-            try:
-                host = request.host or ""
-                if host.startswith(f"localhost:{self.port}") or host.startswith(f"0.0.0.0:{self.port}"):
-                    return redirect(f"http://127.0.0.1:{self.port}{request.full_path}")
-            except Exception:
-                pass
+            # Skip redirect when behind reverse proxy (allows external access)
             if not self.allowed_ips:
                 return
             remote = request.remote_addr
@@ -716,55 +710,17 @@ class UIAgent:
 
         @self.app.route("/autonomy", methods=["GET", "POST"])
         def autonomy_toggle():
-            try:
-                if request.method == "POST":
-                    data = {}
-                    try:
-                        if request.is_json:
-                            data = request.get_json() or {}
-                        else:
-                            data = request.form.to_dict() if request.form else {}
-                    except Exception:
-                        data = {}
-                    enabled = self._parse_bool(data.get("enabled", "false"))
-                    try:
-                        self._update_config_partial({"openclaw_autonomy_enabled": bool(enabled)})
-                    except Exception:
-                        logging.exception("Failed to update openclaw_autonomy_enabled config in autonomy_toggle")
-                cfg = getattr(self.coordinator, "cfg", None)
-                state = bool(getattr(cfg, "openclaw_autonomy_enabled", False)) if cfg else False
-                owner = "OPENCLAW" if state else "QUEEN"
-                return jsonify({
-                    "enabled": state,
-                    "decision_owner": owner,
-                    "ai_endpoint": AI_ENDPOINT_LABEL,
-                    "note": "OpenClaw uses local hive signals; no external AI API.",
-                })
-            except Exception as e:
-                logging.exception("autonomy toggle error")
-                return jsonify({"error": str(e)}), 500
+            """OpenClaw removed; autonomy endpoint retained for backward compatibility."""
+            return jsonify({
+                "enabled": False,
+                "decision_owner": "QUEEN",
+                "ai_endpoint": "disabled",
+                "note": "OpenClaw removed; QUEEN governance is authoritative.",
+            })
 
         @self.app.route("/openclaw/chat", methods=["POST"])
         def openclaw_chat():
-            try:
-                data = request.json if request.is_json else request.form.to_dict()
-                message = (data.get("message") or "").strip()
-                endpoint = data.get("endpoint") or getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
-                token = data.get("token") or getattr(self.coordinator.cfg, "openclaw_chat_token", "")
-                if not message:
-                    return jsonify({"error": "message_required"}), 400
-                if not endpoint:
-                    return jsonify({"error": "endpoint_required"}), 400
-                agent = self.coordinator.agents.get("openclaw") if self.coordinator else None
-                if not agent or not hasattr(agent, "chat"):
-                    return jsonify({"error": "openclaw_unavailable"}), 503
-                result = agent.chat(message, endpoint, token=token, format_type="hf_space")
-                if result.get("error"):
-                    return jsonify(result), 400
-                return jsonify(result)
-            except Exception as e:
-                logging.exception("openclaw chat error")
-                return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "openclaw_removed"}), 410
 
         @self.app.route("/dex/pending.json")
         def dex_pending_json():
@@ -812,6 +768,301 @@ class UIAgent:
                 logging.exception("audit.json error")
                 return jsonify({"rows": [], "error": str(e)}), 500
 
+        # ============================================================
+        # NEW: Learning Engine & Safety System API Endpoints
+        # ============================================================
+        
+        @self.app.route("/learning/status.json")
+        def learning_status_json():
+            """Get learning engine status and statistics."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                health = learning.get_system_health()
+                top_coins = learning.get_top_coins(10)
+                worker_weights = learning.get_worker_weights()
+                
+                return jsonify({
+                    "health": health,
+                    "top_coins": [{"symbol": s, "score": sc} for s, sc in top_coins],
+                    "worker_weights": worker_weights,
+                    "auto_trade_enabled": learning.auto_trade_enabled,
+                    "approval_threshold_usd": learning.approval_threshold_usd,
+                    "risk_tolerance": learning.risk_tolerance
+                })
+            except Exception as e:
+                logging.exception("learning/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/learning/coin/<symbol>.json")
+        def learning_coin_json(symbol):
+            """Get detailed learning report for a specific coin."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                report = learning.get_coin_report(symbol)
+                return jsonify(report)
+            except Exception as e:
+                logging.exception(f"learning/coin/{symbol}.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/learning/auto_trade", methods=["GET", "POST"])
+        def learning_auto_trade():
+            """Toggle auto-trade mode."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                if request.method == "POST":
+                    data = request.json if request.is_json else request.form.to_dict()
+                    enabled = str(data.get("enabled", "false")).lower() in ("true", "1", "yes")
+                    learning.set_auto_trade(enabled)
+                
+                return jsonify({
+                    "auto_trade_enabled": learning.auto_trade_enabled,
+                    "approval_threshold_usd": learning.approval_threshold_usd
+                })
+            except Exception as e:
+                logging.exception("learning/auto_trade error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/learning/risk_tolerance", methods=["POST"])
+        def learning_risk_tolerance():
+            """Set risk tolerance level."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"error": "learning_engine_disabled"}), 400
+                
+                data = request.json if request.is_json else request.form.to_dict()
+                level = float(data.get("level", 0.5))
+                learning.set_risk_tolerance(level)
+                
+                return jsonify({"risk_tolerance": learning.risk_tolerance})
+            except Exception as e:
+                logging.exception("learning/risk_tolerance error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/approvals/pending.json")
+        def approvals_pending_json():
+            """Get pending trade approvals."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"pending": [], "error": "learning_engine_disabled"})
+                
+                pending = learning.get_pending_approvals()
+                return jsonify({"pending": pending})
+            except Exception as e:
+                logging.exception("approvals/pending.json error")
+                return jsonify({"pending": [], "error": str(e)}), 500
+        
+        @self.app.route("/approvals/action", methods=["POST"])
+        def approvals_action():
+            """Approve or reject a pending trade."""
+            try:
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if not learning:
+                    return jsonify({"ok": False, "error": "learning_engine_disabled"}), 400
+                
+                data = request.json if request.is_json else request.form.to_dict()
+                trade_id = data.get("trade_id")
+                action = str(data.get("action", "")).upper()
+                
+                if not trade_id:
+                    return jsonify({"ok": False, "error": "trade_id_required"}), 400
+                if action not in ("APPROVE", "REJECT"):
+                    return jsonify({"ok": False, "error": "action_must_be_APPROVE_or_REJECT"}), 400
+                
+                approved = action == "APPROVE"
+                ok = learning.process_approval(trade_id, approved, approved_by="USER_UI")
+                
+                return jsonify({"ok": ok, "trade_id": trade_id, "action": action})
+            except Exception as e:
+                logging.exception("approvals/action error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+        
+        @self.app.route("/safety/status.json")
+        def safety_status_json():
+            """Get safety system status."""
+            try:
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if not safety:
+                    return jsonify({"error": "safety_system_disabled"}), 400
+                
+                status = safety.get_safety_status()
+                return jsonify(status)
+            except Exception as e:
+                logging.exception("safety/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/safety/audit.json")
+        def safety_audit_json():
+            """Get safety audit trail."""
+            try:
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if not safety:
+                    return jsonify({"entries": [], "error": "safety_system_disabled"})
+                
+                limit = int(request.args.get("limit", 50))
+                entries = safety.get_audit_trail(limit)
+                return jsonify({"entries": entries})
+            except Exception as e:
+                logging.exception("safety/audit.json error")
+                return jsonify({"entries": [], "error": str(e)}), 500
+        
+        @self.app.route("/safety/circuit_breaker", methods=["GET", "POST"])
+        def safety_circuit_breaker():
+            """Get or reset circuit breaker status."""
+            try:
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if not safety:
+                    return jsonify({"error": "safety_system_disabled"}), 400
+                
+                if request.method == "POST":
+                    data = request.json if request.is_json else request.form.to_dict()
+                    action = str(data.get("action", "")).upper()
+                    reason = data.get("reason", "manual_reset")
+                    
+                    if action == "RESET":
+                        safety.reset_circuit_breaker(reason)
+                
+                status = safety.get_safety_status()
+                return jsonify({
+                    "circuit_breaker_active": status.get("circuit_breaker_active"),
+                    "circuit_breaker_reason": status.get("circuit_breaker_reason"),
+                    "safety_level": status.get("safety_level")
+                })
+            except Exception as e:
+                logging.exception("safety/circuit_breaker error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/gas/status.json")
+        def gas_status_json():
+            """Get gas optimizer status and savings."""
+            try:
+                gas_opt = self.coordinator.agents.get("gas_optimizer") if self.coordinator else None
+                if not gas_opt:
+                    return jsonify({"error": "gas_optimizer_disabled"}), 400
+                
+                report = gas_opt.get_gas_report()
+                timing = gas_opt.get_optimal_timing()
+                pending = gas_opt.get_pending_batch()
+                
+                return jsonify({
+                    "report": report,
+                    "timing": timing,
+                    "pending_batch": pending
+                })
+            except Exception as e:
+                logging.exception("gas/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/gas/execute_batch", methods=["POST"])
+        def gas_execute_batch():
+            """Force execute pending batch."""
+            try:
+                gas_opt = self.coordinator.agents.get("gas_optimizer") if self.coordinator else None
+                if not gas_opt:
+                    return jsonify({"ok": False, "error": "gas_optimizer_disabled"}), 400
+                
+                batch_id = gas_opt.force_batch_execute()
+                return jsonify({"ok": bool(batch_id), "batch_id": batch_id})
+            except Exception as e:
+                logging.exception("gas/execute_batch error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+        
+        @self.app.route("/adaptive_selector/status.json")
+        def adaptive_selector_status_json():
+            """Get adaptive coin selector status."""
+            try:
+                selector = self.coordinator.agents.get("adaptive_selector") if self.coordinator else None
+                if not selector:
+                    return jsonify({"error": "adaptive_selector_disabled"}), 400
+                
+                report = selector.get_selection_report()
+                return jsonify(report)
+            except Exception as e:
+                logging.exception("adaptive_selector/status.json error")
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/adaptive_selector/rotate", methods=["POST"])
+        def adaptive_selector_rotate():
+            """Force coin rotation."""
+            try:
+                selector = self.coordinator.agents.get("adaptive_selector") if self.coordinator else None
+                if not selector:
+                    return jsonify({"ok": False, "error": "adaptive_selector_disabled"}), 400
+                
+                selected = selector.force_rotation()
+                return jsonify({"ok": True, "selected_coins": selected})
+            except Exception as e:
+                logging.exception("adaptive_selector/rotate error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+        
+        @self.app.route("/mobile/dashboard.json")
+        def mobile_dashboard_json():
+            """Combined endpoint for mobile IDE - all essential data in one call."""
+            try:
+                result = {
+                    "ts": int(time.time() * 1000)
+                }
+                
+                # Learning status
+                learning = self.coordinator.agents.get("learning") if self.coordinator else None
+                if learning:
+                    result["learning"] = {
+                        "health": learning.get_system_health(),
+                        "top_coins": [{"symbol": s, "score": sc} for s, sc in learning.get_top_coins(5)],
+                        "auto_trade": learning.auto_trade_enabled,
+                        "pending_approvals": len(learning.get_pending_approvals())
+                    }
+                
+                # Safety status
+                safety = self.coordinator.agents.get("safety") if self.coordinator else None
+                if safety:
+                    result["safety"] = safety.get_safety_status()
+                
+                # Gas status
+                gas_opt = self.coordinator.agents.get("gas_optimizer") if self.coordinator else None
+                if gas_opt:
+                    result["gas"] = gas_opt.get_gas_report()
+                
+                # Pending approvals
+                if learning:
+                    result["pending_approvals"] = learning.get_pending_approvals()
+                
+                # Wallet info
+                try:
+                    wallet = self.coordinator.agents.get("wallet")
+                    if wallet and hasattr(wallet, "get_snapshot"):
+                        snapshot = wallet.get_snapshot() or {}
+                        result["wallet"] = {
+                            "equity_usd": snapshot.get("equity_usd_est", 0.0),
+                            "balances": snapshot.get("balances", [])
+                        }
+                except Exception:
+                    pass
+                
+                # Market info
+                try:
+                    latest_price = self.coordinator.data_cache.get("latest_price", 0.0)
+                    result["market"] = {
+                        "symbol": getattr(self.coordinator.cfg, "symbol", ""),
+                        "price": latest_price
+                    }
+                except Exception:
+                    pass
+                
+                return jsonify(result)
+            except Exception as e:
+                logging.exception("mobile/dashboard.json error")
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route("/control/mode", methods=["POST"])
         def control_mode():
@@ -1046,7 +1297,6 @@ class UIAgent:
             "worker_rsi": "WORKER-RSI",
             "worker_breakout": "WORKER-BREAKOUT",
             "worker_momentum": "WORKER-MOMENTUM",
-            "openclaw": "AUTONOMOUS",
         }
         bee_icon_map = {
             "QUEEN": "coordinator.png",
@@ -1348,7 +1598,7 @@ class UIAgent:
         max_dd = getattr(self.coordinator.cfg, 'max_drawdown_pct', 5)
         wallet_eth = self._get_wallet_snapshot().get('ETH', 'N/A')
         watch_addr = ""
-        openclaw_chat_endpoint = getattr(self.coordinator.cfg, "openclaw_chat_endpoint", "")
+        openclaw_chat_endpoint = "removed"
         try:
             watch_addr = (self._load_api_keys() or {}).get("watch_address", "") or ""
         except Exception:
@@ -1467,6 +1717,8 @@ class UIAgent:
     .nav a { color:var(--text); text-decoration:none; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.04); font-size:13px; }
     .nav a:hover { background:rgba(255,255,255,0.08); }
     .main { min-width:0; }
+    body.focus-mode #buzzCard, body.focus-mode #dexCard, body.focus-mode #audit, body.focus-mode #logCard { display:none !important; }
+    body.hide-advanced .advanced-card { display:none !important; }
     .brand { display:flex; flex-direction:column; gap:4px; }
     .brand-name { font-size:16px; font-weight:800; letter-spacing:.8px; }
     .brand-sub { font-size:12px; color:var(--muted); }
@@ -1576,6 +1828,8 @@ class UIAgent:
         <a href="#audit">Audit</a>
         <a href="/swarmguard">SwarmGuard</a>
         <a href="/buzz">BuzzCoin</a>
+        <a href="#" onclick="toggleFocusMode(); return false;">Toggle Focus Mode</a>
+        <a href="#" onclick="toggleAdvancedCards(); return false;">Toggle Advanced Cards</a>
       </nav>
     </aside>
     <main class="main">
@@ -1740,7 +1994,7 @@ class UIAgent:
       <div class="mini" style="margin-top:6px;"><a class="link" href="/swarmguard">Open SwarmGuard details</a></div>
     </div>
 
-    <div class="card" id="buzzCard" style="margin-top:12px;">
+    <div class="card advanced-card" id="buzzCard" style="margin-top:12px;">
       <div class="card-title">
         <img src="/static/buzzcoin.png" alt="BuzzCoin">
         <div>
@@ -1758,21 +2012,8 @@ class UIAgent:
         <div class="mini" id="coinSelectionList">Candidates: |</div>
       </div>
 
-      <div class="card" id="openclawChatCard" style="margin-top:12px;">
-        <h3>OpenClaw Chat</h3>
-        <div class="mini" id="openclawChatStatus">Endpoint: ${OPENCLAW_CHAT_ENDPOINT} (hf.space or huggingface.co)</div>
-        <div class="filters">
-          <input id="openclawChatEndpoint" placeholder="Hugging Face Space endpoint" value="${OPENCLAW_CHAT_ENDPOINT}" />
-          <input id="openclawChatToken" placeholder="HF token (optional)" type="password" autocomplete="off" />
-        </div>
-        <div class="filters">
-          <input id="openclawChatInput" placeholder="Ask OpenClaw..." />
-          <button class="btn" onclick="sendOpenClawChat()">Send</button>
-        </div>
-        <pre class="log-tail" id="openclawChatLog" style="max-height:220px;"></pre>
-      </div>
 
-    <div class="card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
+    <div class="card advanced-card" id="dexCard" style="margin-top:12px; display:$ONCHAIN_DISPLAY;">
       <h3>On-chain Trade Approval</h3>
       <div class="mini" id="dexStatus">No pending swaps</div>
       <div class="mini" id="dexDetails"></div>
@@ -1942,7 +2183,7 @@ class UIAgent:
       </table>
     </div>
 
-    <div class="card" id="config" style="margin-top:12px;">
+    <div class="card" id="logCard" style="margin-top:12px;">
       <h3>Live Logs</h3>
       <pre class="log-tail">${LOG_TAIL}</pre>
     </div>
@@ -1950,6 +2191,21 @@ class UIAgent:
 
   <script>
     const cb = () => 'v=' + Date.now();
+    function toggleFocusMode(){
+      document.body.classList.toggle('focus-mode');
+      try{ localStorage.setItem('hv_focus_mode', document.body.classList.contains('focus-mode') ? '1' : '0'); }catch(e){}
+    }
+
+    function toggleAdvancedCards(){
+      document.body.classList.toggle('hide-advanced');
+      try{ localStorage.setItem('hv_hide_advanced', document.body.classList.contains('hide-advanced') ? '1' : '0'); }catch(e){}
+    }
+
+    try{
+      if (localStorage.getItem('hv_focus_mode') === '1') document.body.classList.add('focus-mode');
+      if (localStorage.getItem('hv_hide_advanced') === '1') document.body.classList.add('hide-advanced');
+    }catch(e){}
+
     const UI_PORT = '$UI_PORT';
     const sameOrigin = (location.port === UI_PORT) || (location.hostname === '127.0.0.1') || (location.hostname === 'localhost');
     const API_BASE = sameOrigin ? '' : ('http://127.0.0.1:' + UI_PORT);
@@ -2052,7 +2308,7 @@ class UIAgent:
         const appendLog = (prefix, text) => {
           if (!log) return;
           const clean = sanitize(text);
-          log.textContent += `\n${prefix}${clean}`;
+          log.textContent += `\n$${prefix}$${clean}`;
           log.scrollTop = log.scrollHeight;
         };
         const message = (input && input.value ? input.value.trim() : '');

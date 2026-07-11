@@ -2,6 +2,7 @@ import time
 import logging
 import threading
 import os
+import requests
 from agents.market_data import MarketData, CoinGeckoData, SentimentData, TrendAnalysis, KrakenMarketData
 from agents.strategy import SMACrossoverStrategy, RSIStrategy, MACDStrategy
 from agents.execution import BinanceTrader, KrakenTrader
@@ -15,13 +16,31 @@ from agents.network_agent import NetworkAgent
 from agents.data_store_agent import DataStoreAgent
 from agents.performance_agent import PerformanceAgent
 from agents.security_agent import SecurityAgent
-from agents.openclaw import OpenClawAgent
 from agents.oracle_regime import RegimeOracle
 from agents.council import StrategyCouncil
 from agents.nurse import NurseAgent
 from agents.queen import GovernanceQueen
 from agents.strategy_workers import SMAWorker, RSIWorker, BreakoutWorker, MomentumWorker
 from typing import Optional, Dict, Any
+import uuid
+
+# Import new learning and safety systems
+try:
+    from agents.learning_engine import LearningEngine
+except ImportError:
+    LearningEngine = None
+try:
+    from agents.adaptive_coin_selector import AdaptiveCoinSelector
+except ImportError:
+    AdaptiveCoinSelector = None
+try:
+    from agents.gas_optimizer import GasOptimizer
+except ImportError:
+    GasOptimizer = None
+try:
+    from agents.safety_system import FoolproofSafetySystem
+except ImportError:
+    FoolproofSafetySystem = None
 
 
 class SwarmCoordinator:
@@ -69,6 +88,7 @@ class SwarmCoordinator:
         self._last_council = None
         self._last_nurse = None
         self._last_worker_proposals = None
+        self._tg_update_offset = 0
         self.override_request = {"enabled": False, "reason": ""}
         # Buzz governance staking (queen/council/oracle/kill/security)
         self._buzz_client = None
@@ -235,6 +255,88 @@ class SwarmCoordinator:
             self.strategy_workers = []
             logging.exception("Failed to initialize strategy workers")
 
+        # ============================================================
+        # NEW: Learning Engine - Adaptive profit tracking & strategy evolution
+        # ============================================================
+        try:
+            if LearningEngine:
+                self.agents["learning"] = LearningEngine(coordinator=self, db_path="data/learning.db")
+                # Set learning parameters from config
+                self.agents["learning"].approval_threshold_usd = getattr(self.cfg, "approval_threshold_usd", 10.0)
+                self.agents["learning"].max_position_pct_of_wallet = getattr(self.cfg, "max_position_pct", 0.10)
+                self.agents["learning"].risk_tolerance = getattr(self.cfg, "risk_tolerance", 0.5)
+                auto_trade = getattr(self.cfg, "auto_trade_enabled", False)
+                self.agents["learning"].set_auto_trade(auto_trade)
+                logging.info("Learning Engine initialized - Adaptive profit tracking enabled")
+            else:
+                self.agents["learning"] = None
+        except Exception:
+            self.agents["learning"] = None
+            logging.exception("Failed to initialize Learning Engine")
+
+        # ============================================================
+        # NEW: Gas Optimizer - Minimize transaction costs
+        # ============================================================
+        try:
+            if GasOptimizer:
+                self.agents["gas_optimizer"] = GasOptimizer(coordinator=self)
+                # Configure gas settings
+                self.agents["gas_optimizer"].batch_enabled = getattr(self.cfg, "gas_batch_enabled", True)
+                self.agents["gas_optimizer"].batch_threshold_usd = getattr(self.cfg, "gas_batch_threshold_usd", 5.0)
+                self.agents["gas_optimizer"].max_gas_pct = getattr(self.cfg, "max_gas_pct", 0.05)
+                logging.info("Gas Optimizer initialized - Base L2 primary, batch trading enabled")
+            else:
+                self.agents["gas_optimizer"] = None
+        except Exception:
+            self.agents["gas_optimizer"] = None
+            logging.exception("Failed to initialize Gas Optimizer")
+
+        # ============================================================
+        # NEW: Adaptive Coin Selector - Profit-first coin selection
+        # ============================================================
+        try:
+            if AdaptiveCoinSelector:
+                self.agents["adaptive_selector"] = AdaptiveCoinSelector(
+                    coordinator=self,
+                    learning_engine=self.agents.get("learning")
+                )
+                # Configure selection parameters
+                self.agents["adaptive_selector"].min_volume_usd = getattr(self.cfg, "min_volume_usd", 50000)
+                self.agents["adaptive_selector"].max_coins = getattr(self.cfg, "max_tracked_coins", 10)
+                self.agents["adaptive_selector"].rotation_interval_sec = getattr(self.cfg, "coin_rotation_interval_sec", 3600)
+                self.agents["adaptive_selector"].min_liquidity_usd = getattr(self.cfg, "adaptive_min_liquidity_usd", 10000)
+                self.agents["adaptive_selector"].max_spread_pct = getattr(self.cfg, "adaptive_max_spread_pct", 0.03)
+                self.agents["adaptive_selector"].min_volatility_pct = getattr(self.cfg, "adaptive_min_volatility_pct", 0.20)
+                self.agents["adaptive_selector"].max_volatility_pct = getattr(self.cfg, "adaptive_max_volatility_pct", 1.00)
+                logging.info("Adaptive Coin Selector initialized - Profit-first selection enabled")
+            else:
+                self.agents["adaptive_selector"] = None
+        except Exception:
+            self.agents["adaptive_selector"] = None
+            logging.exception("Failed to initialize Adaptive Coin Selector")
+
+        # ============================================================
+        # NEW: Foolproof Safety System - Multi-layer trade validation
+        # ============================================================
+        try:
+            if FoolproofSafetySystem:
+                self.agents["safety"] = FoolproofSafetySystem(
+                    coordinator=self,
+                    learning_engine=self.agents.get("learning"),
+                    gas_optimizer=self.agents.get("gas_optimizer")
+                )
+                # Configure safety limits
+                self.agents["safety"].max_position_pct = getattr(self.cfg, "max_position_pct", 0.10)
+                self.agents["safety"].max_daily_loss_pct = getattr(self.cfg, "max_daily_loss_pct", 0.05)
+                self.agents["safety"].max_drawdown_pct = getattr(self.cfg, "max_drawdown_pct", 0.10)
+                self.agents["safety"].max_trades_per_hour = getattr(self.cfg, "max_trades_per_hour", 10)
+                logging.info("Foolproof Safety System initialized - Multi-layer validation enabled")
+            else:
+                self.agents["safety"] = None
+        except Exception:
+            self.agents["safety"] = None
+            logging.exception("Failed to initialize Safety System")
+
         # Execution Agent
         self.agents["execution"] = None  # Will be set in initialize
 
@@ -310,25 +412,8 @@ class SwarmCoordinator:
         else:
             self.agents["security"] = None
 
-        # OpenClaw Agent (custom local agent)
-        try:
-            agent = OpenClawAgent(
-                coordinator=self,
-                cfg={
-                    "heartbeat_sec": getattr(self.cfg, "openclaw_heartbeat_sec", 5),
-                    "openclaw_chat_endpoint": getattr(self.cfg, "openclaw_chat_endpoint", ""),
-                    "openclaw_chat_token": getattr(self.cfg, "openclaw_chat_token", ""),
-                    "openclaw_chat_format": getattr(self.cfg, "openclaw_chat_format", "hf_space"),
-                },
-            )
-            self.agents["openclaw"] = agent
-            try:
-                agent.start()
-                logging.info("OpenClaw Agent initialized and started.")
-            except Exception:
-                logging.exception("OpenClaw Agent failed to start")
-        except Exception:
-            self.agents["openclaw"] = None
+        # OpenClaw removed: autonomy handled by QUEEN governance only.
+        self.agents["openclaw"] = None
 
         # Set initial health
         for name in self.agents:
@@ -1175,6 +1260,55 @@ class SwarmCoordinator:
                 intent['state'] = 'DONE'
                 intent['final_status'] = status
                 logging.info(f"Intent {intent_id} finished with status {status}")
+                
+                # ============================================================
+                # NEW: Record trade outcome in Learning Engine
+                # ============================================================
+                try:
+                    learning = self.agents.get('learning')
+                    safety = self.agents.get('safety')
+                    
+                    if status == "FILLED" and learning:
+                        # Calculate profit (simplified - in production use actual exit price)
+                        entry_price = float(intent.get('price', 0) or 0)
+                        exit_price = float(p.get('avg_price', entry_price) or entry_price)
+                        quantity = float(intent.get('qty', 0) or 0)
+                        gas_cost = float(p.get('fees', 0) or p.get('gas_cost', 0) or 0)
+                        symbol = intent.get('symbol', '')
+                        worker = intent.get('strategy', 'UNKNOWN')
+                        action = intent.get('action', 'BUY')
+                        regime = intent.get('regime', 'UNKNOWN')
+                        
+                        # Record in learning engine
+                        learning.record_trade_outcome(
+                            symbol=symbol,
+                            worker=worker,
+                            action=action,
+                            entry_price=entry_price,
+                            exit_price=exit_price,
+                            quantity=quantity,
+                            gas_cost_usd=gas_cost,
+                            regime=regime,
+                            signal_strength=float(intent.get('signal_strength', 0) or 0)
+                        )
+                        
+                        # Calculate profit for safety system
+                        if action.upper() == "BUY":
+                            profit = (exit_price - entry_price) * quantity - gas_cost
+                        else:
+                            profit = (entry_price - exit_price) * quantity - gas_cost
+                        
+                        is_win = profit > 0
+                        
+                        # Record in safety system
+                        if safety:
+                            safety.record_trade_result(intent_id, profit, is_win)
+                        
+                        logging.info(f"Learning recorded: {symbol} {action} profit=${profit:.4f} win={is_win}")
+                        
+                except Exception:
+                    logging.exception("Failed to record trade outcome in learning engine")
+                
                 # Write to logging/data_store if present
                 try:
                     trade = {
@@ -1706,37 +1840,30 @@ class SwarmCoordinator:
                 except Exception:
                     council_decision = None
 
-                decision = None
-                # OpenClaw autonomy override: allow the autonomous agent to drive decisions
-                if getattr(self.cfg, "openclaw_autonomy_enabled", False):
-                    try:
-                        openclaw = self.agents.get("openclaw")
-                        if openclaw and hasattr(openclaw, "decide"):
-                            autonomy_decision = openclaw.decide(
-                                council_decision=council_decision,
-                                proposals=proposals,
-                                regime_snapshot=regime_snapshot,
-                                cfg=self.cfg,
+                # Learning after each strategy cycle: update worker priors and publish summary
+                try:
+                    learning = self.agents.get("learning")
+                    if learning and hasattr(learning, "record_cycle_feedback"):
+                        learning.record_cycle_feedback(
+                            symbol=self.cfg.symbol,
+                            regime_snapshot=regime_snapshot or {},
+                            proposals=proposals or [],
+                            council_decision=council_decision or {},
+                            buzz_cycle=(self.get_shared_data("buzz.cycle.snapshot") or getattr(self, "_buzz_cycle_snapshot", {}) or {}),
+                        )
+                        # optional: pass direct worker stake map from buzz cycle state
+                        if hasattr(self, "_buzz_cycle_stakes") and isinstance(self._buzz_cycle_stakes, dict):
+                            learning.record_cycle_feedback(
+                                symbol=self.cfg.symbol,
+                                regime_snapshot=regime_snapshot or {},
+                                proposals=proposals or [],
+                                council_decision=council_decision or {},
+                                buzz_cycle={"stakes": dict(self._buzz_cycle_stakes)},
                             )
-                            if autonomy_decision:
-                                approved = bool(autonomy_decision.get("approved"))
-                                decision = {
-                                    "approved": approved,
-                                    "action": autonomy_decision.get("action") or "HOLD",
-                                    "strategy": autonomy_decision.get("strategy") or "OPENCLAW",
-                                    "position_size": None,
-                                    "rationale": autonomy_decision.get("rationale") or "OPENCLAW_AUTONOMY",
-                                    "signal_id": autonomy_decision.get("signal_id"),
-                                    "svs": autonomy_decision.get("score"),
-                                    "ts": int(time.time() * 1000),
-                                    "autonomy": True,
-                                }
-                                self.share_data("buzz.governance.decision", {
-                                    "buzz": {"type": "buzz.governance.decision", "source": "AUTONOMOUS", "ts": int(time.time() * 1000)},
-                                    "payload": decision,
-                                })
-                    except Exception as e:
-                        logging.exception("Error during OpenClaw autonomy decision", exc_info=e)
+                except Exception:
+                    logging.exception("learning cycle feedback failed")
+
+                decision = None
 
                 # Governance decision (Queen)
                 if decision is None:
@@ -1771,8 +1898,6 @@ class SwarmCoordinator:
                             try:
                                 if self.agents.get("logging"):
                                     perf_metrics = self.agents["logging"].get_metrics() or {}
-                            except Exception:
-                                # Best-effort: performance metrics are optional for governance decisions
                             except Exception as e:
                                 # Default to empty metrics if logging agent is unavailable or fails.
                                 # Governance can still make decisions without performance metrics.
@@ -2220,12 +2345,102 @@ class SwarmCoordinator:
                         logging.info("BUY skipped: insufficient quote balance.")
                         continue
 
-                    # Create intent and client_order_id
+                    trade_value_usd = buy_qty * latest_price
+                    
+                    # ============================================================
+                    # NEW: Multi-layer safety validation (FOOLPROOF)
+                    # ============================================================
+                    safety = self.agents.get('safety')
+                    learning = self.agents.get('learning')
+                    gas_optimizer = self.agents.get('gas_optimizer')
+                    
+                    # Pre-generate intent_id for tracking
                     self._intent_counter += 1
                     intent_id = f"intent-{int(time.time())}-{self.cfg.symbol}-{self._intent_counter}"
+                    
+                    # Validate through safety system
+                    if safety:
+                        validation = safety.validate_trade(
+                            trade_id=intent_id,
+                            symbol=self.cfg.symbol,
+                            action="BUY",
+                            quantity=buy_qty,
+                            price=latest_price,
+                            wallet_balance_usd=quote_free,
+                            current_positions=[]  # Would fetch from position tracker
+                        )
+                        
+                        if not validation.approved:
+                            logging.warning(f"Safety BLOCKED trade {intent_id}: {validation.rejection_reasons}")
+                            try:
+                                self.share_data('buzz.safety.blocked', {
+                                    "intent_id": intent_id,
+                                    "symbol": self.cfg.symbol,
+                                    "action": "BUY",
+                                    "amount_usd": trade_value_usd,
+                                    "safety_level": validation.safety_level.value,
+                                    "reasons": validation.rejection_reasons,
+                                    "checks_failed": validation.checks_failed
+                                })
+                            except Exception:
+                                pass
+                            continue
+                        
+                        # Apply recommended size from safety
+                        if validation.recommended_size < trade_value_usd:
+                            adjusted_qty = validation.recommended_size / latest_price
+                            logging.info(f"Safety adjusted trade size: {buy_qty:.6f} -> {adjusted_qty:.6f}")
+                            buy_qty = adjusted_qty
+                            trade_value_usd = validation.recommended_size
+                    
+                    # Check gas efficiency
+                    if gas_optimizer:
+                        is_efficient, gas_msg = gas_optimizer.is_trade_gas_efficient(trade_value_usd)
+                        if not is_efficient:
+                            logging.warning(f"Gas inefficient trade: {gas_msg}")
+                            # Consider batching instead
+                            if gas_optimizer.should_batch(trade_value_usd):
+                                batch_id = gas_optimizer.add_to_batch({
+                                    "trade_id": intent_id,
+                                    "symbol": self.cfg.symbol,
+                                    "action": "BUY",
+                                    "quantity": buy_qty,
+                                    "price": latest_price,
+                                    "notional_usd": trade_value_usd
+                                })
+                                logging.info(f"Trade batched for gas efficiency: {batch_id}")
+                                continue
+                    
+                    # Check if learning engine requires approval
+                    if learning and learning.should_require_approval(trade_value_usd, validation if safety else None):
+                        approval = learning.request_approval(
+                            trade_id=intent_id,
+                            symbol=self.cfg.symbol,
+                            action="BUY",
+                            amount_usd=trade_value_usd,
+                            validation=validation if safety else None,
+                            timeout_sec=300
+                        )
+                        logging.info(f"Trade pending approval: {intent_id} amount=${trade_value_usd:.2f}")
+                        self.share_data('buzz.approval.pending', {
+                            "intent_id": intent_id,
+                            "symbol": self.cfg.symbol,
+                            "action": "BUY",
+                            "amount_usd": trade_value_usd,
+                            "timeout_sec": 300
+                        })
+                        continue
+                    
+                    # Update trade value after safety adjustments
+                    trade_value_usd = buy_qty * latest_price
+
+                    if not self._queen_telegram_confirm(action="BUY", symbol=self.cfg.symbol, qty=buy_qty, price=latest_price, reason=decision_reason or "POLICY_OK"):
+                        logging.warning("QUEEN Telegram veto/timeout for BUY")
+                        continue
+
                     client_order_id = f"{intent_id}-A"
 
-                    # store intent minimal record
+                    # store intent minimal record with learning data
                     self.intents[intent_id] = {
                         "symbol": self.cfg.symbol,
                         "action": "BUY",
@@ -2233,7 +2448,10 @@ class SwarmCoordinator:
                         "price": latest_price,
                         "client_order_id": client_order_id,
                         "state": "SENT",
-                        "created_ts": time.time()
+                        "created_ts": time.time(),
+                        "strategy": decision_strategy or "UNKNOWN",
+                        "regime": self._last_regime or "UNKNOWN",
+                        "signal_strength": 0.0  # Updated by learning engine
                     }
 
                     # Emit coordinator decision into shared store for UI/debug
@@ -2368,6 +2586,11 @@ class SwarmCoordinator:
                         sell_qty = min(position_size, base_free)
                         if sell_qty <= 0:
                             continue
+
+                        if not self._queen_telegram_confirm(action="SELL", symbol=self.cfg.symbol, qty=sell_qty, price=latest_price, reason=decision_reason or "POLICY_OK"):
+                            logging.warning("QUEEN Telegram veto/timeout for SELL")
+                            continue
+
                         self._intent_counter += 1
                         intent_id = f"intent-{int(time.time())}-{self.cfg.symbol}-{self._intent_counter}"
                         client_order_id = f"{intent_id}-A"
@@ -2451,10 +2674,85 @@ class SwarmCoordinator:
                 try:
                     logging.exception(f"Loop error: {e}")
                 except Exception:
-                    import traceback, sys
+                    import traceback
+                    import sys
                     traceback.print_exc(file=sys.stderr)
 
             time.sleep(self.cfg.poll_seconds)
+
+
+    def _telegram_confirmation_enabled(self) -> bool:
+        return bool(getattr(self.cfg, "queen_telegram_confirm_enabled", False))
+
+    def _send_telegram_message(self, text: str) -> bool:
+        token = getattr(self.cfg, "telegram_bot_token", None)
+        chat_id = getattr(self.cfg, "telegram_chat_id", None)
+        if not token or not chat_id:
+            return False
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            resp = requests.post(url, json={"chat_id": str(chat_id), "text": text}, timeout=8)
+            return bool(resp.ok)
+        except Exception:
+            return False
+
+    def _await_telegram_confirmation(self, request_id: str, timeout_sec: int) -> Optional[bool]:
+        token = getattr(self.cfg, "telegram_bot_token", None)
+        chat_id = str(getattr(self.cfg, "telegram_chat_id", "") or "")
+        if not token or not chat_id:
+            return None
+        deadline = time.time() + max(5, int(timeout_sec or 60))
+        while time.time() < deadline:
+            try:
+                url = f"https://api.telegram.org/bot{token}/getUpdates"
+                params = {"timeout": 10}
+                if self._tg_update_offset:
+                    params["offset"] = self._tg_update_offset
+                resp = requests.get(url, params=params, timeout=15)
+                if not resp.ok:
+                    time.sleep(1)
+                    continue
+                updates = (resp.json() or {}).get("result") or []
+                for upd in updates:
+                    uid = upd.get("update_id")
+                    if uid is not None:
+                        self._tg_update_offset = int(uid) + 1
+                    msg = upd.get("message") or {}
+                    msg_chat = str((msg.get("chat") or {}).get("id") or "")
+                    if msg_chat != chat_id:
+                        continue
+                    txt = str(msg.get("text") or "").strip().lower()
+                    if request_id.lower() in txt:
+                        if txt.startswith('/approve') or txt.startswith('approve'):
+                            return True
+                        if txt.startswith('/reject') or txt.startswith('reject'):
+                            return False
+                time.sleep(1)
+            except Exception:
+                time.sleep(2)
+        return None
+
+    def _queen_telegram_confirm(self, *, action: str, symbol: str, qty: float, price: float, reason: str = "") -> bool:
+        if not self._telegram_confirmation_enabled():
+            return True
+        request_id = f"Q-{uuid.uuid4().hex[:8]}"
+        notional = float(qty or 0.0) * float(price or 0.0)
+        text = (
+            f"QUEEN CONFIRM {request_id}\n"
+            f"Action: {action} {symbol}\n"
+            f"Qty: {qty:.8f} @ {price:.6f}\n"
+            f"Notional: ${notional:.4f}\n"
+            f"Reason: {reason or 'POLICY_OK'}\n\n"
+            f"Reply: /approve {request_id} OR /reject {request_id}"
+        )
+        sent = self._send_telegram_message(text)
+        if not sent:
+            return bool(getattr(self.cfg, "queen_telegram_fail_open", False))
+        timeout_sec = int(getattr(self.cfg, "queen_telegram_confirm_timeout_sec", 90) or 90)
+        decision = self._await_telegram_confirmation(request_id, timeout_sec)
+        if decision is None:
+            return bool(getattr(self.cfg, "queen_telegram_fail_open", False))
+        return bool(decision)
 
     def _call_with_timeout(self, fn, timeout: float = 3.0, *args, **kwargs):
         """Call a blocking function in a thread with a timeout. Returns None on timeout or exception."""
@@ -2847,6 +3145,10 @@ class SwarmCoordinator:
                 except Exception:
                     pass
 
+                # regime snapshot (get before council collection)
+                exec_agent = self._get_exec_for_symbol(sym)
+                regime_snapshot = self._get_regime_for_symbol(sym, exec_agent)
+                
                 # proposals via council
                 proposals = []
                 if self.agents.get("council") and self.strategy_workers:
@@ -2860,9 +3162,7 @@ class SwarmCoordinator:
                         perf_by_worker={},
                     )
 
-                # regime snapshot
-                exec_agent = self._get_exec_for_symbol(sym)
-                regime_snapshot = self._get_regime_for_symbol(sym, exec_agent)
+                # emit regime snapshot
                 if regime_snapshot:
                     try:
                         self.share_data("buzz.regime.snapshot", {

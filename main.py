@@ -122,6 +122,10 @@ class Config:
     max_consecutive_losses: int
     kill_switch_grace_sec: int
     kill_switch_enforce_stale: bool
+    adaptive_min_liquidity_usd: float
+    adaptive_max_spread_pct: float
+    adaptive_min_volatility_pct: float
+    adaptive_max_volatility_pct: float
 
     ui_enabled: bool
     ui_host: str
@@ -149,8 +153,11 @@ class Config:
     buzz_shared_secret: Optional[str]
     buzz_account: Optional[str]
 
-    openclaw_autonomy_enabled: bool
-    openclaw_autonomy_min_score: float
+    queen_telegram_confirm_enabled: bool
+    queen_telegram_confirm_timeout_sec: int
+    queen_telegram_fail_open: bool
+    telegram_bot_token: Optional[str]
+    telegram_chat_id: Optional[str]
 
     web3_rpc_url: Optional[str]
     watch_address: Optional[str]
@@ -294,6 +301,10 @@ def load_config() -> Config:
         max_consecutive_losses=settings.get("max_consecutive_losses", 5),
         kill_switch_grace_sec=settings.get("kill_switch_grace_sec", 120),
         kill_switch_enforce_stale=settings.get("kill_switch_enforce_stale", True),
+        adaptive_min_liquidity_usd=settings.get("adaptive_min_liquidity_usd", 10000.0),
+        adaptive_max_spread_pct=settings.get("adaptive_max_spread_pct", 0.03),
+        adaptive_min_volatility_pct=settings.get("adaptive_min_volatility_pct", 0.20),
+        adaptive_max_volatility_pct=settings.get("adaptive_max_volatility_pct", 1.00),
 
         ui_enabled=settings.get("ui_enabled", True),
         ui_host=settings.get("ui_host", "0.0.0.0"),
@@ -321,8 +332,11 @@ def load_config() -> Config:
         buzz_shared_secret=settings.get("buzz_shared_secret", ""),
         buzz_account=settings.get("buzz_account", "hivenance-system"),
 
-        openclaw_autonomy_enabled=settings.get("openclaw_autonomy_enabled", False),
-        openclaw_autonomy_min_score=settings.get("openclaw_autonomy_min_score", 0.55),
+        queen_telegram_confirm_enabled=settings.get("queen_telegram_confirm_enabled", False),
+        queen_telegram_confirm_timeout_sec=settings.get("queen_telegram_confirm_timeout_sec", 90),
+        queen_telegram_fail_open=settings.get("queen_telegram_fail_open", False),
+        telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN") or settings.get("telegram_bot_token") or api_keys.get("telegram_bot_token"),
+        telegram_chat_id=settings.get("telegram_chat_id") or api_keys.get("telegram_chat_id"),
 
         web3_rpc_url=api_keys.get("web3_rpc_url") or settings.get("web3_rpc_url"),
         watch_address=api_keys.get("watch_address") or settings.get("watch_address"),

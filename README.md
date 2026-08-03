@@ -61,7 +61,7 @@ Would scale exposure only through a governed sequence of proposal, delay, approv
 
 ## Current operational snapshot
 
-As of **Sunday, August 2, 2026**, the system is best described as:
+As of **Monday, August 3, 2026**, the system is best described as:
 
 - **Phase 1 observation:** healthy and running.
 - **Phase 2 hypotheses:** active and producing a large body of settled research evidence.
@@ -74,17 +74,17 @@ This means the stack is operational as a **research and governance system**, but
 
 ## Piece-by-piece score
 
-These scores are an honest read of the current system state on **Sunday, August 2, 2026**.
+These scores are an honest read of the current system state on **Monday, August 3, 2026**.
 
 - architecture clarity: **8.5/10**
 - safety and governance: **9/10**
 - observation quality: **8.5/10**
 - feature and evidence plumbing: **8/10**
-- hypothesis quality: **4/10**
+- hypothesis quality: **4.5/10**
 - execution realism: **7.5/10**
 - validation rigor: **7.5/10**
 - frontend and operator usability: **6.5/10**
-- profit readiness: **3.5/10**
+- profit readiness: **4/10**
 - overall as a governed research platform: **8/10**
 - overall as a live profit machine today: **4/10**
 
@@ -93,6 +93,36 @@ Interpretation:
 - The system is unusually strong at structuring research, preserving evidence, and preventing unsafe promotion.
 - The system is materially weaker at proving durable, post-cost alpha in the current live research record.
 - In plain terms: this is a **good governed platform with a weak demonstrated edge**, not a bad system.
+
+## What Is Actually Working
+
+What is real today:
+
+- Phase 1 is collecting market observations, ranking symbols, tagging tradability, and persisting durable snapshots.
+- Phase 2 is generating frozen forecasts, settling them later, and building a real evidence ledger instead of hand-wavy backtests.
+- Phase 3 is simulating execution under spread, slippage, latency, participation, and stress-policy assumptions.
+- Phase 4 is rejecting premature promotion rather than letting attractive-but-fragile candidates slip through.
+- The desktop stack can display compact backend snapshots without hanging on the large SQLite store.
+
+What is not real yet:
+
+- there is no earned right to scale capital
+- there is no credible unattended live-profit claim
+- there is no broad, repeatable, post-cost edge across the current candidate population
+
+## Where The Bottleneck Is
+
+The bottleneck is not observation quality anymore. It is the conversion from:
+
+`observed market state -> forecast edge -> executable edge -> robust promoted edge`
+
+The weakest link remains the middle of that chain:
+
+- too many Phase-2 candidates are still negative after cost
+- too few Phase-3 candidates survive live intake gates
+- positive pockets exist, but they are still too selective and too small-sample to justify capital trust
+
+That means the system should currently be treated as a **truth-seeking research and governance machine**, not as a proven profit engine.
 
 ## Startup
 
@@ -273,25 +303,38 @@ Recent work in this branch materially improved the research stack even though it
 - Improved Phase-4 validation sampling to use a more balanced per-candidate/per-scenario dataset slice.
 - Upgraded the desktop validation page to surface champion, pass/fail summary, robustness, and top failure context.
 
-## Honest assessment
+## Honest Evaluation
 
-This is **not** yet a system I would trust to trade for profit unattended.
+This is **not yet a system I would trust to trade unattended for profit**.
 
-The good news:
+The strongest parts:
 
-- observation quality looks real and healthy
-- research generation is active
-- execution simulation is rich, cost-aware, and far more serious than a toy backtest
-- governance is correctly blocking unsafe promotion
+- governance and authority boundaries are better than most hobby or even semi-serious trading stacks
+- observation capture is live, durable, and useful
+- execution simulation is materially more realistic than a simple backtest-only workflow
+- the platform now has enough structure to falsify bad ideas instead of merely generating them
 
-The bad news:
+The weakest parts:
 
-- the broad Phase-2 scorecard is still negative after costs for the main candidates
-- the current live Phase-3 intake is mostly saying “no edge”
-- the strongest positive findings are still selective slices, not a stable end-to-end production edge
-- there is still a meaningful risk of mistaking simulation cleverness for market edge
+- the main research population still does not show broad positive post-cost performance
+- the execution lab is finding some positive pockets, but not enough robust throughput
+- sample quality is still uneven, with too much dependence on narrow slices and conditional wins
+- profitability is still more of a thesis than a demonstrated fact
 
-My honest view is that the system premise is **promising as a governed research platform**, but **not yet validated as a profit machine**. The next valuable work is not “turn it on harder”; it is improving signal quality, candidate discrimination, and regime-aware selection until positive results survive both settlement and execution stress with enough sample size to matter.
+My honest judgment:
+
+- as a governed research platform: **strong**
+- as a capital-preserving decision framework: **promising**
+- as a current profit machine: **not there yet**
+
+If I were making the call purely on evidence, I would say:
+
+1. Keep running Phase 1 and Phase 2 to deepen settled evidence.
+2. Keep improving candidate selection and regime-specific routing.
+3. Do not treat synthetic passes or isolated positive simulation pockets as proof of edge.
+4. Do not unlock meaningful live capital until a candidate family stays positive after cost, after execution modeling, and after adversarial review with enough samples to matter.
+
+That may sound conservative, but it is the correct kind of conservative. The system is doing something valuable already: it is preventing us from lying to ourselves about profit.
 
 See:
 

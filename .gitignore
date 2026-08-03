@@ -1,5 +1,32 @@
-__pycache__/
-*.pyc
+# Local secrets and runtime state
+.env
+.env.*
+!.env.example
+config/api_keys.json
+config/api_keys.json.backup
+config/encryption.key
+
+# Runtime artifacts
+data/
 logs/
-data/*.db-shm
-data/*.db-wal
+buzzservice.db
+*.db
+*.sqlite*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Electron / Node
+desktop-ui/node_modules/
+desktop-ui/dist/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Local operator profiles
+config/*.local.yaml

@@ -10,7 +10,9 @@ from .db import BuzzDB
 from .auth import verify_signature
 
 # Configure via env in real deployment
-HMAC_SHARED_SECRET = os.environ.get("BUZZ_SHARED_SECRET", "") or os.environ.get("HIVE_SHARED_SECRET", "") or "CHANGE_ME"
+HMAC_SHARED_SECRET = os.environ.get("BUZZ_SHARED_SECRET", "") or os.environ.get("HIVE_SHARED_SECRET", "")
+if not HMAC_SHARED_SECRET or HMAC_SHARED_SECRET == "CHANGE_ME":
+    raise RuntimeError("BUZZ_SHARED_SECRET is required and may not use the placeholder value")
 db = BuzzDB("buzzservice.db")
 
 app = FastAPI(title="BuzzService v1", version="1.0")
@@ -92,9 +94,13 @@ def root():
         ],
     }
 
+@app.get("/health")
+def health():
+    return {"ok": True, "service": "BuzzService", "version": "1.0"}
+
 @app.get("/buzz")
 def buzz_alias():
-    return {"detail": "Use the UI at /buzz on the main app (port 5000)."}
+    return {"detail": "Use the UI at /buzz on the main app (port 5001)."}
 
 
 @app.post("/v1/admin/credit")

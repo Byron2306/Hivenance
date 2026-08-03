@@ -22,7 +22,7 @@
    npm start
    ```
 
-The desktop application will launch and connect to your backend at `http://127.0.0.1:5000`.
+The desktop application will launch and connect to your backend at `http://127.0.0.1:5001`.
 
 ## First Time Setup
 
@@ -39,3 +39,13 @@ The desktop application will launch and connect to your backend at `http://127.0
 - The app remembers your settings between sessions
 
 Enjoy your Hivenance Desktop UI!
+
+## Phase 2 research-only runner
+
+From the repository root, run:
+
+```bash
+python scripts/run_phase2_hypotheses.py --once
+```
+
+Then open **Hypotheses** in the desktop console. All Phase-2 forecasts remain non-executable.

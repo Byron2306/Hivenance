@@ -17,7 +17,9 @@ from .idempotency_db import IdempotencyDB
 from .rules_v1 import load_rules
 
 
-HMAC_SHARED_SECRET = os.environ.get("SWARMGUARD_HMAC_SECRET", "CHANGE_ME")
+HMAC_SHARED_SECRET = os.environ.get("SWARMGUARD_HMAC_SECRET", "")
+if not HMAC_SHARED_SECRET or HMAC_SHARED_SECRET == "CHANGE_ME":
+    raise RuntimeError("SWARMGUARD_HMAC_SECRET is required and may not use the placeholder value")
 BUZZ_BASE_URL = os.environ.get("BUZZ_BASE_URL", "http://localhost:9009")
 BUZZ_ACCOUNT = os.environ.get("BUZZ_ACCOUNT", "hivenance-system")
 BUZZ_SERVICE_NAME = os.environ.get("BUZZ_SERVICE_NAME", "swarmguard")

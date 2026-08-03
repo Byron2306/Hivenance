@@ -15,7 +15,7 @@ A standalone desktop application for the Hivenance Trading Agent system, built w
 
 - Node.js (v18 or higher)
 - npm or yarn
-- Running Hivenance backend (Flask server on port 5000)
+- Running Hivenance backend (Flask server on port 5001)
 
 ## Installation
 
@@ -63,7 +63,7 @@ The built application will be in the `dist/` directory.
 
 ### Backend Connection
 
-The default backend URL is `http://127.0.0.1:5000`. You can change this in the Settings view within the application.
+The default backend URL is `http://127.0.0.1:5001`. You can change this in the Settings view within the application.
 
 To change the default:
 1. Open the application
@@ -156,3 +156,9 @@ mainWindow.webContents.openDevTools();
 ## License
 
 MIT
+
+## Phoenix Phase 2
+
+The desktop console includes a **Hypotheses** page backed by `/hypotheses.json`. It shows
+primary models and baselines, forecast horizons, abstentions, estimated costs, settled outcomes,
+Brier scores and the Phase-3 human-review gate. It is a research display and cannot submit orders.

@@ -1,0 +1,13 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="card">
+    <h2 class="card-title">Live Dashboard</h2>
+    <p>Welcome to Hivenance. System is running.</p>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Market Overview</h2>
+    <p>Price: {{ market.price }}</p>
+</div>
+{% endblock %}

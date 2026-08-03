@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Hummingbot Lifecycle">
+  <defs>
+    <linearGradient id="hb-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#221609"/>
+      <stop offset="100%" stop-color="#110a04"/>
+    </linearGradient>
+    <linearGradient id="hb-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffd46b"/>
+      <stop offset="100%" stop-color="#d18113"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#hb-bg)"/>
+  <circle cx="128" cy="128" r="64" fill="none" stroke="url(#hb-gold)" stroke-width="12" stroke-dasharray="18 14"/>
+  <path d="M128 72a56 56 0 0 1 50 30" fill="none" stroke="url(#hb-gold)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M168 88l18 10-14 14" fill="none" stroke="url(#hb-gold)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="96" y="102" width="64" height="52" rx="14" fill="#261708" stroke="url(#hb-gold)" stroke-width="8"/>
+  <path d="M128 154v28" stroke="url(#hb-gold)" stroke-width="10" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,53 @@
+version: 2
+phase0_quarantine: true
+dry_run: true
+live_mode: false
+evidence_policy:
+  profit_claims: untrusted_until_real_phase6_evidence
+  external_evidence: unvalidated_import_for_phase2_only
+  promotion_authority: phase4_then_phase5_human_review
+  live_order_authority: phase6_canary_operator_only
+  scaling_authority: phase7_growth_governor_only
+  legacy_auto_promotion: false
+layers: []
+systems:
+  freqtrade:
+    role: external_backtest_benchmark
+    mode: research_only
+    phoenix_entry_phase: 2
+  hummingbot:
+    role: validate_only_execution_reference
+    mode: plan_monitor_stop_only
+    phoenix_entry_phase: 3
+  jesse:
+    role: external_strategy_benchmark
+    mode: research_only
+    phoenix_entry_phase: 2
+  nautilus_trader:
+    role: oms_and_replay_reference
+    mode: architecture_reference
+    phoenix_entry_phase: 3
+  hftbacktest:
+    role: l2_queue_research
+    mode: data_dependent_research
+    phoenix_entry_phase: 3
+  ml_research_lab:
+    role: offline_candidate_generator
+    mode: offline_only
+    phoenix_entry_phase: 2
+  signal_marketplace:
+    role: sandbox_strategy_tournament
+    mode: dormant_simulated_rewards
+    phoenix_entry_phase: 2
+authority:
+  sole_live_order_authority: phase6_canary_operator
+  sole_scaling_authority: phase7_growth_governor
+  legacy_submit: denied
+  legacy_promote: denied
+  legacy_resume: denied
+  legacy_scale: denied
+next_actions:
+- Collect genuine Phase 1 observations
+- Route external evidence through Phase 2
+- Use execution parity as diagnostics only
+- Keep signal marketplace dormant and simulated

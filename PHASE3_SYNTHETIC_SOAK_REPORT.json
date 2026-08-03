@@ -1,0 +1,171 @@
+{
+  "counts": {
+    "orders": 0,
+    "simulated_cost_attribution": 2000,
+    "simulated_fills": 2682,
+    "simulated_order_events": 16531,
+    "simulated_order_intents": 2000,
+    "simulated_orders": 2000,
+    "simulated_positions": 2000,
+    "simulation_incidents": 72,
+    "simulation_runs": 8
+  },
+  "cycles": [
+    {
+      "completed": 226,
+      "completed_at_ms": 1785531566216,
+      "execution_wired": false,
+      "expired": 106,
+      "forecasts_examined": 17,
+      "partial_fills": 157,
+      "real_orders_submitted": 0,
+      "rejected": 8,
+      "run_id": "sim-1785531565954-4311911d",
+      "simulations_created": 340,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531565954,
+      "unknown_incidents": 6
+    },
+    {
+      "completed": 230,
+      "completed_at_ms": 1785531566569,
+      "execution_wired": false,
+      "expired": 96,
+      "forecasts_examined": 17,
+      "partial_fills": 158,
+      "real_orders_submitted": 0,
+      "rejected": 14,
+      "run_id": "sim-1785531566276-d7472a59",
+      "simulations_created": 340,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531566276,
+      "unknown_incidents": 12
+    },
+    {
+      "completed": 226,
+      "completed_at_ms": 1785531566884,
+      "execution_wired": false,
+      "expired": 103,
+      "forecasts_examined": 17,
+      "partial_fills": 151,
+      "real_orders_submitted": 0,
+      "rejected": 11,
+      "run_id": "sim-1785531566595-0b8bd754",
+      "simulations_created": 340,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531566595,
+      "unknown_incidents": 17
+    },
+    {
+      "completed": 222,
+      "completed_at_ms": 1785531567309,
+      "execution_wired": false,
+      "expired": 101,
+      "forecasts_examined": 17,
+      "partial_fills": 156,
+      "real_orders_submitted": 0,
+      "rejected": 17,
+      "run_id": "sim-1785531566933-597a67f4",
+      "simulations_created": 340,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531566933,
+      "unknown_incidents": 13
+    },
+    {
+      "completed": 228,
+      "completed_at_ms": 1785531567655,
+      "execution_wired": false,
+      "expired": 97,
+      "forecasts_examined": 17,
+      "partial_fills": 160,
+      "real_orders_submitted": 0,
+      "rejected": 15,
+      "run_id": "sim-1785531567334-53df3998",
+      "simulations_created": 340,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531567334,
+      "unknown_incidents": 9
+    },
+    {
+      "completed": 209,
+      "completed_at_ms": 1785531568035,
+      "execution_wired": false,
+      "expired": 79,
+      "forecasts_examined": 15,
+      "partial_fills": 146,
+      "real_orders_submitted": 0,
+      "rejected": 12,
+      "run_id": "sim-1785531567706-8302e0bb",
+      "simulations_created": 300,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531567706,
+      "unknown_incidents": 15
+    },
+    {
+      "completed": 0,
+      "completed_at_ms": 1785531568114,
+      "execution_wired": false,
+      "expired": 0,
+      "forecasts_examined": 0,
+      "partial_fills": 0,
+      "real_orders_submitted": 0,
+      "rejected": 0,
+      "run_id": "sim-1785531568059-b582ea2e",
+      "simulations_created": 0,
+      "simulations_skipped_existing": 0,
+      "started_at_ms": 1785531568059,
+      "unknown_incidents": 0
+    }
+  ],
+  "policy_counts": {
+    "market": 500,
+    "marketable_limit": 500,
+    "passive_post_only": 500,
+    "passive_then_chase": 500
+  },
+  "repeat": {
+    "completed": 0,
+    "completed_at_ms": 1785531568169,
+    "execution_wired": false,
+    "expired": 0,
+    "forecasts_examined": 0,
+    "partial_fills": 0,
+    "real_orders_submitted": 0,
+    "rejected": 0,
+    "run_id": "sim-1785531568116-e1c490ae",
+    "simulations_created": 0,
+    "simulations_skipped_existing": 0,
+    "started_at_ms": 1785531568116,
+    "unknown_incidents": 0
+  },
+  "scenario_counts": {
+    "cost_1_5x": 400,
+    "cost_2x": 400,
+    "infrastructure_stress": 400,
+    "liquidity_stress": 400,
+    "normal": 400
+  },
+  "scorecard_rows": 40,
+  "scorecard_summary": {
+    "automatic_recoveries": 0,
+    "execution_wired": false,
+    "execution_wiring_violations": 0,
+    "incident_count": 72,
+    "mode": "execution_simulation_only",
+    "phase": 3,
+    "real_orders_submitted": 0,
+    "symbol_halts": 72
+  },
+  "seeded_forecasts": 100,
+  "status_counts": {
+    "COMPLETED": 1341,
+    "EXPIRED": 582,
+    "REJECTED": 77
+  },
+  "violations": {
+    "automatic_recovery": 0,
+    "execution_wired": 0,
+    "live_eligible_intents": 0,
+    "real_orders_submitted": 0
+  }
+}

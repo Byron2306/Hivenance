@@ -1,4 +1,4 @@
-﻿from flask import Flask, request, jsonify, redirect, make_response
+from flask import Flask, request, jsonify, redirect, make_response, render_template, send_from_directory
 import threading
 import logging
 import json
@@ -27,16 +27,19 @@ class UIAgent:
     Lightweight Flask UI that shows live price, recent trades, wallet snapshot, and basic metrics.
     Rebuilt after file corruption.
     """
-    def __init__(self, coordinator, host: str = "0.0.0.0", port: int = 5000):
+    def __init__(self, coordinator, host: str = "127.0.0.1", port: int = 5001):
         self.coordinator = coordinator
         self.host = host
         self.port = port
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         static_folder = os.path.join(project_root, "static")
-        self.app = Flask(__name__, static_folder=static_folder, static_url_path="/static")
+        template_folder = os.path.join(project_root, "templates")
+        self.web_ui_folder = os.path.join(project_root, "desktop-ui", "renderer")
+        self.app = Flask(__name__, static_folder=static_folder, static_url_path="/static", template_folder=template_folder)
         self.config_path = "config/settings.yaml"
         self.api_keys_path = "config/api_keys.json"
-        self.allowed_ips: List[str] = getattr(coordinator.cfg, "allowed_ips", []) or []
+        self.allowed_ips: List[str] = getattr(coordinator.cfg, "allowed_ips", []) or ["127.0.0.1", "::1"]
+        self.allowed_origins = {f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}"}
         self._cache = {}
         self.thread = None
         self._setup_routes()
@@ -45,10 +48,15 @@ class UIAgent:
         @self.app.before_request
         def _ip_whitelist():
             if request.method == "OPTIONS":
+                origin = request.headers.get("Origin")
+                if origin and origin not in self.allowed_origins:
+                    return ("Forbidden origin", 403)
                 resp = make_response("", 204)
-                resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+                if origin in self.allowed_origins:
+                    resp.headers["Access-Control-Allow-Origin"] = origin
+                    resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
-                resp.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers", "Content-Type")
+                resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
                 return resp
             # Canonicalize host to avoid split caches (localhost vs 127.0.0.1)
             try:
@@ -70,14 +78,30 @@ class UIAgent:
         def _no_cache(resp):
             resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             resp.headers["Pragma"] = "no-cache"
-            resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+            origin = request.headers.get("Origin")
+            if origin in self.allowed_origins:
+                resp.headers["Access-Control-Allow-Origin"] = origin
+                resp.headers["Vary"] = "Origin"
             resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
-            resp.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers", "Content-Type")
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;"
             return resp
 
         @self.app.route("/")
         def dashboard():
-            return self._render_dashboard()
+            try:
+                return send_from_directory(self.web_ui_folder, "index.html")
+            except Exception as e:
+                logging.exception("dashboard error")
+                return str(e), 500
+
+        @self.app.route("/app.js")
+        def web_app_js():
+            return send_from_directory(self.web_ui_folder, "app.js")
+
+        @self.app.route("/styles.css")
+        def web_styles_css():
+            return send_from_directory(self.web_ui_folder, "styles.css")
 
         @self.app.route("/swarmguard")
         def swarmguard_page():
@@ -138,6 +162,24 @@ class UIAgent:
             self._cache["metrics_json"] = {"ts": now, "val": data}
             return jsonify(data)
 
+        @self.app.route("/api/settings", methods=["GET", "POST"])
+        def api_settings():
+            if request.method == "POST":
+                data = request.json or {}
+                # Update config
+                try:
+                    for k, v in data.items():
+                        if hasattr(self.coordinator.cfg, k):
+                            setattr(self.coordinator.cfg, k, v)
+                    # Optionally persist settings here
+                    return jsonify({"ok": True})
+                except Exception as e:
+                    return jsonify({"ok": False, "error": str(e)}), 500
+            else:
+                # Return current settings
+                return jsonify({k: getattr(self.coordinator.cfg, k) for k in dir(self.coordinator.cfg) if not k.startswith('_')})
+
+
         @self.app.route("/market_snapshot.json")
         def market_snapshot_json():
             try:
@@ -146,6 +188,691 @@ class UIAgent:
             except Exception as e:
                 logging.exception("market_snapshot.json error")
                 return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/market_bee.json")
+        def market_bee_json():
+            try:
+                force = str(request.args.get("force") or "").lower() in ("1", "true", "yes")
+                payload = {} if force else (self._latest_buzz_payload("buzz.market.bee") or {})
+                if (force or not payload) and self.coordinator and hasattr(self.coordinator, "_maybe_publish_market_bee_snapshot"):
+                    try:
+                        if force:
+                            self.coordinator._last_market_bee_ts = 0.0
+                    except Exception:
+                        pass
+                    payload = self.coordinator._maybe_publish_market_bee_snapshot() or {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("market_bee.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/dry_run/probe", methods=["GET", "POST"])
+        def dry_run_probe():
+            try:
+                symbol = request.args.get("symbol")
+                if request.method == "POST":
+                    data = request.json if request.is_json else request.form.to_dict()
+                    symbol = data.get("symbol") or symbol
+                if not self.coordinator or not hasattr(self.coordinator, "run_dry_run_probe"):
+                    return jsonify({"ok": False, "error": "coordinator_probe_unavailable"}), 503
+                payload = self.coordinator.run_dry_run_probe(symbol=symbol)
+                status = 200 if payload.get("ok") else 400
+                return jsonify({"payload": payload}), status
+            except Exception as e:
+                logging.exception("dry_run_probe error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/position_memory.json")
+        def position_memory_json():
+            try:
+                ds = self.coordinator.agents.get("data_store") if self.coordinator else None
+                payload = ds.get_position_memory() if ds and hasattr(ds, "get_position_memory") else {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("position_memory.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/paper_positions.json")
+        def paper_positions_json():
+            try:
+                ds = self.coordinator.agents.get("data_store") if self.coordinator else None
+                payload = ds.get_paper_position() if ds and hasattr(ds, "get_paper_position") else {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("paper_positions.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/executors.json")
+        def executors_json():
+            try:
+                payload = self.coordinator.executor_statuses() if self.coordinator and hasattr(self.coordinator, "executor_statuses") else {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("executors.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/public_bots.json")
+        def public_bots_json():
+            try:
+                bridge = self.coordinator.agents.get("public_bot_bridge") if self.coordinator else None
+                payload = bridge.status() if bridge and hasattr(bridge, "status") else {}
+                if bridge and hasattr(bridge, "sidecar_commands"):
+                    payload["sidecar_commands"] = bridge.sidecar_commands()
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("public_bots.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/pair_protections.json")
+        def pair_protections_json():
+            try:
+                ds = self.coordinator.agents.get("data_store") if self.coordinator else None
+                payload = ds.get_pair_protections() if ds and hasattr(ds, "get_pair_protections") else {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("pair_protections.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/promotions.json")
+        def promotions_json():
+            try:
+                ds = self.coordinator.agents.get("data_store") if self.coordinator else None
+                payload = ds.get_promotion_records() if ds and hasattr(ds, "get_promotion_records") else {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("promotions.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/integration_planes.json")
+        def integration_planes_json():
+            try:
+                if self.coordinator and hasattr(self.coordinator, "integration_plane_snapshot"):
+                    payload = self.coordinator.integration_plane_snapshot()
+                else:
+                    payload = {"integration_status": {"coordinator": "unavailable"}}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("integration_planes.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/architecture/plan.json")
+        def architecture_plan_json():
+            try:
+                registry = self.coordinator.agents.get("research_architecture") if self.coordinator and getattr(self.coordinator, "agents", None) else None
+                payload = registry.snapshot() if registry and hasattr(registry, "snapshot") else {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("architecture/plan.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/worker_planes.json")
+        def worker_planes_json():
+            try:
+                if self.coordinator and hasattr(self.coordinator, "worker_plane_snapshot"):
+                    payload = self.coordinator.worker_plane_snapshot()
+                else:
+                    payload = {}
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("worker_planes.json error")
+                return jsonify({"payload": {}, "error": str(e)}), 500
+
+        @self.app.route("/hummingbot/plan.json", methods=["GET", "POST"])
+        def hummingbot_plan_json():
+            try:
+                data = request.get_json(silent=True) if request.is_json else {}
+                data = data or {}
+                executor_type = (
+                    data.get("executor_type")
+                    or request.args.get("executor_type")
+                    or request.args.get("type")
+                    or "position"
+                )
+                intent = dict(data.get("intent") or {})
+                for key in ("symbol", "action", "side", "qty", "amount", "notional_usd", "price", "regime"):
+                    if key in data and key not in intent:
+                        intent[key] = data.get(key)
+                    if request.args.get(key) is not None and key not in intent:
+                        intent[key] = request.args.get(key)
+                for key in ("qty", "amount", "notional_usd", "price"):
+                    if key in intent and intent.get(key) not in (None, ""):
+                        intent[key] = float(intent.get(key))
+                if not self.coordinator or not hasattr(self.coordinator, "hummingbot_v2_plan"):
+                    return jsonify({"payload": {"ok": False, "error": "hummingbot_v2_plan_unavailable"}}), 503
+                payload = self.coordinator.hummingbot_v2_plan(executor_type, intent)
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+            except Exception as e:
+                logging.exception("hummingbot plan error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/integration_controls", methods=["GET", "POST"])
+        def integration_controls():
+            try:
+                if not self.coordinator or not hasattr(self.coordinator, "integration_control_values"):
+                    return jsonify({"ok": False, "error": "integration_controls_unavailable"}), 503
+                if request.method == "POST":
+                    data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                    payload = self.coordinator.update_integration_controls(data or {})
+                    if payload.get("ok") and payload.get("updates"):
+                        persisted = self._update_config_partial(
+                            payload.get("updates") or {},
+                            actor="integration_controls",
+                            reason="operator_runtime_control",
+                        )
+                        payload["persisted"] = bool(persisted)
+                    return jsonify(payload), 200 if payload.get("ok") else 400
+                return jsonify({"ok": True, "controls": self.coordinator.integration_control_values()})
+            except Exception as e:
+                logging.exception("integration controls error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+
+        @self.app.route("/config_agent.json")
+        def config_agent_json():
+            try:
+                agent = self.coordinator.agents.get("config_agent") if self.coordinator and getattr(self.coordinator, "agents", None) else None
+                if not agent or not hasattr(agent, "status"):
+                    return jsonify({"ok": False, "error": "config_agent_unavailable"}), 503
+                return jsonify({"ok": True, "status": agent.status(), "settings": agent.read()})
+            except Exception as e:
+                logging.exception("config_agent.json error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+
+        @self.app.route("/event_spine.json")
+        def event_spine_json():
+            try:
+                agent = self.coordinator.agents.get("event_spine") if self.coordinator and getattr(self.coordinator, "agents", None) else None
+                if not agent or not hasattr(agent, "status"):
+                    return jsonify({"ok": False, "error": "event_spine_unavailable"}), 503
+                return jsonify({"ok": True, "status": agent.status()})
+            except Exception as e:
+                logging.exception("event_spine.json error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+
+        @self.app.route("/config_agent/rollback", methods=["POST"])
+        def config_agent_rollback():
+            try:
+                agent = self.coordinator.agents.get("config_agent") if self.coordinator and getattr(self.coordinator, "agents", None) else None
+                if not agent or not hasattr(agent, "rollback"):
+                    return jsonify({"ok": False, "error": "config_agent_unavailable"}), 503
+                data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                result = agent.rollback(
+                    (data or {}).get("snapshot_id"),
+                    actor="config_agent_rollback",
+                    reason=(data or {}).get("reason") or "operator_rollback",
+                )
+                if result.get("ok"):
+                    try:
+                        from main import load_config
+                        self.coordinator.reload_config(load_config())
+                    except Exception as e:
+                        logging.warning(f"Config reload failed after rollback: {e}")
+                return jsonify(result), 200 if result.get("ok") else 400
+            except Exception as e:
+                logging.exception("config_agent rollback error")
+                return jsonify({"ok": False, "error": str(e)}), 500
+
+        @self.app.route("/hummingbot/lifecycle.json", methods=["GET", "POST"])
+        def hummingbot_lifecycle_json():
+            try:
+                data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                data = data or {}
+                action = data.get("action") or request.args.get("action") or "list"
+                if request.method == "GET":
+                    data.update(request.args.to_dict())
+                if not self.coordinator or not hasattr(self.coordinator, "hummingbot_lifecycle_action"):
+                    return jsonify({"payload": {"ok": False, "error": "hummingbot_lifecycle_unavailable"}}), 503
+                payload = self.coordinator.hummingbot_lifecycle_action(action, data)
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+            except Exception as e:
+                logging.exception("hummingbot lifecycle error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/public_bot/backtest/export.json", methods=["POST"])
+        def public_bot_backtest_export_json():
+            try:
+                data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                data = data or {}
+                if not self.coordinator or not hasattr(self.coordinator, "public_bot_backtest_export"):
+                    return jsonify({"payload": {"ok": False, "error": "public_bot_backtest_unavailable"}}), 503
+                payload = self.coordinator.public_bot_backtest_export(
+                    engine=data.get("engine") or "freqtrade",
+                    symbol=data.get("symbol") or None,
+                    days=int(data.get("days") or 30),
+                )
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+            except Exception as e:
+                logging.exception("public bot backtest export error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/public_bot/backtest/ingest.json", methods=["POST"])
+        def public_bot_backtest_ingest_json():
+            try:
+                data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                data = data or {}
+                metrics = data.get("metrics") or {}
+                if isinstance(metrics, str):
+                    try:
+                        metrics = json.loads(metrics or "{}")
+                    except Exception:
+                        metrics = {}
+                if not self.coordinator or not hasattr(self.coordinator, "public_bot_backtest_ingest"):
+                    return jsonify({"payload": {"ok": False, "error": "public_bot_backtest_unavailable"}}), 503
+                payload = self.coordinator.public_bot_backtest_ingest(
+                    run_id=data.get("run_id"),
+                    metrics=metrics,
+                    metrics_path=data.get("metrics_path"),
+                )
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+            except Exception as e:
+                logging.exception("public bot backtest ingest error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/public_bot/backtest/apply.json", methods=["POST"])
+        def public_bot_backtest_apply_json():
+            try:
+                data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                data = data or {}
+                if not self.coordinator or not hasattr(self.coordinator, "public_bot_backtest_apply"):
+                    return jsonify({"payload": {"ok": False, "error": "public_bot_backtest_unavailable"}}), 503
+                payload = self.coordinator.public_bot_backtest_apply(run_id=data.get("run_id"))
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+            except Exception as e:
+                logging.exception("public bot backtest apply error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/evidence.json")
+        def evidence_json():
+            try:
+                if not self.coordinator or not hasattr(self.coordinator, "evidence_snapshot"):
+                    return jsonify({"payload": {"ok": False, "error": "evidence_registry_unavailable"}}), 503
+                payload = self.coordinator.evidence_snapshot(
+                    symbol=request.args.get("symbol") or None,
+                    run_id=request.args.get("run_id") or None,
+                    limit=int(request.args.get("limit") or 100),
+                )
+                return jsonify({"payload": payload})
+            except Exception as e:
+                logging.exception("evidence.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/ml/candidates.json", methods=["GET", "POST"])
+        def ml_candidates_json():
+            try:
+                if not self.coordinator:
+                    return jsonify({"payload": {"ok": False, "error": "coordinator_unavailable"}}), 503
+                if request.method == "POST":
+                    data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                    payload = self.coordinator.propose_ml_candidate(data or {}) if hasattr(self.coordinator, "propose_ml_candidate") else {"ok": False, "error": "ml_research_lab_unavailable"}
+                    return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+                payload = self.coordinator.ml_candidate_snapshot(
+                    family=request.args.get("family") or None,
+                    symbol=request.args.get("symbol") or None,
+                    limit=int(request.args.get("limit") or 100),
+                ) if hasattr(self.coordinator, "ml_candidate_snapshot") else {"ok": False, "error": "ml_research_lab_unavailable"}
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 503
+            except Exception as e:
+                logging.exception("ml/candidates.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/execution/parity.json")
+        def execution_parity_json():
+            try:
+                if not self.coordinator or not hasattr(self.coordinator, "execution_parity_snapshot"):
+                    return jsonify({"payload": {"ok": False, "error": "execution_parity_unavailable"}}), 503
+                payload = self.coordinator.execution_parity_snapshot(
+                    symbol=request.args.get("symbol") or None,
+                    run_id=request.args.get("run_id") or None,
+                    limit=int(request.args.get("limit") or 100),
+                )
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 503
+            except Exception as e:
+                logging.exception("execution/parity.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/signal/marketplace.json")
+        def signal_marketplace_json():
+            try:
+                if not self.coordinator or not hasattr(self.coordinator, "signal_marketplace_snapshot"):
+                    return jsonify({"payload": {"ok": False, "error": "signal_marketplace_unavailable"}}), 503
+                payload = self.coordinator.signal_marketplace_snapshot(
+                    symbol=request.args.get("symbol") or None,
+                    limit=int(request.args.get("limit") or 100),
+                )
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 503
+            except Exception as e:
+                logging.exception("signal/marketplace.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/phoenix/authority.json")
+        def phoenix_authority_json():
+            try:
+                if not self.coordinator:
+                    return jsonify({"payload": {"ok": False, "error": "coordinator_unavailable"}}), 503
+                guard = self.coordinator.agents.get("phoenix_authority") if hasattr(self.coordinator, "agents") else None
+                payload = guard.snapshot() if guard and hasattr(guard, "snapshot") else {"ok": False, "error": "authority_guard_unavailable"}
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 503
+            except Exception as e:
+                logging.exception("phoenix/authority.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/phase0.json")
+        def phase0_json():
+            try:
+                if not self.coordinator:
+                    return jsonify({"payload": {"ok": False, "error": "coordinator_unavailable"}}), 503
+                payload = self.coordinator.phase0_snapshot() if hasattr(self.coordinator, "phase0_snapshot") else {
+                    "phase": 0,
+                    "name": "constitution_and_authority_lock",
+                    "status": "UNAVAILABLE",
+                    "violations": ["phase0_snapshot_unavailable"],
+                }
+                ok = payload.get("status") != "VIOLATION"
+                return jsonify({"payload": payload}), 200 if ok else 503
+            except Exception as e:
+                logging.exception("phase0.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/quote_advice.json", methods=["GET", "POST"])
+        def quote_advice_json():
+            try:
+                data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+                data = data or {}
+                if request.method == "GET":
+                    data.update(request.args.to_dict())
+                row = data.get("row") if isinstance(data.get("row"), dict) else None
+                if not row and data.get("symbol"):
+                    row = {
+                        "symbol": data.get("symbol"),
+                        "quality": {
+                            "roundtrip_ratio": float(data.get("roundtrip_ratio") or 0.0),
+                            "liquidity_usd": float(data.get("liquidity_usd") or 0.0),
+                            "volume_24h_usd": float(data.get("volume_24h_usd") or 0.0),
+                        },
+                        "pool": {
+                            "h24_change_pct": float(data.get("h24_change_pct") or 0.0),
+                        },
+                    }
+                if not self.coordinator or not hasattr(self.coordinator, "quote_quality_advice"):
+                    return jsonify({"payload": {"ok": False, "error": "quote_advice_unavailable"}}), 503
+                payload = self.coordinator.quote_quality_advice(row=row)
+                return jsonify({"payload": payload}), 200 if payload.get("ok") else 400
+            except Exception as e:
+                logging.exception("quote advice error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
+
+        @self.app.route("/integrations")
+        def integrations_page():
+            return """
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hivenance Integrations</title>
+  <style>
+    :root { color-scheme: dark; --bg:#101418; --panel:#171d22; --ink:#edf2f4; --muted:#96a2ad; --line:#2a343d; --ok:#55d187; --warn:#f0bf55; --bad:#ff6b6b; --accent:#67b7ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:18px 22px 12px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; }
+    h1 { font-size:22px; margin:0; letter-spacing:0; }
+    main { padding:18px 22px 28px; display:grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap:14px; }
+    section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; min-width:0; }
+    h2 { font-size:14px; margin:0 0 12px; color:#dfe8ee; font-weight:700; }
+    .span-12 { grid-column:span 12; } .span-8 { grid-column:span 8; } .span-6 { grid-column:span 6; } .span-4 { grid-column:span 4; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; }
+    .metric { border:1px solid var(--line); border-radius:6px; padding:10px; min-height:66px; background:#12181d; }
+    .label { color:var(--muted); font-size:12px; margin-bottom:5px; }
+    .value { font-size:16px; overflow-wrap:anywhere; }
+    .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    form { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; align-items:end; }
+    input, select, button { width:100%; min-height:36px; border-radius:6px; border:1px solid var(--line); background:#0f151a; color:var(--ink); padding:8px; }
+    button { cursor:pointer; background:#19364d; border-color:#285471; font-weight:700; }
+    button.secondary { background:#182027; border-color:var(--line); }
+    pre { margin:0; max-height:360px; overflow:auto; white-space:pre-wrap; word-break:break-word; color:#cbd6de; font-size:12px; }
+    @media (max-width:900px) { .span-8,.span-6,.span-4 { grid-column:span 12; } main { padding:12px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>Integration Planes</h1><div class="label">Public bots, Strategy V2 plans, worker feedback, and pair protections</div></div>
+    <button class="secondary" onclick="loadPlane()">Refresh</button>
+  </header>
+  <main>
+    <section class="span-12">
+      <h2>Status</h2>
+      <div id="statusGrid" class="grid"></div>
+    </section>
+    <section class="span-6">
+      <h2>Executor Lifecycle Plane</h2>
+      <div id="lifecycleTable"></div>
+    </section>
+    <section class="span-6">
+      <h2>Backtest Runs</h2>
+      <div id="backtestTable"></div>
+    </section>
+    <section class="span-6">
+      <h2>Quote Advice</h2>
+      <div id="quoteTable"></div>
+    </section>
+    <section class="span-6">
+      <h2>Promotion Evidence</h2>
+      <div id="promotionTable"></div>
+    </section>
+    <section class="span-8">
+      <h2>Hummingbot V2 Plan</h2>
+      <form id="planForm">
+        <label><div class="label">Executor</div><select name="executor_type"><option>position</option><option>twap</option><option>grid</option><option>dca</option><option>xemm</option><option>arbitrage</option></select></label>
+        <label><div class="label">Symbol</div><input name="symbol" placeholder="ETH/USDT"></label>
+        <label><div class="label">Action</div><select name="action"><option>BUY</option><option>SELL</option></select></label>
+        <label><div class="label">Notional USD</div><input name="notional_usd" type="number" step="0.01"></label>
+        <label><div class="label">Qty</div><input name="qty" type="number" step="0.000001"></label>
+        <label><div class="label">Price</div><input name="price" type="number" step="0.000001"></label>
+        <button type="submit">Build Plan</button>
+      </form>
+      <pre id="planOut"></pre>
+    </section>
+    <section class="span-4">
+      <h2>Controls</h2>
+      <form id="controlForm"></form>
+    </section>
+    <section class="span-6">
+      <h2>Hummingbot Lifecycle</h2>
+      <form id="lifecycleForm">
+        <label><div class="label">Action</div><select name="action"><option>create</option><option>monitor</option><option>stop</option><option>retry</option><option>close</option><option>list</option></select></label>
+        <label><div class="label">Executor ID</div><input name="executor_id" placeholder="hb-..."></label>
+        <label><div class="label">Executor</div><select name="executor_type"><option>position</option><option>twap</option><option>grid</option><option>dca</option><option>xemm</option><option>arbitrage</option></select></label>
+        <label><div class="label">Symbol</div><input name="symbol" placeholder="ETH/USDT"></label>
+        <label><div class="label">Action Side</div><select name="intent_action"><option>BUY</option><option>SELL</option></select></label>
+        <label><div class="label">Notional USD</div><input name="notional_usd" type="number" step="0.01"></label>
+        <button type="submit">Run Lifecycle</button>
+      </form>
+      <pre id="lifecycleOut"></pre>
+    </section>
+    <section class="span-6">
+      <h2>Public Bot Backtests</h2>
+      <form id="backtestExportForm">
+        <label><div class="label">Engine</div><select name="engine"><option>freqtrade</option><option>jesse</option><option>hivenance_replay</option></select></label>
+        <label><div class="label">Symbol</div><input name="symbol" placeholder="blank for all"></label>
+        <label><div class="label">Days</div><input name="days" type="number" value="30"></label>
+        <button type="submit">Export</button>
+      </form>
+      <form id="backtestIngestForm" style="margin-top:10px">
+        <label><div class="label">Run ID</div><input name="run_id"></label>
+        <label><div class="label">Metrics JSON</div><input name="metrics" placeholder='{"win_rate":0.55}'></label>
+        <label><div class="label">Metrics Path</div><input name="metrics_path" placeholder="optional"></label>
+        <button type="submit">Ingest</button>
+      </form>
+      <form id="backtestApplyForm" style="margin-top:10px">
+        <label><div class="label">Run ID</div><input name="run_id"></label>
+        <button type="submit">Apply Metrics</button>
+      </form>
+      <pre id="backtestOut"></pre>
+    </section>
+    <section class="span-6">
+      <h2>Worker Performance</h2>
+      <div id="workerTable"></div>
+    </section>
+    <section class="span-6">
+      <h2>Pair Protections</h2>
+      <div id="protectionTable"></div>
+    </section>
+    <section class="span-12">
+      <h2>Raw Plane</h2>
+      <pre id="rawOut"></pre>
+    </section>
+  </main>
+  <script>
+    const controlFields = [
+      'dry_run','live_mode','confirm_live','exchange','symbol','interval',
+      'quote_order_size','max_notional','min_trade_usd','max_trade_usd',
+      'multi_symbol_enabled','multi_symbols','coin_selection_enabled','coin_selection_auto_switch',
+      'coin_selection_top_n','coin_selection_include','coin_selection_exclude','coin_selection_quote_assets',
+      'wallet_safety_enabled','wallet_max_daily_spend_usd','wallet_max_token_exposure_pct',
+      'watch_address','erc20_token_address','onchain_enabled','dex_provider','onchain_chain_id',
+      'onchain_prefer_l2','onchain_l2_chain_id','onchain_allowed_pairs','dex_min_roundtrip_ratio',
+      'dex_min_liquidity_usd','dex_max_price_impact_pct','market_bee_enabled','market_bee_top_n',
+      'pair_max_drawdown_pct','pairlist_min_volume_24h_usd','pairlist_max_spread_pct',
+      'pairlist_max_abs_change_24h_pct','pairlist_min_age_sec','hummingbot_v2_default_executor',
+      'hummingbot_v2_twap_duration_sec','hummingbot_v2_twap_interval_sec','hummingbot_v2_grid_width_pct',
+      'hummingbot_v2_dca_steps','hummingbot_v2_dca_step_pct','hummingbot_v2_leverage',
+      'hummingbot_sidecar_live_enabled','hummingbot_sidecar_command','hummingbot_sidecar_config_dir','market_making_advisors_enabled',
+      'market_making_quote_placement_enabled','public_bot_metrics_auto_promote',
+      'pmm_simple_min_liquidity_usd','pmm_simple_max_spread_pct','pmm_simple_min_quote_spread_pct','pmm_dynamic_min_volume_24h_usd',
+      'pmm_dynamic_max_spread_pct','pmm_dynamic_max_abs_change_24h_pct','pmm_dynamic_min_quote_spread_pct'
+    ];
+    let plane = {};
+    function esc(v){ return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function stateClass(v){ v=String(v||'').toLowerCase(); return v.includes('not_')||v.includes('block')||v.includes('disabled')?'bad':(v.includes('warn')?'warn':'ok'); }
+    function metric(k,v){ return `<div class="metric"><div class="label">${esc(k)}</div><div class="value ${stateClass(v)}">${esc(v)}</div></div>`; }
+    function table(rows, cols){
+      if(!rows.length) return '<div class="label">No rows yet.</div>';
+      return `<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    }
+    async function loadPlane(){
+      const res = await fetch('/integration_planes.json');
+      const data = await res.json();
+      plane = data.payload || {};
+      const status = plane.integration_status || {};
+      document.getElementById('statusGrid').innerHTML = Object.entries(status).map(([k,v])=>metric(k,v)).join('');
+      const lifecycle = (((plane.hummingbot_lifecycle || {}).states) || {});
+      document.getElementById('lifecycleTable').innerHTML = table(Object.entries(lifecycle).map(([id,v]) => ({
+        id, type:v.executor_type, symbol:v.symbol, side:v.side, state:v.state, attempts:v.attempts, reason:v.reason
+      })), ['id','type','symbol','side','state','attempts','reason']);
+      const runs = (((plane.public_bot_backtests || {}).runs) || {});
+      document.getElementById('backtestTable').innerHTML = table(Object.entries(runs).map(([run_id,v]) => ({
+        run_id, engine:v.engine, symbol:v.symbol, status:v.status,
+        win_rate: Number(((v.metrics || {}).win_rate) || 0).toFixed(2),
+        updates: ((v.worker_updates || {}).ok) ? 'applied' : ''
+      })), ['run_id','engine','symbol','status','win_rate','updates']);
+      const advice = ((plane.quote_quality_advice || {}).advice) || {};
+      document.getElementById('quoteTable').innerHTML = table(Object.entries(advice).map(([symbol,v]) => ({
+        symbol, state:v.state, score:Number(v.quote_quality_score || 0).toFixed(2), required:v.requires_quote_quality
+      })), ['symbol','state','score','required']);
+      const promotions = plane.promotions || {};
+      document.getElementById('promotionTable').innerHTML = table(Object.entries(promotions).map(([symbol,v]) => ({
+        symbol, stage:v.stage, eligible:v.eligible, win_rate:Number(v.win_rate||0).toFixed(2), reason:v.reason
+      })), ['symbol','stage','eligible','win_rate','reason']);
+      const perf = ((plane.workers || {}).perf_by_worker) || {};
+      document.getElementById('workerTable').innerHTML = table(Object.entries(perf).map(([worker,v]) => ({
+        worker, samples:v.samples, win_rate:Number(v.win_rate||0).toFixed(2),
+        recent:Number(v.recent_win_rate||0).toFixed(2), drawdown:Number(v.drawdown||0).toFixed(2),
+        avg_r:Number(v.avg_r_multiple||0).toFixed(2)
+      })), ['worker','samples','win_rate','recent','drawdown','avg_r']);
+      const protections = plane.pair_protections || {};
+      document.getElementById('protectionTable').innerHTML = table(Object.entries(protections).map(([symbol,v]) => ({
+        symbol, state:v.state, allowed:v.allowed, reason:v.reason
+      })), ['symbol','state','allowed','reason']);
+      document.getElementById('rawOut').textContent = JSON.stringify(plane, null, 2);
+      renderControls(plane.controls || {});
+      document.getElementById('planOut').textContent = JSON.stringify(plane.sample_hummingbot_plan || {}, null, 2);
+    }
+    function renderControls(values){
+      const form = document.getElementById('controlForm');
+      form.innerHTML = controlFields.map(k => {
+        const v = values[k];
+        if (typeof v === 'boolean') {
+          return `<label><div class="label">${esc(k)}</div><select name="${esc(k)}"><option value="true" ${v?'selected':''}>true</option><option value="false" ${!v?'selected':''}>false</option></select></label>`;
+        }
+        if (k === 'hummingbot_v2_default_executor') {
+          return `<label><div class="label">${esc(k)}</div><select name="${esc(k)}">${['position','twap','grid','dca','xemm','arbitrage'].map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select></label>`;
+        }
+        return `<label><div class="label">${esc(k)}</div><input name="${esc(k)}" value="${esc(v)}"></label>`;
+      }).join('') + '<button type="submit">Save Controls</button>';
+    }
+    document.getElementById('planForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const res = await fetch('/hummingbot/plan.json', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      document.getElementById('planOut').textContent = JSON.stringify(await res.json(), null, 2);
+    });
+    document.getElementById('controlForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const res = await fetch('/integration_controls', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      const data = await res.json();
+      document.getElementById('planOut').textContent = JSON.stringify(data, null, 2);
+      await loadPlane();
+    });
+    document.getElementById('lifecycleForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const raw = Object.fromEntries(new FormData(e.target).entries());
+      const body = {
+        action: raw.action,
+        executor_id: raw.executor_id,
+        executor_type: raw.executor_type,
+        intent: { symbol: raw.symbol, action: raw.intent_action, notional_usd: raw.notional_usd }
+      };
+      const res = await fetch('/hummingbot/lifecycle.json', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      document.getElementById('lifecycleOut').textContent = JSON.stringify(await res.json(), null, 2);
+      await loadPlane();
+    });
+    document.getElementById('backtestExportForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const res = await fetch('/public_bot/backtest/export.json', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      document.getElementById('backtestOut').textContent = JSON.stringify(await res.json(), null, 2);
+      await loadPlane();
+    });
+    document.getElementById('backtestIngestForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const res = await fetch('/public_bot/backtest/ingest.json', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      document.getElementById('backtestOut').textContent = JSON.stringify(await res.json(), null, 2);
+      await loadPlane();
+    });
+    document.getElementById('backtestApplyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const res = await fetch('/public_bot/backtest/apply.json', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      document.getElementById('backtestOut').textContent = JSON.stringify(await res.json(), null, 2);
+      await loadPlane();
+    });
+    loadPlane().catch(err => { document.getElementById('rawOut').textContent = String(err); });
+  </script>
+</body>
+</html>
+            """
+
+        @self.app.route("/backtest/replay.json", methods=["GET", "POST"])
+        def backtest_replay_json():
+            try:
+                symbol = request.args.get("symbol")
+                days = int(request.args.get("days") or 30)
+                if request.method == "POST":
+                    data = request.json if request.is_json else request.form.to_dict()
+                    symbol = data.get("symbol") or symbol
+                    days = int(data.get("days") or days)
+                if not self.coordinator or not hasattr(self.coordinator, "run_replay_backtest"):
+                    return jsonify({"payload": {"ok": False, "error": "backtest_unavailable"}}), 503
+                payload = self.coordinator.run_replay_backtest(symbol=symbol, days=days)
+                status = 200 if payload.get("ok") else 400
+                return jsonify({"payload": payload}), status
+            except Exception as e:
+                logging.exception("backtest/replay.json error")
+                return jsonify({"payload": {"ok": False, "error": str(e)}}), 500
 
         @self.app.route("/tape.json")
         def tape_json():
@@ -174,7 +901,20 @@ class UIAgent:
 
                 wallet = self.coordinator.agents.get("wallet")
                 if not wallet:
-                    return jsonify({"error": "wallet_agent_disabled"}), 400
+                    payload = {
+                        "address": None,
+                        "network": {"ok": False, "latency_ms": None},
+                        "eth": {"balance": None},
+                        "token": {},
+                        "balances": [],
+                        "wallet_type": "disabled",
+                        "venue": None,
+                        "equity_usd_est": 0.0,
+                        "txs": [],
+                        "status": "wallet_agent_disabled",
+                    }
+                    self._cache["wallet_json"] = {"ts": now, "val": payload}
+                    return jsonify(payload)
 
                 latency_ms = None
                 ok = False
@@ -186,22 +926,6 @@ class UIAgent:
                 except Exception:
                     ok = False
 
-                try:
-                    eth_bal = wallet.eth_balance()
-                except Exception:
-                    eth_bal = None
-                tok_bal = None
-                tok_symbol = getattr(wallet, "token_symbol", None)
-                try:
-                    tok_bal = wallet.erc20_balance()
-                except Exception:
-                    tok_bal = None
-
-                try:
-                    txs = wallet.get_transaction_history(limit=5)
-                except Exception:
-                    txs = []
-
                 snapshot = {}
                 try:
                     if hasattr(wallet, "get_snapshot"):
@@ -209,11 +933,26 @@ class UIAgent:
                 except Exception:
                     snapshot = {}
                 balances = snapshot.get("balances") or []
-                # Hydrate missing on-chain token balances from config
                 try:
-                    balances = self._hydrate_onchain_balances(wallet, balances)
+                    eth_bal = None
+                    for b in balances:
+                        if str(b.get("asset") or "").upper() == "ETH" and not b.get("chain"):
+                            eth_bal = float(b.get("free") or 0.0)
+                            break
                 except Exception:
-                    pass
+                    eth_bal = None
+                tok_bal = None
+                tok_symbol = getattr(wallet, "token_symbol", None)
+                try:
+                    if tok_symbol:
+                        for b in balances:
+                            if str(b.get("asset") or "").upper() == str(tok_symbol).upper() and not b.get("chain"):
+                                tok_bal = float(b.get("free") or 0.0)
+                                break
+                except Exception:
+                    tok_bal = None
+
+                txs = []
                 if not ok and balances:
                     # If we have a recent snapshot, treat wallet as available for UI health.
                     ok = True
@@ -255,8 +994,8 @@ class UIAgent:
                 yaml.safe_dump(cfg, f)
 
             try:
-                from main import load_config
-                new_cfg = load_config()
+                from main import apply_phase0_safety_policy, load_config
+                new_cfg = apply_phase0_safety_policy(load_config())
                 self.coordinator.reload_config(new_cfg)
             except Exception as e:
                 logging.warning(f"Reload after wallet save failed: {e}")
@@ -515,11 +1254,13 @@ class UIAgent:
                 for b in self._buzz_base_urls():
                     try:
                         url = f"{b.rstrip('/')}/v1/accounts/{account}"
+                        logging.info(f"Attempting connection to buzzservice: {url}")
                         resp = requests.get(url, timeout=3)
                         if resp.status_code < 400:
                             return jsonify({"ok": True, "account": resp.json(), "base_url": b})
                         last_err = f"buzzservice_http_{resp.status_code}"
                     except Exception as e:
+                        logging.info(f"Connection failed for {url}: {e}")
                         last_err = str(e)
                 return jsonify({"ok": False, "error": last_err or "buzzservice_unavailable"}), 502
             except Exception as e:
@@ -714,6 +1455,134 @@ class UIAgent:
                 logging.exception("coin_selection.json error")
                 return jsonify({"payload": {}, "error": str(e)}), 500
 
+        @self.app.route("/observation.json")
+        def observation_json():
+            try:
+                symbol = request.args.get("symbol") or None
+                limit = int(request.args.get("limit", 100) or 100)
+                compact = str(request.args.get("compact") or "").lower() in ("1", "true", "yes")
+                if self.coordinator and hasattr(self.coordinator, "observation_snapshot"):
+                    return jsonify(self.coordinator.observation_snapshot(symbol=symbol, limit=limit, compact=compact))
+                return jsonify({"phase": 1, "mode": "observation_only", "status": {"status": "UNAVAILABLE"}})
+            except Exception as e:
+                logging.exception("observation.json error")
+                return jsonify({"phase": 1, "mode": "observation_only", "error": str(e)}), 500
+
+        @self.app.route("/hypotheses.json")
+        def hypotheses_json():
+            try:
+                symbol = request.args.get("symbol") or None
+                model_id = request.args.get("model_id") or None
+                limit = int(request.args.get("limit", 250) or 250)
+                compact = str(request.args.get("compact") or "").lower() in ("1", "true", "yes")
+                if self.coordinator and hasattr(self.coordinator, "hypothesis_snapshot"):
+                    return jsonify(self.coordinator.hypothesis_snapshot(model_id=model_id, symbol=symbol, limit=limit, compact=compact))
+                return jsonify({"phase": 2, "mode": "hypothesis_research_only", "status": {"status": "UNAVAILABLE"}})
+            except Exception as e:
+                logging.exception("hypotheses.json error")
+                return jsonify({"phase": 2, "mode": "hypothesis_research_only", "error": str(e)}), 500
+
+        @self.app.route("/phase2.json")
+        def phase2_json():
+            try:
+                symbol = request.args.get("symbol") or None
+                model_id = request.args.get("model_id") or None
+                limit = int(request.args.get("limit", 250) or 250)
+                compact = str(request.args.get("compact") or "").lower() in ("1", "true", "yes")
+                if self.coordinator and hasattr(self.coordinator, "hypothesis_snapshot"):
+                    return jsonify(self.coordinator.hypothesis_snapshot(model_id=model_id, symbol=symbol, limit=limit, compact=compact))
+                return jsonify({"phase": 2, "mode": "hypothesis_research_only", "status": {"status": "UNAVAILABLE"}})
+            except Exception as e:
+                logging.exception("phase2.json error")
+                return jsonify({"phase": 2, "mode": "hypothesis_research_only", "error": str(e)}), 500
+
+        @self.app.route("/execution_lab.json")
+        def execution_lab_json():
+            try:
+                symbol = request.args.get("symbol") or None
+                model_id = request.args.get("model_id") or None
+                limit = int(request.args.get("limit", 250) or 250)
+                compact = str(request.args.get("compact") or "").lower() in ("1", "true", "yes")
+                if self.coordinator and hasattr(self.coordinator, "execution_lab_snapshot"):
+                    return jsonify(self.coordinator.execution_lab_snapshot(model_id=model_id, symbol=symbol, limit=limit, compact=compact))
+                return jsonify({"phase": 3, "mode": "execution_simulation_only", "status": {"status": "UNAVAILABLE"}})
+            except Exception as e:
+                logging.exception("execution_lab.json error")
+                return jsonify({"phase": 3, "mode": "execution_simulation_only", "error": str(e)}), 500
+
+        @self.app.route("/validation_lab.json")
+        def validation_lab_json():
+            try:
+                limit = int(request.args.get("limit", 100) or 100)
+                compact = str(request.args.get("compact") or "").lower() in ("1", "true", "yes")
+                if self.coordinator and hasattr(self.coordinator, "validation_lab_snapshot"):
+                    return jsonify(self.coordinator.validation_lab_snapshot(limit=limit, compact=compact))
+                return jsonify({
+                    "phase": 4, "mode": "adversarial_validation_only",
+                    "status": {"status": "UNAVAILABLE"},
+                    "execution_wired": False, "real_orders_submitted": 0,
+                })
+            except Exception as e:
+                logging.exception("validation_lab.json error")
+                return jsonify({"phase": 4, "mode": "adversarial_validation_only", "error": str(e)}), 500
+
+        @self.app.route("/shadow_flight.json")
+        def shadow_flight_json():
+            try:
+                limit = int(request.args.get("limit", 250) or 250)
+                if self.coordinator and hasattr(self.coordinator, "shadow_flight_snapshot"):
+                    return jsonify(self.coordinator.shadow_flight_snapshot(limit=limit))
+                return jsonify({
+                    "phase": 5, "mode": "public_shadow_only",
+                    "status": {"status": "UNAVAILABLE"},
+                    "execution_wired": False, "private_exchange_access": False,
+                    "transmission_attempts": 0, "real_orders_submitted": 0,
+                })
+            except Exception as e:
+                logging.exception("shadow_flight.json error")
+                return jsonify({"phase": 5, "mode": "public_shadow_only", "error": str(e)}), 500
+
+        @self.app.route("/canary.json")
+        def canary_json():
+            try:
+                limit = int(request.args.get("limit", 100) or 100)
+                if self.coordinator and hasattr(self.coordinator, "canary_snapshot"):
+                    return jsonify(self.coordinator.canary_snapshot(limit=limit))
+                return jsonify({
+                    "phase": 6, "mode": "tiny_live_canary",
+                    "state": {"state": "UNAVAILABLE", "reason": "coordinator_unavailable"},
+                    "operator_process_only": True, "desktop_arming_enabled": False,
+                    "automatic_scaling": False, "execution_scale_authorized": False,
+                    "credentials_visible": False,
+                })
+            except Exception as e:
+                logging.exception("canary.json error")
+                return jsonify({
+                    "phase": 6, "mode": "tiny_live_canary", "error": str(e),
+                    "operator_process_only": True, "desktop_arming_enabled": False,
+                }), 500
+
+        @self.app.route("/growth.json")
+        def growth_json():
+            try:
+                limit = int(request.args.get("limit", 50) or 50)
+                if self.coordinator and hasattr(self.coordinator, "growth_snapshot"):
+                    return jsonify(self.coordinator.growth_snapshot(limit=limit))
+                return jsonify({
+                    "phase": 7, "mode": "controlled_growth_governor",
+                    "state": {"state": "UNAVAILABLE", "reason": "coordinator_unavailable", "current_stage": 0},
+                    "automatic_promotion": False, "automatic_demotion": True,
+                    "operator_process_only": True, "desktop_stage_activation": False,
+                    "execution_scale_authorized": False,
+                })
+            except Exception as e:
+                logging.exception("growth.json error")
+                return jsonify({
+                    "phase": 7, "mode": "controlled_growth_governor", "error": str(e),
+                    "automatic_promotion": False, "operator_process_only": True,
+                    "desktop_stage_activation": False,
+                }), 500
+
         @self.app.route("/autonomy", methods=["GET", "POST"])
         def autonomy_toggle():
             try:
@@ -803,6 +1672,15 @@ class UIAgent:
                 logging.exception("alerts.json error")
                 return jsonify({"rows": [], "error": str(e)}), 500
 
+        @self.app.route("/queen/alerts.json")
+        def queen_alerts_json():
+            try:
+                rows = self._get_queen_alert_rows(limit=20)
+                return jsonify({"rows": rows})
+            except Exception as e:
+                logging.exception("queen/alerts.json error")
+                return jsonify({"rows": [], "error": str(e)}), 500
+
         @self.app.route("/audit.json")
         def audit_json():
             try:
@@ -815,41 +1693,23 @@ class UIAgent:
 
         @self.app.route("/control/mode", methods=["POST"])
         def control_mode():
+            """Ordinary desktop coordinator remains permanently dry-run."""
             try:
-                dry_run = request.form.get('dry_run')
+                dry_run = request.form.get("dry_run")
                 if dry_run is None and request.is_json:
-                    dry_run = request.json.get('dry_run')
-                dry_run_val = str(dry_run).lower() in ('1','true','yes','y')
+                    dry_run = (request.json or {}).get("dry_run")
+                dry_run_val = str(dry_run).lower() in ("1", "true", "yes", "y", "on")
                 if not dry_run_val:
-                    confirm = request.form.get('confirm') or (request.json.get('confirm') if request.is_json else None)
-                    if str(confirm).strip().upper() != 'ARM LIVE':
-                        return jsonify({'ok': False, 'error': 'confirm_required'}), 400
-                self._update_config_partial({'dry_run': dry_run_val})
-                # When switching to LIVE, arm security agent and resume kill switch if present.
-                if not dry_run_val:
-                    try:
-                        sec = self.coordinator.agents.get('security') if self.coordinator else None
-                        if sec is not None:
-                            try:
-                                sec.armed = True
-                            except Exception:
-                                pass
-                            try:
-                                self.coordinator.share_data('buzz.security.policy', {'armed': True, 'dry_run': False, 'paused': False})
-                            except Exception:
-                                pass
-                    except Exception:
-                        logging.exception("Failed to arm security agent")
-                    try:
-                        ks = self.coordinator.agents.get('kill_switch') if self.coordinator else None
-                        if ks and hasattr(ks, 'resume_swarm'):
-                            ks.resume_swarm()
-                    except Exception:
-                        logging.exception("Failed to resume kill switch")
-                return jsonify({'ok': True, 'dry_run': dry_run_val})
+                    return jsonify({
+                        "ok": False,
+                        "error": "phoenix_authority_locked",
+                        "details": "Use the dedicated Phase-6 or Phase-7 operator process.",
+                    }), 409
+                persisted = self._update_config_partial({"dry_run": True, "live_mode": False}, actor="control_mode", reason="reassert_research_only")
+                return jsonify({"ok": bool(persisted), "dry_run": True, "live_mode": False}), 200 if persisted else 400
             except Exception as e:
-                logging.exception('control_mode failed')
-                return jsonify({'ok': False, 'error': str(e)}), 500
+                logging.exception("control_mode failed")
+                return jsonify({"ok": False, "error": str(e)}), 500
 
         @self.app.route("/control/pause", methods=["POST"])
         def control_pause():
@@ -867,14 +1727,11 @@ class UIAgent:
 
         @self.app.route("/control/resume", methods=["POST"])
         def control_resume():
-            try:
-                ks = self.coordinator.agents.get('kill_switch') if self.coordinator else None
-                if ks and hasattr(ks, 'resume_swarm'):
-                    ks.resume_swarm()
-                return jsonify({'ok': True})
-            except Exception as e:
-                logging.exception('control_resume failed')
-                return jsonify({'ok': False, 'error': str(e)}), 500
+            return jsonify({
+                "ok": False,
+                "error": "phoenix_authority_locked",
+                "details": "Legacy desktop resume is retired. Phase-6/7 recovery requires reconciliation and explicit operator approval.",
+            }), 409
 
         @self.app.route("/config/limits", methods=["POST"])
         def config_limits():
@@ -892,9 +1749,10 @@ class UIAgent:
                         except Exception:
                             pass
                         updates[key] = val
+                persisted = True
                 if updates:
-                    self._update_config_partial(updates)
-                return jsonify({'ok': True, 'updates': updates})
+                    persisted = self._update_config_partial(updates)
+                return jsonify({'ok': bool(persisted), 'updates': updates, 'persisted': bool(persisted)}), 200 if persisted else 400
             except Exception as e:
                 logging.exception('config_limits failed')
                 return jsonify({'ok': False, 'error': str(e)}), 500
@@ -920,9 +1778,10 @@ class UIAgent:
                         except Exception:
                             val = data[key]
                         updates[key] = val
+                persisted = True
                 if updates:
-                    self._update_config_partial(updates)
-                return jsonify({'ok': True, 'updates': updates})
+                    persisted = self._update_config_partial(updates)
+                return jsonify({'ok': bool(persisted), 'updates': updates, 'persisted': bool(persisted)}), 200 if persisted else 400
             except Exception as e:
                 logging.exception('config_kill_switch failed')
                 return jsonify({'ok': False, 'error': str(e)}), 500
@@ -1000,6 +1859,86 @@ class UIAgent:
                     return jsonify({'dry_run': True, 'kill_state': {}, 'paused': False, 'error': str(e)}), 500
 
             self.app.add_url_rule("/status.json", endpoint="status_json", view_func=_status_json)
+
+        @self.app.route("/api/status")
+        def api_status():
+            try:
+                metrics = self._collect_metrics()
+                status = {}
+                try:
+                    status = self.app.view_functions["status_json"]().get_json() or {}
+                except Exception:
+                    status = {}
+
+                agents = {}
+                for name in list(self.coordinator.agents.keys()) if getattr(self.coordinator, "agents", None) else []:
+                    agent_obj = self.coordinator.agents.get(name)
+                    agents[name] = {
+                        "status": "active" if agent_obj else "inactive",
+                        "uptime": "-",
+                    }
+
+                latest_price = metrics.get("latest_price")
+                if isinstance(latest_price, dict):
+                    payload = latest_price.get("payload")
+                    latest_price = latest_price.get("price") or latest_price.get("last") or payload
+
+                wallet_total = (
+                    (metrics.get("performance") or {}).get("equity_usd_est")
+                    or (metrics.get("trading") or {}).get("equity_usd_est")
+                    or 0.0
+                )
+
+                return jsonify({
+                    "dry_run": status.get("dry_run", True),
+                    "live": status.get("live", False),
+                    "kill_switch_active": bool((status.get("kill_state") or {}).get("state") == "HALT" or status.get("paused", False)),
+                    "symbol": getattr(self.coordinator.cfg, "symbol", ""),
+                    "wallet": {"total_usd": wallet_total},
+                    "market": {"price": latest_price or 0.0, "change_24h": 0.0},
+                    "agents": agents,
+                })
+            except Exception as e:
+                logging.exception("api/status error")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/trades")
+        def api_trades():
+            try:
+                trades = []
+                for trade in self._get_recent_trades(limit=100):
+                    row = dict(trade)
+                    row["amount"] = row.get("amount", row.get("quantity", 0.0))
+                    row["side"] = str(row.get("side") or "").upper()
+                    trades.append(row)
+                return jsonify({"trades": trades})
+            except Exception as e:
+                logging.exception("api/trades error")
+                return jsonify({"trades": [], "error": str(e)}), 500
+
+        @self.app.route("/api/performance")
+        def api_performance():
+            try:
+                metrics = self._collect_metrics()
+                trading = metrics.get("trading") or {}
+                performance = metrics.get("performance") or {}
+                return jsonify({
+                    "total_pnl": float(trading.get("profit_loss") or performance.get("realized_pnl_usd") or 0.0),
+                    "win_rate": float(trading.get("win_rate") or performance.get("win_rate") or 0.0),
+                    "total_trades": int(trading.get("total_trades") or performance.get("trades") or 0),
+                    "sharpe_ratio": float(performance.get("sharpe_ratio") or 0.0),
+                })
+            except Exception as e:
+                logging.exception("api/performance error")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/logs")
+        def api_logs():
+            try:
+                return jsonify({"logs": self._get_logs(limit=200)})
+            except Exception as e:
+                logging.exception("api/logs error")
+                return jsonify({"logs": [], "error": str(e)}), 500
     # ------------------------------------------------------------------ renderers
     def _render_dashboard(self):
         """
@@ -1557,9 +2496,42 @@ class UIAgent:
       100% { box-shadow: 0 0 0 rgba(255,210,74,0); }
     }
 
-    .meter > span { display:block; height:100%; background:#ffd24a; }
+	    .meter > span { display:block; height:100%; background:#ffd24a; }
+          .integration-deck { position:relative; overflow:hidden; border-color:rgba(255,210,74,0.35); background:linear-gradient(135deg, rgba(255,210,74,0.12), rgba(58,210,159,0.08) 42%, rgba(103,183,255,0.09)); box-shadow:0 0 28px rgba(255,210,74,0.10); }
+          .integration-deck::before { content:''; position:absolute; left:0; right:0; top:0; height:2px; background:linear-gradient(90deg, #ffd24a, #3ad29f, #67b7ff); opacity:.9; }
+          .integration-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; position:relative; z-index:1; }
+          .integration-title { display:flex; flex-direction:column; gap:3px; }
+          .integration-title strong { font-size:18px; letter-spacing:.4px; color:var(--accent); }
+          .integration-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+          .integration-actions select, .integration-actions input { min-height:32px; max-width:150px; background:#0f1427; border:1px solid rgba(255,255,255,0.12); color:var(--text); border-radius:8px; padding:6px 8px; }
+          .integration-kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:12px; }
+          .integration-kpi { border:1px solid rgba(255,255,255,0.10); background:rgba(5,10,24,0.46); border-radius:12px; padding:10px; min-height:72px; }
+          .integration-kpi .mini { margin-bottom:4px; }
+          .integration-kpi .value { font-size:18px; color:var(--text); }
+          .integration-kpi.good .value { color:#3ad29f; }
+          .integration-kpi.warn .value { color:#ffd24a; }
+          .integration-kpi.bad .value { color:#ff6b6b; }
+          .integration-tables { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; margin-top:12px; }
+          .integration-table { border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:rgba(5,10,24,0.38); padding:10px; overflow:auto; }
+          .integration-table h4 { margin:0 0 8px; font-size:13px; color:var(--accent); }
+          .integration-table table { font-size:11px; }
+          .integration-note { margin-top:8px; color:var(--muted); font-size:11px; }
+	    .integration-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+	    .integration-actions select, .integration-actions input { min-height:32px; max-width:150px; background:#0f1427; border:1px solid rgba(255,255,255,0.12); color:var(--text); border-radius:8px; padding:6px 8px; }
+	    .integration-kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:12px; }
+	    .integration-kpi { border:1px solid rgba(255,255,255,0.10); background:rgba(5,10,24,0.46); border-radius:12px; padding:10px; min-height:72px; }
+	    .integration-kpi .mini { margin-bottom:4px; }
+	    .integration-kpi .value { font-size:18px; color:var(--text); }
+	    .integration-kpi.good .value { color:#3ad29f; }
+	    .integration-kpi.warn .value { color:#ffd24a; }
+	    .integration-kpi.bad .value { color:#ff6b6b; }
+	    .integration-tables { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; margin-top:12px; }
+	    .integration-table { border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:rgba(5,10,24,0.38); padding:10px; overflow:auto; }
+	    .integration-table h4 { margin:0 0 8px; font-size:13px; color:var(--accent); }
+	    .integration-table table { font-size:11px; }
+	    .integration-note { margin-top:8px; color:var(--muted); font-size:11px; }
 
-    @media(max-width: 980px){ .app-shell{grid-template-columns:1fr;} .sidebar{position:relative;} #agentOutputs{grid-template-columns:1fr;} }
+	    @media(max-width: 980px){ .app-shell{grid-template-columns:1fr;} .sidebar{position:relative;} #agentOutputs{grid-template-columns:1fr;} }
 
   </style>
 </head>
@@ -1570,9 +2542,10 @@ class UIAgent:
       <nav class="nav">
         <a href="#status">Status</a>
         <a href="#intents">Intents</a>
-        <a href="#risk">Risk</a>
-        <a href="#performance">Performance</a>
-        <a href="#config">Config</a>
+	        <a href="#risk">Risk</a>
+	        <a href="#performance">Performance</a>
+	        <a href="#integrations">Integrations</a>
+	        <a href="#config">Config</a>
         <a href="#audit">Audit</a>
         <a href="/swarmguard">SwarmGuard</a>
         <a href="/buzz">BuzzCoin</a>
@@ -1618,13 +2591,47 @@ class UIAgent:
       <div class="card"><h3>CPU</h3><div class="value small" id="cpuUsage">$CPU</div></div>
       <div class="card"><h3>Memory</h3><div class="value small" id="memUsage">$MEM</div></div>
 
-    </div>
+	    </div>
 
-    <div class="row">
-      <div class="card">
+	    <div class="card integration-deck" id="integrations" style="margin-top:12px;">
+	      <div class="integration-head">
+	        <div class="integration-title">
+	          <strong>Integration Command Deck</strong>
+	          <div class="mini">Hummingbot sidecar, public-bot research, worker weights, and PMM quote quality</div>
+	        </div>
+	        <div class="integration-actions">
+	          <select id="mainHbExecutor"><option>position</option><option>twap</option><option>grid</option><option>dca</option><option>xemm</option><option>arbitrage</option></select>
+	          <input id="mainHbSymbol" placeholder="ETH/USDT" value="$SYMBOL">
+	          <button class="btn" onclick="mainBuildHbPlan()">Plan</button>
+	          <button class="btn secondary" onclick="mainCreateHbLifecycle()">Create</button>
+	          <a class="btn secondary" href="/integrations">Workbench</a>
+	        </div>
+	      </div>
+	      <div class="integration-kpis">
+	        <div class="integration-kpi" id="intHbKpi"><div class="mini">Hummingbot sidecar</div><div class="value" id="intHbState">Loading</div></div>
+	        <div class="integration-kpi" id="intBacktestKpi"><div class="mini">Backtest bridge</div><div class="value" id="intBacktestState">Loading</div></div>
+	        <div class="integration-kpi" id="intWorkerKpi"><div class="mini">Worker feedback</div><div class="value" id="intWorkerState">Loading</div></div>
+	        <div class="integration-kpi" id="intQuoteKpi"><div class="mini">Quote advisors</div><div class="value" id="intQuoteState">Loading</div></div>
+	      </div>
+	      <div class="integration-tables">
+	        <div class="integration-table"><h4>Lifecycle</h4><table><thead><tr><th>ID</th><th>Type</th><th>State</th></tr></thead><tbody id="mainLifecycleBody"><tr><td colspan="3" class="empty">Loading</td></tr></tbody></table></div>
+	        <div class="integration-table"><h4>Worker Weights</h4><table><thead><tr><th>Worker</th><th>Win</th><th>R</th></tr></thead><tbody id="mainWorkerPerfBody"><tr><td colspan="3" class="empty">Loading</td></tr></tbody></table></div>
+	        <div class="integration-table"><h4>Quote Advice</h4><table><thead><tr><th>Symbol</th><th>State</th><th>Score</th></tr></thead><tbody id="mainQuoteAdviceBody"><tr><td colspan="3" class="empty">Loading</td></tr></tbody></table></div>
+	        <div class="integration-table"><h4>Promotions</h4><table><thead><tr><th>Symbol</th><th>Stage</th><th>Reason</th></tr></thead><tbody id="mainPromotionBody"><tr><td colspan="3" class="empty">Loading</td></tr></tbody></table></div>
+	      </div>
+	      <div class="integration-note" id="mainIntegrationNote">Live Hummingbot and quote placement remain gated by config.</div>
+	      <pre class="log-tail" id="mainIntegrationOut" style="display:none; margin-top:8px; max-height:180px;"></pre>
+	    </div>
+
+	    <div class="row">
+	      <div class="card">
         <h3>Market Snapshot</h3>
         <div class="mini" id="marketSnap">Last: $LATEST_PRICE | Bid: | | Ask: | | Spread: |</div>
         <div class="mini" id="marketMeta">Volume (1m): | | Candle: |</div>
+        <table style="margin-top:8px;">
+          <thead><tr><th>Market Bee</th><th>Score</th><th>Status</th><th>1h</th><th>24h</th><th>7d</th><th>30d</th><th>Liq</th><th>Vol</th><th>RT loss</th><th>Reason</th></tr></thead>
+          <tbody id="marketBeeBody"><tr><td colspan="11" class="empty">Collecting</td></tr></tbody>
+        </table>
       </div>
       <div class="card">
         <h3>Portfolio</h3>
@@ -1840,6 +2847,16 @@ class UIAgent:
       </table>
     </div>
 
+    <div class="row">
+      <div class="card">
+        <h3>Market Bee Analysis</h3>
+        <table style="margin-top:8px;">
+          <thead><tr><th>Market Bee</th><th>Score</th><th>Status</th><th>1h</th><th>24h</th><th>7d</th><th>30d</th><th>Liq</th><th>Vol</th><th>RT loss</th><th>Reason</th></tr></thead>
+          <tbody id="marketBeeBody"><tr><td colspan="11" class="empty">Collecting</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card" id="intents" style="margin-top:12px;">
       <h3>Intents & Orders</h3>
       <table>
@@ -1968,11 +2985,144 @@ class UIAgent:
         if (base) lastAssetPrices[base.toUpperCase()] = p;
       }catch(e){}
     }
-    const ALT_MARKETS = ${ALT_MARKETS_JSON};
-    const altCharts = {};
+	    const ALT_MARKETS = ${ALT_MARKETS_JSON};
+	    const altCharts = {};
 
-    
-    async function setDryRun(on){
+	    function htmlEsc(v){
+	      return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+	    }
+	    function kpiClass(value){
+	      const v = String(value || '').toLowerCase();
+	      if (v.includes('disabled') || v.includes('block') || v.includes('failed') || v.includes('not_')) return 'bad';
+	      if (v.includes('warn') || v.includes('review') || v.includes('persisted')) return 'warn';
+	      return 'good';
+	    }
+	    function setIntegrationKpi(id, value){
+	      const card = document.getElementById(id + 'Kpi');
+	      const el = document.getElementById(id + 'State');
+	      if (!el || !card) return;
+	      el.textContent = value || 'N/A';
+	      card.classList.remove('good','warn','bad');
+	      card.classList.add(kpiClass(value));
+	    }
+	    function tableRows(rows, emptyCols){
+	      if (!rows || !rows.length) return '<tr><td colspan="' + emptyCols + '" class="empty">No rows</td></tr>';
+	      return rows.join('');
+	    }
+	    async function loadIntegrationDeck(){
+	      try{
+	        const res = await fetch(api('/integration_planes.json?' + cb()));
+	        const data = await res.json();
+	        const p = data.payload || {};
+	        const status = p.integration_status || {};
+	        setIntegrationKpi('intHb', status.hummingbot_live_sidecar || 'unknown');
+	        setIntegrationKpi('intBacktest', status.public_bot_backtesting || 'unknown');
+	        setIntegrationKpi('intWorker', status.worker_performance || 'unknown');
+	        setIntegrationKpi('intQuote', status.market_making_advisors || 'unknown');
+	        const lifecycle = ((p.hummingbot_lifecycle || {}).states) || {};
+	        document.getElementById('mainLifecycleBody').innerHTML = tableRows(Object.entries(lifecycle).slice(0,4).map(function(pair){
+	          const id = pair[0], v = pair[1] || {};
+	          return '<tr><td>' + htmlEsc(id.slice(0,18)) + '</td><td>' + htmlEsc(v.executor_type || '') + '</td><td>' + htmlEsc(v.state || '') + '</td></tr>';
+	        }), 3);
+	        const perf = ((p.workers || {}).perf_by_worker) || {};
+	        document.getElementById('mainWorkerPerfBody').innerHTML = tableRows(Object.entries(perf).slice(0,5).map(function(pair){
+	          const worker = pair[0], v = pair[1] || {};
+	          return '<tr><td>' + htmlEsc(worker) + '</td><td>' + Number(v.win_rate || 0).toFixed(2) + '</td><td>' + Number(v.avg_r_multiple || 0).toFixed(2) + '</td></tr>';
+	        }), 3);
+	        const advice = ((p.quote_quality_advice || {}).advice) || {};
+	        document.getElementById('mainQuoteAdviceBody').innerHTML = tableRows(Object.entries(advice).slice(0,5).map(function(pair){
+	          const sym = pair[0], v = pair[1] || {};
+	          return '<tr><td>' + htmlEsc(sym) + '</td><td>' + htmlEsc(v.state || '') + '</td><td>' + Number(v.quote_quality_score || 0).toFixed(2) + '</td></tr>';
+	        }), 3);
+	        const promotions = p.promotions || {};
+	        document.getElementById('mainPromotionBody').innerHTML = tableRows(Object.entries(promotions).slice(0,5).map(function(pair){
+	          const sym = pair[0], v = pair[1] || {};
+	          return '<tr><td>' + htmlEsc(sym) + '</td><td>' + htmlEsc(v.stage || '') + '</td><td>' + htmlEsc(v.reason || '') + '</td></tr>';
+	        }), 3);
+	        const controls = p.controls || {};
+	        const note = document.getElementById('mainIntegrationNote');
+	        if (note) {
+	          note.textContent = 'Phoenix authority locked: integrations are research, diagnostic, or sandbox only. Phase 6 owns live orders; Phase 7 owns scaling.';
+	        }
+	      }catch(e){
+	        const note = document.getElementById('mainIntegrationNote');
+	        if (note) note.textContent = 'Integration deck error: ' + e;
+	      }
+	    }
+	    async function loadMarketBee(){
+	        try{
+	          const res = await fetch(api('/market_bee.json?' + cb()));
+	          const data = await res.json();
+	          const beeBody = document.getElementById('marketBeeBody');
+	          if (beeBody) {
+	            const bee = data.payload || {};
+	            const rows = bee.top || [];
+	            beeBody.innerHTML = rows.length ? rows.map(r => {
+	              const h = r.horizons || {};
+	              const hour = (h.hour || {}).price_change_pct;
+	              const day = (h.day || {}).price_change_pct;
+	              const week = (h.week || {}).price_change_pct;
+	              const month = (h.month || {}).price_change_pct;
+	              const q = r.quality || {};
+	              const rt = q.roundtrip_ratio;
+	              const loss = (rt !== undefined && rt !== null) ? ((1 - Number(rt)) * 100).toFixed(2) + '%' : '|';
+	              const liq = q.liquidity_usd ? '$' + Number(q.liquidity_usd).toLocaleString(undefined,{maximumFractionDigits:0}) : '|';
+	              const volume = q.volume_24h_usd ? '$' + Number(q.volume_24h_usd).toLocaleString(undefined,{maximumFractionDigits:0}) : '|';
+	              return '<tr>' +
+	                '<td>' + (r.symbol || '|') + '</td>' +
+	                '<td>' + Number(r.score || 0).toFixed(3) + '</td>' +
+	                '<td>' + (r.readiness || (r.allowed ? 'allowed' : 'rejected')) + '</td>' +
+	                '<td>' + (hour !== undefined && hour !== null ? Number(hour).toFixed(2) + '%' : '|') + '</td>' +
+	                '<td>' + (day !== undefined && day !== null ? Number(day).toFixed(2) + '%' : '|') + '</td>' +
+	                '<td>' + (week !== undefined && week !== null ? Number(week).toFixed(2) + '%' : '|') + '</td>' +
+	                '<td>' + (month !== undefined && month !== null ? Number(month).toFixed(2) + '%' : '|') + '</td>' +
+	                '<td>' + liq + '</td>' +
+	                '<td>' + volume + '</td>' +
+	                '<td>' + loss + '</td>' +
+	                '<td>' + (r.reason || '|') + '</td>' +
+	              '</tr>';
+	            }).join('') : '<tr><td colspan="11" class="empty">Collecting</td></tr>';
+	          }
+	        }catch(e){
+	          console.error('Market bee error:', e);
+	        }
+	    }
+
+	    async function mainBuildHbPlan(){
+	      try{
+	        const body = {
+	          executor_type: (document.getElementById('mainHbExecutor') || {}).value || 'position',
+	          symbol: (document.getElementById('mainHbSymbol') || {}).value || DEFAULT_SYMBOL,
+	          action: 'BUY',
+	          notional_usd: 1
+	        };
+	        const res = await fetch(api('/hummingbot/plan.json'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+	        const data = await res.json();
+	        const out = document.getElementById('mainIntegrationOut');
+	        if (out) { out.style.display = 'block'; out.textContent = JSON.stringify(data, null, 2); }
+	      }catch(e){ alert('Plan failed: ' + e); }
+	    }
+	    async function mainCreateHbLifecycle(){
+	      try{
+	        const body = {
+	          action: 'list',
+	          executor_type: (document.getElementById('mainHbExecutor') || {}).value || 'position',
+	          intent: {
+	            symbol: (document.getElementById('mainHbSymbol') || {}).value || DEFAULT_SYMBOL,
+	            action: 'BUY',
+	            notional_usd: 1
+	          }
+	        };
+	        const res = await fetch(api('/hummingbot/lifecycle.json'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+	        const data = await res.json();
+	        const out = document.getElementById('mainIntegrationOut');
+	        if (out) { out.style.display = 'block'; out.textContent = JSON.stringify(data, null, 2); }
+	        await loadIntegrationDeck();
+	      }catch(e){ alert('Lifecycle query failed: ' + e); }
+	    }
+
+	    
+	    async function setDryRun(on){
       try{
         const body = `dry_run=$${on ? 'true' : 'false'}`;
         const res = await fetch(api('/control/mode'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
@@ -1982,15 +3132,7 @@ class UIAgent:
       }catch(e){ alert('Failed: ' + e); }
     }
     async function goLive(){
-      const confirm = prompt('Type ARM LIVE to confirm');
-      if (!confirm) return;
-      try{
-        const body = `dry_run=false&confirm=$${encodeURIComponent(confirm)}`;
-        const res = await fetch(api('/control/mode'), {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
-        const j = await res.json();
-        if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
-        if (j && j.ok) await loadStatus();
-      }catch(e){ alert('Failed: ' + e); }
+      alert('Phoenix authority locked. Use the dedicated Phase-6 or Phase-7 operator process.');
     }
     async function haltNow(){
       const confirm = prompt('Type HALT to confirm');
@@ -2003,12 +3145,7 @@ class UIAgent:
       }catch(e){ alert('Failed: ' + e); }
     }
     async function resumeSwarm(){
-      try{
-        const res = await fetch(api('/control/resume'), {method:'POST'});
-        const j = await res.json();
-        if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
-        if (j && j.ok) await loadStatus();
-      }catch(e){ alert('Failed: ' + e); }
+      alert('Legacy resume is retired. Reconcile and recover through the dedicated Phase-6/7 operator process.');
     }
 
     async function loadAutonomy(){
@@ -2290,10 +3427,40 @@ function openRawJson(payload){
         const rem = data.candle_remain_sec;
         const snap = document.getElementById('marketSnap');
         const meta = document.getElementById('marketMeta');
+        const beeBody = document.getElementById('marketBeeBody');
         const spreadStr = (spread !== undefined && spread !== null) ? Number(spread).toFixed(3) + '%' : '|';
         const remStr = (rem !== undefined && rem !== null) ? rem + 's' : '|';
         if (snap) snap.innerText = `Last: $${last || '|'} | Bid: $${bid || '|'} | Ask: $${ask || '|'} | Spread: $${spreadStr}`;
         if (meta) meta.innerText = `Volume (1m): $${vol || '|'} | Candle: $${remStr}`;
+        if (beeBody) {
+          const bee = data.market_bee || {};
+          const rows = bee.top || [];
+          beeBody.innerHTML = rows.length ? rows.map(r => {
+            const h = r.horizons || {};
+            const hour = (h.hour || {}).price_change_pct;
+            const day = (h.day || {}).price_change_pct;
+            const week = (h.week || {}).price_change_pct;
+            const month = (h.month || {}).price_change_pct;
+            const q = r.quality || {};
+            const rt = q.roundtrip_ratio;
+            const loss = (rt !== undefined && rt !== null) ? ((1 - Number(rt)) * 100).toFixed(2) + '%' : '|';
+            const liq = q.liquidity_usd ? '$' + Number(q.liquidity_usd).toLocaleString(undefined,{maximumFractionDigits:0}) : '|';
+            const volume = q.volume_24h_usd ? '$' + Number(q.volume_24h_usd).toLocaleString(undefined,{maximumFractionDigits:0}) : '|';
+            return '<tr>' +
+              '<td>' + (r.symbol || '|') + '</td>' +
+              '<td>' + Number(r.score || 0).toFixed(3) + '</td>' +
+              '<td>' + (r.readiness || (r.allowed ? 'allowed' : 'rejected')) + '</td>' +
+              '<td>' + (hour !== undefined && hour !== null ? Number(hour).toFixed(2) + '%' : '|') + '</td>' +
+              '<td>' + (day !== undefined && day !== null ? Number(day).toFixed(2) + '%' : '|') + '</td>' +
+              '<td>' + (week !== undefined && week !== null ? Number(week).toFixed(2) + '%' : '|') + '</td>' +
+              '<td>' + (month !== undefined && month !== null ? Number(month).toFixed(2) + '%' : '|') + '</td>' +
+              '<td>' + liq + '</td>' +
+              '<td>' + volume + '</td>' +
+              '<td>' + loss + '</td>' +
+              '<td>' + (r.reason || '|') + '</td>' +
+            '</tr>';
+          }).join('') : '<tr><td colspan="11" class="empty">Collecting</td></tr>';
+        }
       }catch(e){ console.error('market snapshot failed', e); }
     }
 
@@ -2566,8 +3733,24 @@ function openRawJson(payload){
           }
         }
         const accounts = await provider.request({ method: 'eth_accounts' });
-        const tx = __pendingDex.tx;
+        const tx = { ...__pendingDex.tx };
+        const toHexQty = (val) => {
+          if (val === undefined || val === null || val === '') return undefined;
+          if (typeof val === 'string' && val.startsWith('0x')) return val;
+          try {
+            const n = BigInt(String(val));
+            if (n < 0n) return undefined;
+            return '0x' + n.toString(16);
+          } catch(e) {
+            return undefined;
+          }
+        };
         if (!tx.from && accounts && accounts.length) tx.from = accounts[0];
+        if (tx.gas !== undefined && (tx.gas === 0 || tx.gas === '0' || tx.gas === '0x0')) delete tx.gas;
+        if (tx.gas !== undefined) tx.gas = toHexQty(tx.gas);
+        if (tx.gasPrice !== undefined) tx.gasPrice = toHexQty(tx.gasPrice);
+        if (tx.value !== undefined) tx.value = toHexQty(tx.value);
+        delete tx.chainId;
         const txHash = await provider.request({ method: 'eth_sendTransaction', params: [tx] });
         await fetch(api('/dex/ack'), {
           method: 'POST',
@@ -2579,7 +3762,13 @@ function openRawJson(payload){
         loadDexPending();
       }catch(e){
         console.error('approve swap failed', e);
-        alert('Approve failed: ' + e);
+        let msg = '';
+        try {
+          msg = e && (e.message || e.reason || e.data?.message || JSON.stringify(e));
+        } catch(_) {
+          msg = String(e);
+        }
+        alert('Approve failed: ' + (msg || String(e)));
       }
     }
 
@@ -3552,15 +4741,17 @@ async function loadPerformance() {
         for (const b of balsRaw){
           const a = String(b.asset || '').toUpperCase().trim();
           if (!a) continue;
+          const chain = String(b.chain || '').trim();
+          const key = chain ? (a + '@' + chain) : a;
           const free = Number(b.free || 0);
           const locked = Number(b.locked || 0);
-          if (!agg[a]) agg[a] = {free: 0, locked: 0};
-          agg[a].free += free;
-          agg[a].locked += locked;
+          if (!agg[key]) agg[key] = {asset: a, chain: chain, free: 0, locked: 0};
+          agg[key].free += free;
+          agg[key].locked += locked;
         }
         const minBal = 1e-8;
         const bals = Object.keys(agg)
-          .map(a => ({asset: a, free: agg[a].free, locked: agg[a].locked}))
+          .map(k => ({asset: agg[k].asset, chain: agg[k].chain, free: agg[k].free, locked: agg[k].locked}))
           .filter(b => {
             const total = Math.abs(Number(b.free) || 0) + Math.abs(Number(b.locked) || 0);
             return total > minBal;
@@ -3570,7 +4761,7 @@ async function loadPerformance() {
           return;
         }
         const parts = bals.map(b => {
-          const a = b.asset || '';
+          const a = b.chain ? ((b.asset || '') + '@' + b.chain) : (b.asset || '');
           const f = (b.free !== undefined && b.free !== null) ? Number(b.free) : null;
           if (f === null || Number.isNaN(f)) return a;
           return a + ': ' + f.toFixed(6);
@@ -3640,11 +4831,16 @@ async function loadPerformance() {
     setInterval(loadDecisionChain, 7000);
     setInterval(loadIntents, 7000);
     setInterval(loadDexPending, 5000);
-    setInterval(loadRisk, 7000);
-    setInterval(loadPerformance, 7000);
-    setInterval(loadAlerts, 7000);
-    setInterval(loadAudit, 7000);
-    setInterval(loadRiskTimeline, 7000);
+	    setInterval(loadRisk, 7000);
+	    setInterval(loadPerformance, 7000);
+	    setInterval(loadAlerts, 7000);
+	    setInterval(loadAudit, 7000);
+	    setInterval(loadRiskTimeline, 7000);
+	    setInterval(loadIntegrationDeck, 7000);
+	    setInterval(loadMarketBee, 7000);
+	    loadIntegrationDeck();
+	    loadMarketBee();
+
   </script>
     </main>
   </div>
@@ -3736,7 +4932,7 @@ async function loadPerformance() {
             alt_markets = []
             alt_charts_html = '<div class="mini-charts" style="display:none;"></div>'
 
-        html = tmpl.substitute(
+        html = tmpl.safe_substitute(
             MODE='Loading...',
             EXCHANGE=exchange,
             SYMBOL=symbol,
@@ -3803,6 +4999,8 @@ async function loadPerformance() {
         """Return a list of base URLs to try (helps in Docker/host setups)."""
         base_url, _ = self._buzz_config()
         urls = [base_url]
+        if "buzzservice" not in base_url:
+            urls.append("http://buzzservice:9009")
         if "localhost" in base_url or "127.0.0.1" in base_url:
             urls.append("http://host.docker.internal:9009")
             urls.append("http://127.0.0.1:9009")
@@ -4326,9 +5524,13 @@ async function loadPerformance() {
             # Preserve original ordering, but consolidate duplicates
             order = []
             balance_map = {}
+            chain_rows = []
             for b in balances:
                 sym_u = str(b.get("asset") or "").upper()
                 if not sym_u:
+                    continue
+                if b.get("chain"):
+                    chain_rows.append(dict(b))
                     continue
                 if sym_u not in order:
                     order.append(sym_u)
@@ -4386,6 +5588,7 @@ async function loadPerformance() {
                 if v is None:
                     continue
                 out.append({"asset": sym_u, "free": v.get("free", 0.0), "locked": v.get("locked", 0.0)})
+            out.extend(chain_rows)
             return out
         except Exception:
             return balances
@@ -4435,15 +5638,52 @@ async function loadPerformance() {
             logging.exception("db query failed")
             return []
 
-    def _update_config_partial(self, updates: dict) -> bool:
+    def _update_config_partial(self, updates: dict, actor: str = "ui_agent", reason: str = "partial_update") -> bool:
         """Update settings.yaml with a partial dict and reload coordinator config if possible."""
         try:
-            cfg = self._load_config() or {}
-            if not isinstance(cfg, dict):
-                cfg = {}
-            cfg.update(updates or {})
-            with open(self.config_path, "w") as f:
-                yaml.safe_dump(cfg, f)
+            config_agent = None
+            try:
+                config_agent = self.coordinator.agents.get("config_agent") if self.coordinator and getattr(self.coordinator, "agents", None) else None
+            except Exception:
+                config_agent = None
+            if config_agent and hasattr(config_agent, "update"):
+                result = config_agent.update(updates or {}, actor=actor, reason=reason)
+                if not result.get("ok"):
+                    logging.warning(f"ConfigAgent rejected update: {result.get('errors')}")
+                    try:
+                        if self.coordinator and hasattr(self.coordinator, "share_data"):
+                            self.coordinator.share_data("buzz.config.error", {
+                                "source": "CONFIG_AGENT",
+                                "severity": "error",
+                                "actor": actor,
+                                "reason": reason,
+                                "errors": result.get("errors") or [],
+                            })
+                    except Exception:
+                        pass
+                    return False
+            else:
+                cfg = self._load_config() or {}
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                safe_updates = dict(updates or {})
+                safe_updates.pop("confirm_live", None)
+                if bool(cfg.get("phase0_quarantine", True)):
+                    blocked_true = {
+                        "live_mode", "onchain_enabled", "public_bot_metrics_auto_promote",
+                        "hummingbot_sidecar_live_enabled", "market_making_quote_placement_enabled",
+                        "openclaw_autonomy_enabled", "coin_selection_auto_switch",
+                        "swarmguard_small_trade_bypass", "volatility_harvest_enabled",
+                    }
+                    if safe_updates.get("dry_run") is False:
+                        return False
+                    if any(bool(safe_updates.get(key)) for key in blocked_true if key in safe_updates):
+                        return False
+                    if "hummingbot_v2_leverage" in safe_updates and int(safe_updates["hummingbot_v2_leverage"]) != 1:
+                        return False
+                cfg.update(safe_updates)
+                with open(self.config_path, "w") as f:
+                    yaml.safe_dump(cfg, f)
             try:
                 from main import load_config
                 new_cfg = load_config()
@@ -4453,9 +5693,31 @@ async function loadPerformance() {
                     self.coordinator.cfg = new_cfg
             except Exception as e:
                 logging.warning(f"Config reload failed after partial update: {e}")
+                try:
+                    if self.coordinator and hasattr(self.coordinator, "share_data"):
+                        self.coordinator.share_data("buzz.config.error", {
+                            "source": "CONFIG_AGENT",
+                            "severity": "error",
+                            "actor": actor,
+                            "reason": "reload_failed",
+                            "error": str(e),
+                        })
+                except Exception:
+                    pass
             return True
         except Exception as e:
             logging.exception(f"_update_config_partial failed: {e}")
+            try:
+                if self.coordinator and hasattr(self.coordinator, "share_data"):
+                    self.coordinator.share_data("buzz.config.error", {
+                        "source": "CONFIG_AGENT",
+                        "severity": "critical",
+                        "actor": actor,
+                        "reason": "partial_update_failed",
+                        "error": str(e),
+                    })
+            except Exception:
+                pass
             return False
 
     def _latest_analytics_payload(self) -> dict:
@@ -4625,6 +5887,11 @@ async function loadPerformance() {
                 rem = None
         except Exception:
             rem = None
+        market_bee = {}
+        try:
+            market_bee = self._latest_buzz_payload("buzz.market.bee") or {}
+        except Exception:
+            market_bee = {}
         return {
             "last": last,
             "bid": bid,
@@ -4632,6 +5899,7 @@ async function loadPerformance() {
             "spread_pct": spread,
             "volume_1m": vol,
             "candle_remain_sec": rem,
+            "market_bee": market_bee,
         }
 
     def _get_decision_chain_rows(self, limit: int = 20) -> list:
@@ -5027,6 +6295,59 @@ async function loadPerformance() {
             })
         return out
 
+    def _get_queen_alert_rows(self, limit: int = 20) -> list:
+        rows = self._db_query(
+            "SELECT ts, type, source, payload FROM raw_events "
+            "WHERE type IN ('buzz.governance.decision','buzz.cycle.snapshot','buzz.cycle.result','buzz.coordinator.decision') "
+            "   OR source='QUEEN' "
+            "ORDER BY ts DESC LIMIT ?",
+            (limit * 3,)
+        )
+        out = []
+        for r in rows:
+            payload = r.get("payload")
+            try:
+                payload = json.loads(payload) if isinstance(payload, str) else (payload or {})
+            except Exception:
+                payload = {}
+            queen = payload.get("queen") if isinstance(payload.get("queen"), dict) else payload
+            action = queen.get("action") or queen.get("decision") or payload.get("decision") or payload.get("action")
+            strategy = queen.get("strategy") or payload.get("strategy") or payload.get("winner")
+            svs = queen.get("svs") or payload.get("svs") or payload.get("score")
+            reason = queen.get("reason") or payload.get("reason") or payload.get("message") or ""
+            if not any([action, strategy, reason]):
+                continue
+            out.append({
+                "ts": self._fmt_ts(r.get("ts")),
+                "type": r.get("type") or "queen.alert",
+                "source": r.get("source") or "QUEEN",
+                "action": action or "-",
+                "strategy": strategy or "-",
+                "svs": svs if svs is not None else "-",
+                "reason": reason,
+            })
+            if len(out) >= limit:
+                break
+        if not out:
+            try:
+                cycle = {}
+                if self.coordinator:
+                    cycle = self.coordinator.get_shared_data("buzz.cycle.snapshot") or self.coordinator.get_shared_data("buzz.cycle.result") or {}
+                queen = (cycle.get("queen") if isinstance(cycle, dict) else {}) or {}
+                if queen:
+                    out.append({
+                        "ts": self._fmt_ts(cycle.get("ts") or time.time()),
+                        "type": "buzz.cycle.snapshot",
+                        "source": "QUEEN",
+                        "action": queen.get("action") or "-",
+                        "strategy": queen.get("strategy") or "-",
+                        "svs": queen.get("svs") if queen.get("svs") is not None else "-",
+                        "reason": queen.get("reason") or "",
+                    })
+            except Exception:
+                pass
+        return out
+
     def _get_audit_rows(self, limit: int = 20) -> list:
         rows = self._db_query(
             "SELECT ts, type, source, payload FROM raw_events ORDER BY ts DESC LIMIT ?",
@@ -5173,6 +6494,20 @@ async function loadPerformance() {
     def _price_series(self, limit: int = 100):
         md = self.coordinator.agents.get("market_data")
         if not md:
+            ds = self.coordinator.agents.get("data_store") if self.coordinator else None
+            if ds and hasattr(ds, "get_observation_snapshots"):
+                try:
+                    rows = ds.get_observation_snapshots(limit=limit) or []
+                    rows = [row for row in rows if row.get("price") is not None and row.get("ts") is not None]
+                    rows = list(reversed(rows[-limit:]))
+                    labels = [
+                        datetime.fromtimestamp(float(row["ts"])).strftime("%H:%M")
+                        for row in rows
+                    ]
+                    closes = [float(row["price"]) for row in rows]
+                    return labels, closes
+                except Exception:
+                    return [], []
             return [], []
         try:
             times, closes = md.fetch_closes(limit)
@@ -5435,21 +6770,26 @@ async function loadPerformance() {
                 "throttle_clear_sec": int(float(data.get("throttle_clear_sec", 300))),
             }
             api_updates = {
-                "kraken_api_key": data.get("kraken_api_key", ""),
-                "kraken_api_secret": data.get("kraken_api_secret", ""),
-                "etherscan_api_key": data.get("etherscan_api_key", ""),
-                "web3_rpc_url": data.get("web3_rpc_url", ""),
                 "watch_address": data.get("watch_address", ""),
                 "erc20_token_address": data.get("erc20_token_address", ""),
             }
+            for secret_key in ("kraken_api_key", "kraken_api_secret", "etherscan_api_key", "web3_rpc_url"):
+                value = str(data.get(secret_key) or "").strip()
+                if value:
+                    api_updates[secret_key] = value
             cfg = self._load_config()
             keys = self._load_api_keys()
             cfg.update(cfg_updates)
             keys.update(api_updates)
             with open(self.config_path, "w") as f:
                 yaml.safe_dump(cfg, f)
+            os.makedirs(os.path.dirname(self.api_keys_path) or ".", exist_ok=True)
             with open(self.api_keys_path, "w") as f:
                 json.dump(keys, f, indent=2)
+            try:
+                os.chmod(self.api_keys_path, 0o600)
+            except OSError:
+                pass
             try:
                 from main import load_config
                 new_cfg = load_config()
@@ -5468,7 +6808,7 @@ async function loadPerformance() {
         logging.info(f"UI Agent started on http://{self.host}:{self.port}")
 
     def _run_server(self):
-        self.app.run(host=self.host, port=self.port, debug=False, use_reloader=False)
+        self.app.run(host=self.host, port=self.port, debug=False, use_reloader=False, threaded=True)
 
     def stop(self):
         if self.thread:

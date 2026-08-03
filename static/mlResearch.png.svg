@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="ML Research Lab">
+  <defs>
+    <linearGradient id="ml-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#201307"/>
+      <stop offset="100%" stop-color="#100903"/>
+    </linearGradient>
+    <linearGradient id="ml-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffd86f"/>
+      <stop offset="100%" stop-color="#cf8415"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#ml-bg)"/>
+  <circle cx="80" cy="96" r="14" fill="#281806" stroke="url(#ml-gold)" stroke-width="8"/>
+  <circle cx="176" cy="96" r="14" fill="#281806" stroke="url(#ml-gold)" stroke-width="8"/>
+  <circle cx="128" cy="72" r="14" fill="#281806" stroke="url(#ml-gold)" stroke-width="8"/>
+  <circle cx="96" cy="164" r="14" fill="#281806" stroke="url(#ml-gold)" stroke-width="8"/>
+  <circle cx="160" cy="164" r="14" fill="#281806" stroke="url(#ml-gold)" stroke-width="8"/>
+  <path d="M128 86L92 104M128 86l36 18M92 108l4 42M164 108l-4 42M108 162h40" stroke="url(#ml-gold)" stroke-width="8" stroke-linecap="round"/>
+</svg>

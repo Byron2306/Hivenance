@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Execution Parity">
+  <defs>
+    <linearGradient id="par-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e1208"/>
+      <stop offset="100%" stop-color="#100904"/>
+    </linearGradient>
+    <linearGradient id="par-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffd670"/>
+      <stop offset="100%" stop-color="#d68c17"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#par-bg)"/>
+  <rect x="48" y="74" width="64" height="108" rx="18" fill="#211406" stroke="url(#par-gold)" stroke-width="8"/>
+  <rect x="144" y="74" width="64" height="108" rx="18" fill="#211406" stroke="url(#par-gold)" stroke-width="8"/>
+  <path d="M80 106l16 16 28-28M164 106h24M164 128h24M164 150h24" stroke="url(#par-gold)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M112 128h32" stroke="url(#par-gold)" stroke-width="10" stroke-linecap="round"/>
+</svg>

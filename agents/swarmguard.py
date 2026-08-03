@@ -32,6 +32,10 @@ class SwarmGuard:
         self.weight_floor = float(getattr(cfg, "swarmguard_weight_floor", 0.4) or 0.4)
         self.small_trade_usd = float(getattr(cfg, "swarmguard_small_trade_usd", 0.0) or 0.0)
         self.small_trade_bypass = bool(getattr(cfg, "swarmguard_small_trade_bypass", False))
+        self.dex_min_output_ratio = float(getattr(cfg, "dex_min_output_ratio", getattr(cfg, "onchain_min_output_ratio", 0.90)) or 0.90)
+        self.dex_max_price_impact_pct = float(getattr(cfg, "dex_max_price_impact_pct", 0.02) or 0.02)
+        self.dex_max_gas_drag_pct = float(getattr(cfg, "dex_max_gas_drag_pct", 0.01) or 0.01)
+        self.dex_min_liquidity_usd = float(getattr(cfg, "dex_min_liquidity_usd", 0.0) or 0.0)
 
         self._trade_times = deque()
         self._last_trade_ts = 0.0
@@ -295,6 +299,8 @@ class SwarmGuard:
         action = (decision or {}).get("action") or ""
         strategy = (decision or {}).get("strategy") or ""
         svs = float((decision or {}).get("svs") or 0.0)
+        symbol = (decision or {}).get("symbol") or (council_decision or {}).get("symbol") or getattr(self.cfg, "symbol", None)
+        evidence["symbol"] = symbol
 
         required_position_usd = 0.0
         try:
@@ -380,6 +386,21 @@ class SwarmGuard:
         except Exception:
             evidence["api_failures"] = 0
         try:
+            if exec_quality:
+                for k in (
+                    "quote_output_ratio",
+                    "min_output_ratio",
+                    "price_impact_pct",
+                    "gas_drag_pct",
+                    "gas_usd",
+                    "route_liquidity_usd",
+                    "liquidity_usd",
+                ):
+                    if k in exec_quality:
+                        evidence[k] = exec_quality.get(k)
+        except Exception:
+            pass
+        try:
             evidence["override_attempt"] = bool((decision or {}).get("override_attempt") or False)
         except Exception:
             evidence["override_attempt"] = False
@@ -410,6 +431,14 @@ class SwarmGuard:
                         evidence["worker_loss_streak"] = int(c_risk.get("worker_loss_streak") or evidence.get("worker_loss_streak") or 0)
                     if "alpha_age_minutes" in c_risk:
                         evidence["alpha_age_hours"] = float(c_risk.get("alpha_age_minutes") or 0.0) / 60.0
+        except Exception:
+            pass
+        try:
+            pair_state = self._pair_protection_state(symbol)
+            if pair_state:
+                evidence["pair_protection_state"] = pair_state.get("state")
+                evidence["pair_protection_reason"] = pair_state.get("reason")
+                evidence["pair_protection_allowed"] = bool(pair_state.get("allowed", True))
         except Exception:
             pass
         return evidence
@@ -513,6 +542,47 @@ class SwarmGuard:
         except Exception:
             pass
 
+        # SG-PAIR-PROTECT-01
+        try:
+            if evidence.get("pair_protection_allowed") is False:
+                veto_reason = "PAIR_PROTECTED"
+                triggered.append("SG-PAIR-PROTECT-01")
+        except Exception:
+            pass
+
+        # DEX route quality gates for on-chain / small-cap execution.
+        try:
+            qr = evidence.get("quote_output_ratio")
+            min_qr = evidence.get("min_output_ratio") or self.dex_min_output_ratio
+            if qr is not None and float(qr) < float(min_qr):
+                veto_reason = "DEX_QUOTE_TOO_LOW"
+                triggered.append("SG-DEX-QUOTE-01")
+        except Exception:
+            pass
+        try:
+            impact = evidence.get("price_impact_pct")
+            if impact is not None and float(impact) > self.dex_max_price_impact_pct:
+                veto_reason = "DEX_PRICE_IMPACT"
+                triggered.append("SG-DEX-IMPACT-01")
+        except Exception:
+            pass
+        try:
+            gas_drag = evidence.get("gas_drag_pct")
+            if gas_drag is not None and float(gas_drag) > self.dex_max_gas_drag_pct:
+                veto_reason = "DEX_GAS_DRAG"
+                triggered.append("SG-DEX-GAS-01")
+        except Exception:
+            pass
+        try:
+            liq = evidence.get("route_liquidity_usd")
+            if liq is None:
+                liq = evidence.get("liquidity_usd")
+            if self.dex_min_liquidity_usd > 0 and liq is not None and float(liq) < self.dex_min_liquidity_usd:
+                veto_reason = "DEX_LIQUIDITY_TOO_THIN"
+                triggered.append("SG-DEX-LIQ-01")
+        except Exception:
+            pass
+
         # Additional declarative rules from config (best-effort)
         try:
             for rule in self._risk_rules or []:
@@ -573,10 +643,27 @@ class SwarmGuard:
             "SG-LEARNING-DECAY-01": "Alpha too old; decay learned weights.",
             "SG-EXEC-CONFIRM-01": "Order confirmation latency too high.",
             "SG-KILL-API-01": "API failure threshold exceeded; global pause.",
+            "SG-PAIR-PROTECT-01": "Pair protection is active for this symbol.",
+            "SG-DEX-QUOTE-01": "DEX quote output is below the required minimum.",
+            "SG-DEX-IMPACT-01": "DEX route price impact is too high.",
+            "SG-DEX-GAS-01": "Gas drag is too high for expected edge.",
+            "SG-DEX-LIQ-01": "DEX route liquidity is too thin.",
             "SG-OVERRIDE-STAKE-01": "Override requested; BUZZ stake required.",
             "SG-OVERRIDE-SLASH-01": "Override used in live mode; slash required.",
         }
         return msgs.get(rule_id, "Risk rule triggered.")
+
+    def _pair_protection_state(self, symbol: Optional[str]) -> Optional[Dict[str, Any]]:
+        if not symbol or not self.coordinator:
+            return None
+        try:
+            ds = self.coordinator.agents.get("data_store") if getattr(self.coordinator, "agents", None) else None
+            if not ds or not hasattr(ds, "get_pair_protections"):
+                return None
+            rows = ds.get_pair_protections(symbol) or {}
+            return rows.get(symbol)
+        except Exception:
+            return None
 
     def _enforce_overtrading(self) -> Optional[str]:
         now = time.time()

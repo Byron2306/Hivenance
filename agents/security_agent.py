@@ -221,6 +221,14 @@ class SecurityAgent:
                     self._emit_security_event('INFO', 'AUTHORIZED_COMMAND', {'command': cmd, 'requested_by': requester}, recommended_action='NONE')
                     # special handling: ARM_LIVE
                     if cmd == 'ARM_LIVE':
+                        if self.coordinator and bool(getattr(self.coordinator.cfg, 'phase0_quarantine', True)):
+                            self._emit_security_event(
+                                'HIGH',
+                                'PHASE0_LIVE_ARM_REJECTED',
+                                {'requested_by': requester},
+                                recommended_action='KEEP_DRY_RUN',
+                            )
+                            return
                         self.armed = True
                         try:
                             self.coordinator.share_data('buzz.security.policy', {'armed': True, 'dry_run': False, 'paused': False})

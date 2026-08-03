@@ -1,0 +1,115 @@
+{
+  "campaign": {
+    "calendar_days": 40,
+    "cycles": 8,
+    "forecasts": 120,
+    "policy": "market",
+    "venue": "kraken-research-profile"
+  },
+  "database_counts": {
+    "fills": 0,
+    "orders": 0,
+    "phase5_model_freezes": 1,
+    "phase5_shadow_intents": 120,
+    "phase5_shadow_runs": 8,
+    "phase5_shadow_settlements": 120
+  },
+  "drift_attack": {
+    "intents_created": 0,
+    "reasons": [
+      "frozen_parameter_drift"
+    ],
+    "status": "LOCKED"
+  },
+  "engineering_validation_only": true,
+  "freeze": {
+    "approved_by": "Synthetic Human Reviewer",
+    "approved_ts": 1781213650.5149357,
+    "candidate_key": "breakout_continuation_v1::market",
+    "config_hash": "c219d3ff513132c2a0a8fae25d94e813cd8df91fb8729b484d3c942dcc5630db",
+    "execution_eligible": false,
+    "freeze_id": "08517465c3bbc3f0a0e8461803667b32dfc7be1a48154e32d27b7d0fac835708",
+    "model_id": "breakout_continuation_v1",
+    "order_policy": "market",
+    "phase4_dataset_hash": "phase4-soak-dataset",
+    "phase4_run_id": "phase4-soak-approved",
+    "shadow_only": true,
+    "status": "ACTIVE"
+  },
+  "honest_boundary": "Synthetic public-snapshot proxies validate engineering behavior, not profitability or live venue fill fidelity.",
+  "idempotent_repeat": {
+    "counts_after": {
+      "orders": 0,
+      "phase5_shadow_intents": 120,
+      "phase5_shadow_settlements": 120
+    },
+    "intents_created": 0,
+    "settled": 0
+  },
+  "mode": "public_shadow_only",
+  "phase": 5,
+  "readiness_before_drift": {
+    "automatic_promotion": false,
+    "execution_eligible": false,
+    "freeze": {
+      "approved_by": "Synthetic Human Reviewer",
+      "approved_ts": 1781213650.5149357,
+      "candidate_key": "breakout_continuation_v1::market",
+      "config_hash": "c219d3ff513132c2a0a8fae25d94e813cd8df91fb8729b484d3c942dcc5630db",
+      "execution_eligible": false,
+      "freeze_id": "08517465c3bbc3f0a0e8461803667b32dfc7be1a48154e32d27b7d0fac835708",
+      "model_id": "breakout_continuation_v1",
+      "order_policy": "market",
+      "payload": "{\"freeze_id\": \"08517465c3bbc3f0a0e8461803667b32dfc7be1a48154e32d27b7d0fac835708\", \"phase4_run_id\": \"phase4-soak-approved\", \"candidate_key\": \"breakout_continuation_v1::market\", \"model_id\": \"breakout_continuation_v1\", \"order_policy\": \"market\", \"approved_by\": \"Synthetic Human Reviewer\", \"approved_ts\": 1781213650.5149357, \"phase4_dataset_hash\": \"phase4-soak-dataset\", \"config_hash\": \"c219d3ff513132c2a0a8fae25d94e813cd8df91fb8729b484d3c942dcc5630db\", \"status\": \"ACTIVE\", \"shadow_only\": true, \"execution_eligible\": false}",
+      "phase4_dataset_hash": "phase4-soak-dataset",
+      "phase4_run_id": "phase4-soak-approved",
+      "revoke_reason": null,
+      "revoked_ts": null,
+      "shadow_only": true,
+      "status": "ACTIVE"
+    },
+    "human_review_required": true,
+    "live_order_rows": 0,
+    "phase": 5,
+    "ready_for_phase6_review": true,
+    "real_orders_submitted": 0,
+    "reasons": [],
+    "scorecard": {
+      "cost_mae_bps": 19.27337749,
+      "distinct_days": 41,
+      "execution_eligible": false,
+      "filled": 120,
+      "mean_data_quality": 1.0,
+      "mean_fill_ratio": 1.0,
+      "mean_net_bps": 75.70262731,
+      "mode": "public_shadow_only",
+      "phase": 5,
+      "real_orders_submitted": 0,
+      "settled": 120,
+      "transmission_attempts": 0,
+      "win_rate": 1.0
+    },
+    "transmission_attempts": 0
+  },
+  "safety": {
+    "live_order_rows": 0,
+    "private_exchange_access": false,
+    "real_orders_submitted": 0,
+    "transmission_attempts": 0
+  },
+  "scorecard": {
+    "cost_mae_bps": 19.27337749,
+    "distinct_days": 41,
+    "execution_eligible": false,
+    "filled": 120,
+    "mean_data_quality": 1.0,
+    "mean_fill_ratio": 1.0,
+    "mean_net_bps": 75.70262731,
+    "mode": "public_shadow_only",
+    "phase": 5,
+    "real_orders_submitted": 0,
+    "settled": 120,
+    "transmission_attempts": 0,
+    "win_rate": 1.0
+  }
+}

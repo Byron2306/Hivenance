@@ -2,7 +2,14 @@ const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 
 let mainWindow;
-let backendUrl = 'http://127.0.0.1:5000';
+let backendUrl = process.env.HIVENANCE_BACKEND_URL || 'http://127.0.0.1:5000';
+
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('disable-accelerated-2d-canvas');
+app.commandLine.appendSwitch('disable-dev-shm-usage');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -10,7 +17,10 @@ function createWindow() {
     height: 900,
     minWidth: 1000,
     minHeight: 700,
-    backgroundColor: '#1a1a2e',
+    center: true,
+    show: false,
+    autoHideMenuBar: false,
+    backgroundColor: '#0c0d0f',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
@@ -20,6 +30,32 @@ function createWindow() {
   });
 
   mainWindow.loadFile('renderer/index.html');
+
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow) return;
+    mainWindow.center();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.moveTop();
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (!mainWindow) return;
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+    mainWindow.focus();
+  });
+
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    console.log(`[renderer:${level}] ${sourceId}:${line} ${message}`);
+  });
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`Renderer failed to load ${validatedURL}: ${errorCode} ${errorDescription}`);
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error(`Renderer process gone: ${details.reason}`);
+  });
 
   // Create application menu
   const template = [

@@ -3,20 +3,52 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    image: swarm-agent-custom
     container_name: swarm-agent
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5001:5001"
     volumes:
       - ../data:/app/data
       - ../logs:/app/logs
       - ../config:/app/config
+      - ../desktop-ui:/app/desktop-ui
     environment:
       - DRY_RUN=1
+      - HIVENANCE_UI_PORT=5001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - WALLETCONNECT_PROJECT_ID=${WALLETCONNECT_PROJECT_ID}
       - ONEINCH_API_KEY=${ONEINCH_API_KEY}
+      - BUZZ_BASE_URL=http://buzzservice:9009
+      - BUZZ_SHARED_SECRET=${BUZZ_SHARED_SECRET:?Set BUZZ_SHARED_SECRET in a local .env file}
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:5000/ || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5001/api/status >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    depends_on:
+      - buzzservice
+    networks:
+      - trading-net
+
+  buzzservice:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: swarm-agent-custom
+    container_name: hivenance-buzzservice
+    restart: unless-stopped
+    command: ["python", "-m", "uvicorn", "buzzservice.service:app", "--host", "0.0.0.0", "--port", "9009"]
+    ports:
+      - "127.0.0.1:9009:9009"
+    volumes:
+      - ../buzzservice.db:/app/buzzservice.db
+    environment:
+      - BUZZ_SHARED_SECRET=${BUZZ_SHARED_SECRET:?Set BUZZ_SHARED_SECRET in a local .env file}
+      - HIVE_SHARED_SECRET=${BUZZ_SHARED_SECRET:?Set BUZZ_SHARED_SECRET in a local .env file}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9009/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 6
@@ -28,9 +60,34 @@ services:
     container_name: swarm-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - redis-data:/data
+    networks:
+      - trading-net
+
+  hummingbot-sidecar:
+    profiles: ["hummingbot"]
+    image: hummingbot/hummingbot:latest
+    container_name: hivenance-hummingbot-sidecar
+    restart: "no"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../external/public-bots/hummingbot/conf:/home/hummingbot/conf
+      - ../external/public-bots/hummingbot/conf/connectors:/home/hummingbot/conf/connectors
+      - ../external/public-bots/hummingbot/conf/strategies:/home/hummingbot/conf/strategies
+      - ../external/public-bots/hummingbot/conf/controllers:/home/hummingbot/conf/controllers
+      - ../external/public-bots/hummingbot/conf/scripts:/home/hummingbot/conf/scripts
+      - ../external/public-bots/hummingbot/logs:/home/hummingbot/logs
+      - ../external/public-bots/hummingbot/data:/home/hummingbot/data
+      - ../external/public-bots/hummingbot/certs:/home/hummingbot/certs
+      - ../external/public-bots/hummingbot/scripts:/home/hummingbot/scripts
+      - ../external/public-bots/hummingbot/controllers:/home/hummingbot/controllers
+      - ../data/hummingbot_executors:/home/hummingbot/conf/hivenance_executors:ro
+    environment:
+      - HIVENANCE_HB_CONFIG_PATH=${HIVENANCE_HB_CONFIG_PATH:-}
+      - HIVENANCE_HB_EXECUTOR_ID=${HIVENANCE_HB_EXECUTOR_ID:-}
     networks:
       - trading-net
 

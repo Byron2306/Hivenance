@@ -41,6 +41,7 @@ class LoggingAnalyticsAgent:
         # legacy metrics structure (kept for compatibility with existing callers)
         self.metrics = self._load_metrics()
         self.recent_logs: List[Dict[str, Any]] = []
+        self._event_jsonl_disabled = False
 
         # sqlite DB for normalized tables
         self._db_lock = threading.RLock()
@@ -228,11 +229,16 @@ class LoggingAnalyticsAgent:
             return {}
 
     def _write_event_jsonl(self, evt: Dict[str, Any]):
+        if getattr(self, "_event_jsonl_disabled", False):
+            return
         try:
             ts = int(time.time())
             fn = os.path.join(self.events_dir, f"{datetime.utcfromtimestamp(ts).date()}.jsonl")
             with open(fn, 'a', encoding='utf-8') as f:
                 f.write(json.dumps({'ingest_ts': int(time.time()*1000), 'evt': evt}, default=str) + '\n')
+        except PermissionError as e:
+            self._event_jsonl_disabled = True
+            logging.warning(f"Disabling event JSONL sink: {e}")
         except Exception:
             logging.exception('Failed to write event jsonl')
 

@@ -101,17 +101,22 @@ class RegimeOracle:
             return fv * w_fast + sv * w_slow
 
         trend = agg(self._trend_score)
+        trend_dir = agg(self._trend_direction)
         vol = agg(self._vol_score)
         mean_cross = agg(self._mean_cross_score)
         bb_width = agg(self._bb_width_score)
         wick = agg(self._wick_score)
         spike = agg(self._spike_score)
         volume = agg(self._volume_score)
+        volume_expansion = agg(self._volume_expansion_score)
+        short_return = agg(self._short_return_score)
+        drawdown = agg(self._drawdown_score)
 
         spread_pct = self._spread_pct(execution)
 
         return {
             "trend": trend,
+            "trend_dir": trend_dir,
             "vol": vol,
             "spread": spread_pct,
             "mean_cross": mean_cross,
@@ -119,6 +124,9 @@ class RegimeOracle:
             "wick": wick,
             "spike": spike,
             "volume": volume,
+            "volume_expansion": volume_expansion,
+            "short_return": short_return,
+            "drawdown": drawdown,
         }
 
     def _score_regimes(self, f: Dict[str, float]) -> Dict[str, float]:
@@ -127,17 +135,28 @@ class RegimeOracle:
         spread = f.get("spread", 0.0)
         spike = f.get("spike", 0.0)
         trend = f.get("trend", 0.0)
+        trend_dir = f.get("trend_dir", 0.0)
         mean_cross = f.get("mean_cross", 0.0)
         bb_width = f.get("bb_width", 0.0)
         volume = f.get("volume", 0.0)
+        volume_expansion = f.get("volume_expansion", 0.0)
+        short_return = f.get("short_return", 0.0)
+        drawdown = f.get("drawdown", 0.0)
+        up_bias = max(0.0, trend_dir)
+        down_bias = max(0.0, -trend_dir)
+        pump_bias = max(0.0, short_return)
+        dump_bias = max(0.0, -short_return)
 
         scores = {
             "PANIC_VOLATILE": 0.45 * vol + 0.25 * wick + 0.20 * spread + 0.10 * spike,
-            "LOW_LIQUIDITY": 0.50 * spread + 0.35 * (1 - volume) + 0.15 * 0.0,
-            "TREND_UP": 0.45 * trend + 0.25 * (1 - mean_cross) + 0.20 * (1 - bb_width) + 0.10 * 0.2,
-            "TREND_DOWN": 0.45 * trend + 0.25 * (1 - mean_cross) + 0.20 * (1 - bb_width) + 0.10 * 0.2,
+            "LOW_LIQUIDITY": 0.45 * spread + 0.35 * (1 - volume) + 0.20 * (1 - volume_expansion),
+            "TREND_UP": 0.40 * trend + 0.30 * up_bias + 0.15 * (1 - mean_cross) + 0.15 * (1 - bb_width),
+            "TREND_DOWN": 0.40 * trend + 0.30 * down_bias + 0.15 * (1 - mean_cross) + 0.15 * (1 - bb_width),
             "CHOP_RANGE": 0.45 * (1 - trend) + 0.35 * mean_cross + 0.20 * (1 - bb_width),
             "BREAKOUT": 0.40 * spike + 0.25 * bb_width + 0.20 * volume + 0.15 * trend,
+            "VOL_EXPANSION": 0.35 * vol + 0.25 * spike + 0.25 * volume_expansion + 0.15 * trend,
+            "PUMP": 0.35 * pump_bias + 0.25 * spike + 0.25 * volume_expansion + 0.15 * up_bias,
+            "DUMP": 0.35 * dump_bias + 0.25 * drawdown + 0.25 * volume_expansion + 0.15 * down_bias,
         }
         return scores
 
@@ -189,6 +208,17 @@ class RegimeOracle:
         slope = (sma20 - sma50) / max(1e-9, closes[-1])
         dir_cons = sum(1 for i in range(1, len(closes)) if closes[i] > closes[i - 1]) / (len(closes) - 1)
         return self._clamp01(abs(slope) * 20.0 + abs(dir_cons - 0.5) * 2.0)
+
+    def _trend_direction(self, ohlcv: List[List[float]]) -> float:
+        closes = [float(c[4]) for c in ohlcv][-60:]
+        if len(closes) < 20:
+            return 0.0
+        sma20 = sum(closes[-20:]) / 20.0
+        sma50 = sum(closes[-50:]) / 50.0 if len(closes) >= 50 else sum(closes) / len(closes)
+        slope = (sma20 - sma50) / max(1e-9, closes[-1])
+        dir_cons = sum(1 for i in range(1, len(closes)) if closes[i] > closes[i - 1]) / max(1, len(closes) - 1)
+        raw = (slope * 30.0) + ((dir_cons - 0.5) * 2.0)
+        return max(-1.0, min(1.0, raw))
 
     def _vol_score(self, ohlcv: List[List[float]]) -> float:
         closes = [float(c[4]) for c in ohlcv][-60:]
@@ -245,6 +275,32 @@ class RegimeOracle:
         v = vols[-1]
         avg = sum(vols) / len(vols)
         return self._clamp01(v / max(1e-9, avg))
+
+    def _volume_expansion_score(self, ohlcv: List[List[float]]) -> float:
+        vols = [float(c[5]) for c in ohlcv][-60:]
+        if len(vols) < 30:
+            return 0.0
+        fast = sum(vols[-5:]) / 5.0
+        slow = sum(vols[-30:]) / 30.0
+        return self._clamp01((fast / max(1e-9, slow) - 1.0) / 2.0)
+
+    def _short_return_score(self, ohlcv: List[List[float]]) -> float:
+        closes = [float(c[4]) for c in ohlcv][-10:]
+        if len(closes) < 6:
+            return 0.0
+        ret = (closes[-1] - closes[-6]) / max(1e-9, closes[-6])
+        return max(-1.0, min(1.0, ret / 0.05))
+
+    def _drawdown_score(self, ohlcv: List[List[float]]) -> float:
+        closes = [float(c[4]) for c in ohlcv][-30:]
+        if not closes:
+            return 0.0
+        peak = closes[0]
+        worst = 0.0
+        for c in closes:
+            peak = max(peak, c)
+            worst = min(worst, (c - peak) / max(1e-9, peak))
+        return self._clamp01(abs(worst) / 0.08)
 
     def _spread_pct(self, execution) -> float:
         try:

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Worker Bollinger">
+  <defs>
+    <linearGradient id="bol-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#211408"/>
+      <stop offset="100%" stop-color="#110904"/>
+    </linearGradient>
+    <linearGradient id="bol-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffd56b"/>
+      <stop offset="100%" stop-color="#cb7d11"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bol-bg)"/>
+  <path d="M58 92c22 0 22 72 44 72s22-72 44-72 22 72 44 72" fill="none" stroke="url(#bol-gold)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M58 72c22 0 22 40 44 40s22-40 44-40 22 40 44 40" fill="none" stroke="url(#bol-gold)" stroke-opacity=".6" stroke-width="8" stroke-linecap="round"/>
+  <path d="M58 112c22 0 22 104 44 104s22-104 44-104 22 104 44 104" fill="none" stroke="url(#bol-gold)" stroke-opacity=".6" stroke-width="8" stroke-linecap="round"/>
+</svg>

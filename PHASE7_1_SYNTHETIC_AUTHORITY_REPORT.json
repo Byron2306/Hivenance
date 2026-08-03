@@ -1,0 +1,50 @@
+{
+  "authority_requests": {
+    "denied": 8800,
+    "protected_requests": 8800,
+    "unexpectedly_allowed": 0
+  },
+  "config_guard": {
+    "final_config": {
+      "dry_run": true,
+      "hummingbot_v2_leverage": 1,
+      "live_mode": false,
+      "phase0_quarantine": true
+    },
+    "rejected": 250,
+    "unsafe_update_attempts": 250
+  },
+  "event_spine": {
+    "correlation_id": "obs-1",
+    "validated_count": 1
+  },
+  "execution_parity": {
+    "diagnostics": 100,
+    "live_allowed": 0,
+    "promotion_authority": 0
+  },
+  "external_evidence": {
+    "live_allowed": 0,
+    "promotion_authority": 0,
+    "records": 100,
+    "unvalidated_imports": 100
+  },
+  "ml_candidates": {
+    "execution_authority": 0,
+    "live_allowed": 0,
+    "phase2_ready": 25,
+    "records": 25
+  },
+  "name": "integration_authority_reconciliation",
+  "pass": true,
+  "phase": "7.1",
+  "profitability_claim": false,
+  "signal_marketplace": {
+    "live_allowed": 0,
+    "promotion_authority": 0,
+    "rounds": 100,
+    "scaling_authority": 0
+  },
+  "synthetic_only": true,
+  "violations": []
+}

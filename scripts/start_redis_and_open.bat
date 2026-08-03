@@ -18,12 +18,12 @@ if exist "%ROOT%\\config\\settings.yaml" (
     "SetKV 'redis_host' 'redis'; " ^
     "SetKV 'redis_port' '6379'; " ^
     "SetKV 'ui_host' '0.0.0.0'; " ^
-    "SetKV 'ui_port' '5000'; " ^
+    "SetKV 'ui_port' '5001'; " ^
     "Set-Content -Path $p -Value $lines;"
 )
 
-rem Resolve UI port from settings.yaml (fallback to 5000)
-set UIPORT=5000
+rem Resolve UI port from settings.yaml (fallback to 5001)
+set UIPORT=5001
 for /f "tokens=1,2 delims=:" %%A in ('findstr /b /c:"ui_port:" "%ROOT%\\config\\settings.yaml"') do (
   set UIPORT=%%B
 )

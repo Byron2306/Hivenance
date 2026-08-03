@@ -1,8 +1,9 @@
+import math
 import requests
 import ccxt
 import logging
 from binance.client import Client
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict, Any
 
 
 class MarketData:
@@ -36,12 +37,32 @@ class MarketData:
         ticker = self.client.get_symbol_ticker(symbol=self.symbol)
         return float(ticker["price"])
 
-    def average_volume(self, closes: List[float]) -> float:
-        """Calculate average volume from closes (placeholder, since volumes not passed)."""
-        # Placeholder: return average of closes as proxy
-        if closes:
-            return sum(closes) / len(closes)
-        return 0.0
+    def fetch_orderbook(self, limit: int = 5) -> Dict[str, Any]:
+        book = self.client.get_order_book(symbol=self.symbol, limit=limit)
+        bids = [[float(p), float(q)] for p, q in (book.get("bids") or [])[:limit]]
+        asks = [[float(p), float(q)] for p, q in (book.get("asks") or [])[:limit]]
+        return self._book_payload(bids, asks)
+
+    def average_volume(self, volumes: List[float]) -> float:
+        """Calculate average volume from actual volume samples."""
+        return sum(volumes) / len(volumes) if volumes else 0.0
+
+    def _book_payload(self, bids: List[List[float]], asks: List[List[float]]) -> Dict[str, Any]:
+        bid = bids[0][0] if bids else None
+        ask = asks[0][0] if asks else None
+        spread = ((ask - bid) / bid) if bid and ask and bid > 0 else None
+        mid = ((bid + ask) / 2.0) if bid and ask else None
+        top_qty = sum(q for _, q in bids[:3]) + sum(q for _, q in asks[:3])
+        return {
+            "symbol": self.symbol,
+            "bids": bids,
+            "asks": asks,
+            "bid": bid,
+            "ask": ask,
+            "spread_pct": spread,
+            "mid_price": mid,
+            "top_of_book_depth_usd": (top_qty * mid) if mid else None,
+        }
 
 
 class KrakenMarketData:
@@ -81,10 +102,28 @@ class KrakenMarketData:
         ticker = self.client.fetch_ticker(self.symbol)
         return float(ticker["last"])
 
-    def average_volume(self, closes: List[float]) -> float:
-        if closes:
-            return sum(closes) / len(closes)
-        return 0.0
+    def fetch_orderbook(self, limit: int = 5) -> Dict[str, Any]:
+        book = self.client.fetch_order_book(self.symbol, limit=limit)
+        bids = [[float(p), float(q)] for p, q in (book.get("bids") or [])[:limit]]
+        asks = [[float(p), float(q)] for p, q in (book.get("asks") or [])[:limit]]
+        bid = bids[0][0] if bids else None
+        ask = asks[0][0] if asks else None
+        spread = ((ask - bid) / bid) if bid and ask and bid > 0 else None
+        mid = ((bid + ask) / 2.0) if bid and ask else None
+        top_qty = sum(q for _, q in bids[:3]) + sum(q for _, q in asks[:3])
+        return {
+            "symbol": self.symbol,
+            "bids": bids,
+            "asks": asks,
+            "bid": bid,
+            "ask": ask,
+            "spread_pct": spread,
+            "mid_price": mid,
+            "top_of_book_depth_usd": (top_qty * mid) if mid else None,
+        }
+
+    def average_volume(self, volumes: List[float]) -> float:
+        return sum(volumes) / len(volumes) if volumes else 0.0
 
 
 class CoinGeckoData:
@@ -152,15 +191,97 @@ class SentimentData:
         self.base_url = "https://api.lunarcrush.com/v1"  # Example, requires API key
 
     def get_sentiment(self, symbol: str) -> Optional[float]:
-        # Placeholder: return random or fixed value
-        # In real: fetch from API
-        return 0.5  # Neutral sentiment score -1 to 1
+        # No provider is configured. Missing data must remain missing rather than
+        # masquerading as a neutral observation.
+        return None
 
 
 class TrendAnalysis:
     """
-    Basic trend analysis.
+    Lightweight market context helpers used by the oracle, council and guards.
     """
+    @staticmethod
+    def returns(closes: List[float], lookback: int = 1) -> List[float]:
+        if not closes or lookback <= 0 or len(closes) <= lookback:
+            return []
+        out = []
+        for i in range(lookback, len(closes)):
+            prev = float(closes[i - lookback])
+            curr = float(closes[i])
+            if prev > 0:
+                out.append((curr - prev) / prev)
+        return out
+
+    @staticmethod
+    def realized_volatility(closes: List[float], window: int = 30) -> float:
+        vals = TrendAnalysis.returns((closes or [])[-(window + 1):], 1)
+        if len(vals) < 2:
+            return 0.0
+        mean = sum(vals) / len(vals)
+        var = sum((r - mean) ** 2 for r in vals) / len(vals)
+        return math.sqrt(var)
+
+    @staticmethod
+    def volatility_expansion(closes: List[float], fast: int = 12, slow: int = 48) -> float:
+        if len(closes or []) < slow + 1:
+            return 0.0
+        fast_vol = TrendAnalysis.realized_volatility(closes, fast)
+        slow_vol = TrendAnalysis.realized_volatility(closes, slow)
+        if slow_vol <= 0:
+            return 0.0
+        return max(0.0, min(5.0, fast_vol / slow_vol))
+
+    @staticmethod
+    def volume_surge(volumes: List[float], fast: int = 5, slow: int = 30) -> float:
+        if len(volumes or []) < slow:
+            return 0.0
+        fast_avg = sum(float(v) for v in volumes[-fast:]) / max(1, fast)
+        slow_avg = sum(float(v) for v in volumes[-slow:]) / max(1, slow)
+        if slow_avg <= 0:
+            return 0.0
+        return max(0.0, min(5.0, fast_avg / slow_avg))
+
+    @staticmethod
+    def short_return(closes: List[float], lookback: int = 5) -> float:
+        if len(closes or []) <= lookback:
+            return 0.0
+        start = float(closes[-(lookback + 1)])
+        end = float(closes[-1])
+        return (end - start) / max(1e-9, start)
+
+    @staticmethod
+    def max_drawdown(closes: List[float], window: int = 60) -> float:
+        vals = [float(c) for c in (closes or [])[-window:] if float(c) > 0]
+        if not vals:
+            return 0.0
+        peak = vals[0]
+        worst = 0.0
+        for v in vals:
+            peak = max(peak, v)
+            worst = min(worst, (v - peak) / max(1e-9, peak))
+        return abs(worst)
+
+    @staticmethod
+    def market_context(closes: List[float], volumes: Optional[List[float]] = None) -> Dict[str, Any]:
+        volumes = volumes or []
+        vol = TrendAnalysis.realized_volatility(closes, 30)
+        vol_exp = TrendAnalysis.volatility_expansion(closes)
+        vol_surge = TrendAnalysis.volume_surge(volumes)
+        ret_5 = TrendAnalysis.short_return(closes, 5)
+        ret_15 = TrendAnalysis.short_return(closes, 15)
+        drawdown = TrendAnalysis.max_drawdown(closes, 60)
+        return {
+            "realized_volatility": vol,
+            "volatility_expansion": vol_exp,
+            "volume_surge": vol_surge,
+            "return_5": ret_5,
+            "return_15": ret_15,
+            "max_drawdown": drawdown,
+            "is_pump": bool(ret_5 > 0.02 and vol_surge >= 1.5),
+            "is_dump": bool(ret_5 < -0.02 and vol_surge >= 1.5),
+            "is_tradeable_volatility": bool(vol_exp >= 1.15 and vol_surge >= 0.8),
+        }
+
     @staticmethod
     def is_uptrend(closes: List[float]) -> bool:
         if len(closes) < 2:

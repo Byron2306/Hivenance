@@ -1,0 +1,48 @@
+{
+  "artifact": "Hivenance Phoenix Phase 4 Adversarial Validation Tribunal",
+  "synthetic_sqlite_end_to_end": {
+    "status": "HEALTHY",
+    "rows_examined": 2400,
+    "candidate_count": 3,
+    "pbo": 0.0,
+    "champion": "breakout_continuation_v1::market",
+    "ready_for_phase5_review": true,
+    "real_orders_submitted": 0,
+    "validation_runs": 1,
+    "candidate_rows": 3,
+    "fold_rows": 12,
+    "holdout_rows": 24,
+    "perturbation_rows": 27,
+    "live_orders": 0
+  },
+  "adversarial_controls": {
+    "good": {
+      "champion": "breakout_continuation_v1::market",
+      "pbo": 0.0,
+      "ready_for_phase5_review": true,
+      "champion_gate_pass": true
+    },
+    "unstable_breakout": {
+      "candidate_gate_pass": false,
+      "reasons": [
+        "bootstrap_lower_bound_not_positive",
+        "walk_forward_instability",
+        "selection_threshold_instability",
+        "symbol_profit_concentration",
+        "deflated_sharpe_below_gate",
+        "negative_at_1_5x_cost",
+        "symbol_holdout_instability",
+        "regime_holdout_instability"
+      ],
+      "bootstrap_lower_95_bps": -11.03863667,
+      "walk_forward_positive_ratio": 0.5,
+      "symbol_holdout_positive_ratio": 0.2
+    },
+    "safety": {
+      "execution_wired": false,
+      "real_orders_submitted": 0,
+      "automatic_promotion": false
+    }
+  },
+  "disclaimer": "Synthetic engineering evidence only; no market profitability claim."
+}

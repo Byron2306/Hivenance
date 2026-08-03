@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Config Agent">
+  <defs>
+    <linearGradient id="cfg-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#2d1c08"/>
+      <stop offset="100%" stop-color="#120d05"/>
+    </linearGradient>
+    <linearGradient id="cfg-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#f6c45b"/>
+      <stop offset="100%" stop-color="#d88f1b"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#cfg-bg)"/>
+  <path d="M128 38l52 30v60c0 36-24 68-52 90-28-22-52-54-52-90V68z" fill="#20160a" stroke="url(#cfg-gold)" stroke-width="10"/>
+  <circle cx="128" cy="118" r="28" fill="none" stroke="url(#cfg-gold)" stroke-width="12"/>
+  <path d="M128 78v20M128 138v20M88 118h20M148 118h20M101 91l14 14M141 131l14 14M155 91l-14 14M115 131l-14 14" stroke="url(#cfg-gold)" stroke-width="10" stroke-linecap="round"/>
+</svg>

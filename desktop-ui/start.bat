@@ -18,7 +18,7 @@ if not exist "node_modules\" (
 
 echo Starting Hivenance Desktop UI...
 echo.
-echo Make sure your backend is running at http://127.0.0.1:5000
+echo Make sure your backend is running at http://127.0.0.1:5001
 echo.
 
 call npm start

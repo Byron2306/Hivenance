@@ -3,112 +3,1457 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://127.0.0.1:* http://localhost:*; style-src 'self' 'unsafe-inline'; script-src 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://127.0.0.1:* http://localhost:*; frame-src http://127.0.0.1:* http://localhost:*; img-src 'self' data: file:; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdn.jsdelivr.net">
     <title>Hivenance Trading Agent</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <img src="../assets/icon.png" alt="Hivenance" class="app-logo" onerror="this.style.display='none'">
-                <h1>Hivenance Trading Agent</h1>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand-lockup">
+                <img src="../../static/hivenance_logo.png" alt="Hivenance" class="brand-logo" onerror="this.style.display='none'">
+                <div class="brand-copy">
+                    <span class="eyebrow">Swarm Intelligence Console</span>
+                    <h1>Hivenance</h1>
+                </div>
             </div>
-            <div class="header-right">
-                <span id="connection-status" class="status-badge">●</span>
-                <span id="mode-badge" class="mode-badge">DRY RUN</span>
+            <div class="topbar-actions">
+                <div class="connection-pill" title="Backend connection">
+                    <span id="connection-status" class="status-badge disconnected"></span>
+                    <span id="connection-label">Offline</span>
+                </div>
+                <span id="mode-badge" class="mode-badge dry-run">DRY RUN</span>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Sidebar Navigation -->
-            <nav class="sidebar">
+        <div class="workspace">
+            <nav class="sidebar" aria-label="Primary navigation">
+                <div class="sidebar-section-label">Navigation</div>
                 <ul class="nav-list">
-                    <li class="nav-item active" data-view="dashboard">
-                        <span class="nav-icon">📊</span>
+                    <li class="nav-item active" data-view="dashboard" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_dashboard.png" alt=""></span>
                         <span class="nav-label">Dashboard</span>
                     </li>
-                    <li class="nav-item" data-view="agents">
-                        <span class="nav-icon">🤖</span>
+                    <li class="nav-item" data-view="market" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/market.png" alt=""></span>
+                        <span class="nav-label">Market</span>
+                    </li>
+                    <li class="nav-item" data-view="observation" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_observation.png" alt=""></span>
+                        <span class="nav-label">Observation</span>
+                    </li>
+                    <li class="nav-item" data-view="hypotheses" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_hypotheses.png" alt=""></span>
+                        <span class="nav-label">Hypotheses</span>
+                    </li>
+                    <li class="nav-item" data-view="executionlab" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_executionlab.png" alt=""></span>
+                        <span class="nav-label">Execution Lab</span>
+                    </li>
+                    <li class="nav-item" data-view="validationlab" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_validationlab.png" alt=""></span>
+                        <span class="nav-label">Validation</span>
+                    </li>
+                    <li class="nav-item" data-view="shadowflight" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_shadowflight.png" alt=""></span>
+                        <span class="nav-label">Shadow Flight</span>
+                    </li>
+                    <li class="nav-item" data-view="canary" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_canary.png" alt=""></span>
+                        <span class="nav-label">Tiny Canary</span>
+                    </li>
+                    <li class="nav-item" data-view="growth" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_growth.png" alt=""></span>
+                        <span class="nav-label">Growth Governor</span>
+                    </li>
+                    <li class="nav-item" data-view="agents" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/coordinator.png" alt=""></span>
                         <span class="nav-label">Agents</span>
                     </li>
-                    <li class="nav-item" data-view="trades">
-                        <span class="nav-icon">💹</span>
+                    <li class="nav-item" data-view="buzzcoin" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/buzzcoin.png" alt=""></span>
+                        <span class="nav-label">BuzzCoin</span>
+                    </li>
+                    <li class="nav-item" data-view="swarmguard" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/swarmguard.png" alt=""></span>
+                        <span class="nav-label">SwarmGuard</span>
+                    </li>
+                    <li class="nav-item" data-view="trades" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_trades.png" alt=""></span>
                         <span class="nav-label">Trades</span>
                     </li>
-                    <li class="nav-item" data-view="performance">
-                        <span class="nav-icon">📈</span>
+                    <li class="nav-item" data-view="performance" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_performance.png" alt=""></span>
                         <span class="nav-label">Performance</span>
                     </li>
-                    <li class="nav-item" data-view="logs">
-                        <span class="nav-icon">📝</span>
+                    <li class="nav-item" data-view="integrations" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_integrations.png" alt=""></span>
+                        <span class="nav-label">Integrations</span>
+                    </li>
+                    <li class="nav-item" data-view="logs" tabindex="0">
+                        <span class="nav-icon"><img src="../../static/hivelord_pack/nav_logs.png" alt=""></span>
                         <span class="nav-label">Logs</span>
                     </li>
-                    <li class="nav-item" data-view="settings">
-                        <span class="nav-icon">⚙️</span>
+                    <li class="nav-item" data-view="settings" tabindex="0">
+                        <span class="nav-icon">⚙</span>
                         <span class="nav-label">Settings</span>
                     </li>
                 </ul>
+                <div class="sidebar-status">
+                    <span class="bee-mark"><img src="../../static/buzzcoin.png" alt=""></span>
+                    <div>
+                        <strong>Hive Core</strong>
+                        <span>Monitoring market, wallet, and agent signals.</span>
+                    </div>
+                </div>
             </nav>
 
-            <!-- Content Area -->
-            <div class="content-area">
-                <!-- Dashboard View -->
-                <div id="dashboard-view" class="view active">
-                    <h2>System Dashboard</h2>
-                    
-                    <div class="card-grid">
-                        <div class="card">
-                            <h3>Wallet Balance</h3>
-                            <div class="metric-value" id="wallet-balance">Loading...</div>
+            <main class="content-area">
+                <section id="dashboard-view" class="view active">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Live Overview</span>
+                            <h2>System Dashboard</h2>
                         </div>
-                        <div class="card">
-                            <h3>Active Symbol</h3>
-                            <div class="metric-value" id="active-symbol">-</div>
-                        </div>
-                        <div class="card">
-                            <h3>Current Price</h3>
-                            <div class="metric-value" id="current-price">-</div>
-                        </div>
-                        <div class="card">
-                            <h3>24h Change</h3>
-                            <div class="metric-value" id="price-change">-</div>
-                        </div>
+                        <div class="refresh-note">Auto-refresh available in Settings</div>
                     </div>
 
-                    <div class="card">
-                        <h3>System Status</h3>
+                    <div class="metric-grid dashboard-instrument-grid">
+                        <article class="metric-card balance-card instrument-card">
+                            <span class="metric-label">Wallet Balance</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_portfolio.png" alt=""></span>
+                            <div class="metric-dial equity-dial" id="equity-dial" style="--meter: 0deg">
+                                <span id="equity-dial-label">0%</span>
+                            </div>
+                            <div class="metric-value" id="wallet-balance">Loading...</div>
+                            <span class="metric-caption">Total portfolio value</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Active Symbol</span>
+                            <div class="segmented-meter" id="symbol-activity-meter" aria-hidden="true">
+                                <span></span><span></span><span></span><span></span><span></span>
+                            </div>
+                            <div class="metric-value" id="active-symbol">-</div>
+                            <span class="metric-caption">Current focus market</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Current Price</span>
+                            <div class="needle-gauge" id="price-dial" style="--needle: 0deg">
+                                <span class="needle"></span>
+                            </div>
+                            <div class="metric-value" id="current-price">-</div>
+                            <span class="metric-caption">Latest market tick</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">24h Change</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_pnl_24h.png" alt=""></span>
+                            <div class="change-meter">
+                                <span class="change-zero"></span>
+                                <span id="change-meter-bar" class="change-meter-bar"></span>
+                            </div>
+                            <div class="metric-value" id="price-change">-</div>
+                            <span class="metric-caption">Session momentum</span>
+                        </article>
+                    </div>
+
+                    <section class="panel market-preview-panel hive-dashboard-surface">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Market Preview</span>
+                                <h3 id="dashboard-market-title">Coin Price Graph</h3>
+                            </div>
+                            <span id="dashboard-market-latest" class="market-chip">-</span>
+                        </div>
+                        <div class="market-preview-layout">
+                            <div class="market-icon-stage">
+                                <img src="../../static/hivelord_pack/nav_observation.png" alt="">
+                                <span>Hive Feed</span>
+                            </div>
+                            <div class="chart-wrap compact-chart">
+                                <svg class="price-chart" viewBox="0 0 640 220" preserveAspectRatio="none" role="img" aria-label="Market preview price graph">
+                                    <path id="dashboard-market-area" class="price-area" d=""></path>
+                                    <path id="dashboard-market-line" class="price-line" d=""></path>
+                                </svg>
+                                <div class="chart-axis">
+                                    <span id="dashboard-market-start">-</span>
+                                    <span id="dashboard-market-range">-</span>
+                                    <span id="dashboard-market-end">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="visual-grid">
+                        <article class="oracle-card panel hive-oracle-surface">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Oracle Lens</span>
+                                    <h3>Signal Confidence</h3>
+                                </div>
+                                <span class="bee-chip"><img src="../../static/hivelord_pack/nav_hypotheses.png" alt=""> Oracle</span>
+                            </div>
+                            <div class="oracle-layout">
+                                <div class="orbital-meter" id="oracle-meter" style="--meter: 0deg">
+                                    <div class="orbit orbit-one"></div>
+                                    <div class="orbit orbit-two"></div>
+                                    <img class="orbit-icon" src="../../static/hivelord_pack/nav_hypotheses.png" alt="">
+                                    <div class="meter-core">
+                                        <span id="oracle-score">0%</span>
+                                        <small id="oracle-label">Waiting</small>
+                                    </div>
+                                </div>
+                                <div class="oracle-readout">
+                                    <div class="readout-row">
+                                        <span>Regime Oracle</span>
+                                        <strong id="oracle-status">-</strong>
+                                    </div>
+                                    <div class="readout-row">
+                                        <span>Council</span>
+                                        <strong id="council-status">-</strong>
+                                    </div>
+                                    <div class="readout-row">
+                                        <span>SwarmGuard</span>
+                                        <strong id="swarmguard-status">-</strong>
+                                    </div>
+                                    <!-- New Gauges -->
+                                    <div class="gauge-grid">
+                                        <div class="gauge" id="gauge-regime"><span class="label">Regime</span><div class="fill"><span></span></div></div>
+                                        <div class="gauge" id="gauge-council"><span class="label">Council</span><div class="fill"><span></span></div></div>
+                                        <div class="gauge" id="gauge-guard"><span class="label">Guard</span><div class="fill"><span></span></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="panel meter-panel">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Hive Load</span>
+                                    <h3>Agent Activity</h3>
+                                </div>
+                            </div>
+                            <div class="bar-meter">
+                                <div class="meter-row">
+                                    <span>Active Swarm</span>
+                                    <strong id="agent-health-label">-</strong>
+                                </div>
+                                <div class="meter-track">
+                                    <span id="agent-health-bar" class="meter-fill"></span>
+                                </div>
+                            </div>
+                            <div class="bar-meter">
+                                <div class="meter-row">
+                                    <span>Risk Envelope</span>
+                                    <strong id="risk-meter-label">-</strong>
+                                </div>
+                                <div class="meter-track danger-track">
+                                    <span id="risk-meter-bar" class="meter-fill risk-fill"></span>
+                                </div>
+                            </div>
+                            <div class="honeycomb-strip" aria-hidden="true">
+                                <span></span><span></span><span></span><span></span><span></span>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="metric-grid ops-metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Buzz Treasury</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_treasury.png" alt=""></span>
+                            <div class="metric-dial buzz-dial" id="buzz-dial" style="--meter: 0deg">
+                                <span id="buzz-dial-label">0</span>
+                            </div>
+                            <div class="metric-value" id="buzz-total-metric">-</div>
+                            <span class="metric-caption" id="buzz-locked-metric">BuzzService pending</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Integration Sync</span>
+                            <div class="vertical-bars" id="integration-sync-bars" aria-hidden="true">
+                                <span></span><span></span><span></span><span></span><span></span>
+                            </div>
+                            <div class="metric-value" id="integration-sync-metric">-</div>
+                            <span class="metric-caption" id="integration-sync-caption">Adapter status</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Worker Win Rate</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_win_rate.png" alt=""></span>
+                            <div class="metric-dial worker-dial" id="worker-win-dial" style="--meter: 0deg">
+                                <span id="worker-win-label">0%</span>
+                            </div>
+                            <div class="metric-value" id="worker-win-metric">-</div>
+                            <span class="metric-caption" id="worker-win-caption">Feedback plane</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Protection Gates</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_readiness_gate.png" alt=""></span>
+                            <div class="gate-stack" id="protection-gates" aria-hidden="true">
+                                <span></span><span></span><span></span><span></span>
+                            </div>
+                            <div class="metric-value" id="protection-gate-metric">-</div>
+                            <span class="metric-caption" id="protection-gate-caption">Pair safety state</span>
+                        </article>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Risk + Runtime</span>
+                                <h3>System Status</h3>
+                            </div>
+                        </div>
                         <div id="system-status" class="status-grid">
                             <div class="status-item">
-                                <span class="status-label">Kill Switch:</span>
+                                <span class="status-label">Kill Switch</span>
                                 <span id="killswitch-status" class="status-value">-</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">Trading Mode:</span>
+                                <span class="status-label">Trading Mode</span>
                                 <span id="trading-mode" class="status-value">-</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">Active Agents:</span>
+                                <span class="status-label">Active Agents</span>
                                 <span id="active-agents" class="status-value">-</span>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </section>
+                </section>
 
-                <!-- Agents View -->
-                <div id="agents-view" class="view">
-                    <h2>Agent Status</h2>
+                <section id="market-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Coin Pulse</span>
+                            <h2>Market Preview</h2>
+                        </div>
+                    </div>
+                    <section class="panel price-graph-card market-full-card">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Live Series</span>
+                                <h3 id="market-price-title">Price Graph</h3>
+                            </div>
+                            <span id="market-price-latest" class="market-chip">-</span>
+                        </div>
+                        <div class="chart-wrap tall-chart">
+                            <svg class="price-chart" viewBox="0 0 640 220" preserveAspectRatio="none" role="img" aria-label="Market price graph">
+                                <path id="market-price-area" class="price-area" d=""></path>
+                                <path id="market-price-line" class="price-line" d=""></path>
+                            </svg>
+                            <div class="chart-axis">
+                                <span id="market-price-start">-</span>
+                                <span id="market-price-range">-</span>
+                                <span id="market-price-end">-</span>
+                            </div>
+                        </div>
+                    </section>
+                </section>
+
+                <section id="observation-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 1</span>
+                            <h2>Observation Swarm</h2>
+                        </div>
+                        <span class="mode-badge dry-run">ZERO ORDERS</span>
+                    </div>
+
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Swarm Status</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_swarm_health.png" alt=""></span>
+                            <div class="metric-value" id="observation-status">Waiting</div>
+                            <span class="metric-caption" id="observation-status-caption">Public market telemetry only</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Symbols Observed</span>
+                            <div class="metric-value" id="observation-symbols">0</div>
+                            <span class="metric-caption">Successful snapshots this cycle</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Mean Data Quality</span>
+                            <div class="metric-value" id="observation-quality">0%</div>
+                            <span class="metric-caption">Freshness, continuity and completeness</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Evidence Age</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_readiness_gate.png" alt=""></span>
+                            <div class="metric-value" id="observation-days">0.00d</div>
+                            <span class="metric-caption" id="observation-readiness">Phase 2 gate remains closed</span>
+                        </article>
+                    </div>
+
+                    <section class="panel observation-manifest native-hero-surface observation-hero-surface">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Evidence Run</span>
+                                <h3>Ranked Candidate Telemetry</h3>
+                            </div>
+                            <span id="observation-run-id" class="market-chip">No run yet</span>
+                        </div>
+                        <div class="observation-safety-strip">
+                            <span>EXECUTION WIRED: <strong>FALSE</strong></span>
+                            <span>ORDERS SUBMITTED: <strong>0</strong></span>
+                            <span id="observation-dataset-hash">DATASET HASH: -</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Symbol</th>
+                                        <th>Quality</th>
+                                        <th>Spread</th>
+                                        <th>25 bps Depth</th>
+                                        <th>Vol Expansion</th>
+                                        <th>Volume Z</th>
+                                        <th>Observe?</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="observation-tbody">
+                                    <tr><td colspan="9" class="loading-text">Waiting for the first observation cycle...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Observability Detail</span>
+                                <h3>Market Truth and Regime Context</h3>
+                            </div>
+                            <span class="market-chip">Persisted evidence aware</span>
+                        </div>
+                        <div class="metric-grid">
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Top Symbol</span>
+                                <div class="metric-value" id="observation-top-symbol">Waiting</div>
+                                <span class="metric-caption" id="observation-top-symbol-detail">No symbol focus yet</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Avg Spread</span>
+                                <div class="metric-value" id="observation-avg-spread">-</div>
+                                <span class="metric-caption">Recent observation book tightness</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Avg Depth</span>
+                                <div class="metric-value" id="observation-avg-depth">-</div>
+                                <span class="metric-caption">25 bps tradable proxy depth</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Avg Freshness</span>
+                                <div class="metric-value" id="observation-avg-freshness">-</div>
+                                <span class="metric-caption">Seconds from capture to record</span>
+                            </article>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Regime</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="observation-regime-tbody">
+                                    <tr><td colspan="2" class="loading-text">Waiting for regime mix...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-grid two-up">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th colspan="4">Strict Eligible Universe</th>
+                                        </tr>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Score</th>
+                                            <th>Spread</th>
+                                            <th>Depth</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="observation-strict-tbody">
+                                        <tr><td colspan="4" class="loading-text">Waiting for strict universe...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th colspan="3">Research Bench</th>
+                                        </tr>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Opportunity</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="observation-bench-tbody">
+                                        <tr><td colspan="3" class="loading-text">Waiting for research bench...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cohort</th>
+                                        <th>Symbols</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="observation-cohort-tbody">
+                                    <tr><td colspan="2" class="loading-text">Waiting for cohort universe...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="panel-body">
+                            <pre id="observation-why-now" class="system-status-text">Waiting for observation summary...</pre>
+                        </div>
+                    </section>
+                </section>
+
+                <section id="hypotheses-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 2</span>
+                            <h2>Hypothesis Foundry</h2>
+                        </div>
+                        <span class="mode-badge dry-run">RESEARCH ONLY · ZERO ORDERS</span>
+                    </div>
+
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Foundry Status</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_swarm_health.png" alt=""></span>
+                            <div class="metric-value" id="hypothesis-status">Waiting</div>
+                            <span class="metric-caption">Native, federated, and baseline research models</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Forecasts This Run</span>
+                            <div class="metric-value" id="hypothesis-forecasts">0</div>
+                            <span class="metric-caption">All horizons and competitors</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Non-Abstain</span>
+                            <div class="metric-value" id="hypothesis-active">0</div>
+                            <span class="metric-caption">Research signals, never orders</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Settled Evidence</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_readiness_gate.png" alt=""></span>
+                            <div class="metric-value" id="hypothesis-settled">0</div>
+                            <span class="metric-caption" id="hypothesis-readiness">Phase 3 gate remains closed</span>
+                        </article>
+                    </div>
+
+                    <section class="panel hypothesis-manifest native-hero-surface hypothesis-hero-surface">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Model Competition</span>
+                                <h3>Truth-Settled Scorecard</h3>
+                            </div>
+                            <span id="hypothesis-run-id" class="market-chip">No run yet</span>
+                        </div>
+                        <div class="observation-safety-strip hypothesis-safety-strip">
+                            <span>EXECUTION WIRED: <strong>FALSE</strong></span>
+                            <span>ORDERS SUBMITTED: <strong>0</strong></span>
+                            <span id="hypothesis-dataset-hash">DATASET HASH: -</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>Role</th>
+                                        <th>Forecasts</th>
+                                        <th>Settled Bets</th>
+                                        <th>Win Rate</th>
+                                        <th>Mean Net</th>
+                                        <th>Brier</th>
+                                        <th>Action Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hypothesis-scorecard-tbody">
+                                    <tr><td colspan="8" class="loading-text">Waiting for settled forecasts...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Operator Summary</span>
+                                <h3>Where Research Edge Is Clustering</h3>
+                            </div>
+                            <span class="market-chip">Phase 2 only</span>
+                        </div>
+                        <div class="metric-grid">
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Champion Model</span>
+                                <div class="metric-value" id="hypothesis-champion-model">Waiting</div>
+                                <span class="metric-caption" id="hypothesis-champion-model-detail">No settled evidence yet</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Champion Research Model</span>
+                                <div class="metric-value" id="hypothesis-champion-research">Waiting</div>
+                                <span class="metric-caption" id="hypothesis-champion-research-detail">Federated or native research winner</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Leading Symbol</span>
+                                <div class="metric-value" id="hypothesis-leading-symbol">Waiting</div>
+                                <span class="metric-caption" id="hypothesis-leading-symbol-detail">No active symbol cluster yet</span>
+                            </article>
+                        </div>
+                        <div class="panel-body">
+                            <pre id="hypothesis-why-now" class="system-status-text">Waiting for Phase 2 explanation...</pre>
+                        </div>
+                    </section>
+
+                    <section class="panel federation-manifest-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Live Research Federation</span>
+                                <h3>Integrated Candidate Models</h3>
+                            </div>
+                            <div class="market-chip">
+                                <span id="federation-model-count">0</span> MODELS ·
+                                <span id="federation-runtime-count">0</span> EXECUTION RUNTIMES
+                            </div>
+                        </div>
+                        <div class="observation-safety-strip hypothesis-safety-strip">
+                            <span>PRIVATE API WIRED: <strong>FALSE</strong></span>
+                            <span>MODEL AUTHORITY: <strong>RESEARCH ONLY</strong></span>
+                            <span>ONLINE RETRAINING: <strong>FALSE</strong></span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>Family</th>
+                                        <th>Implementation</th>
+                                        <th>Fidelity</th>
+                                        <th>Runtime</th>
+                                        <th>Authority</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="federation-model-tbody">
+                                    <tr><td colspan="6" class="loading-text">Waiting for federation manifest...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel hypothesis-forecast-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Symbol Focus</span>
+                                <h3>Non-Abstain Opportunity Clusters</h3>
+                            </div>
+                            <span class="market-chip">Expected net focus</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Forecasts</th>
+                                        <th>Avg Net</th>
+                                        <th>Avg P(Net+)</th>
+                                        <th>Regime</th>
+                                        <th>Leading Models</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hypothesis-symbol-focus-tbody">
+                                    <tr><td colspan="6" class="loading-text">Waiting for symbol focus summary...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel hypothesis-forecast-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Cohort Evidence</span>
+                                <h3>Phase 2 by Universe Bucket</h3>
+                            </div>
+                            <span class="market-chip">Cohort-aware research</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cohort</th>
+                                        <th>Forecasts</th>
+                                        <th>Activation</th>
+                                        <th>Expected Net</th>
+                                        <th>Realized Net</th>
+                                        <th>Leading Models</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hypothesis-cohort-tbody">
+                                    <tr><td colspan="6" class="loading-text">Waiting for cohort evidence...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel hypothesis-forecast-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Recovery Map</span>
+                                <h3>Why Good Ideas Are Abstaining</h3>
+                            </div>
+                            <span class="market-chip">Near-miss diagnostics</span>
+                        </div>
+                        <div class="table-grid two-up">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Reason</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hypothesis-abstention-tbody">
+                                        <tr><td colspan="2" class="loading-text">Waiting for abstention diagnostics...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Model</th>
+                                            <th>Near Miss</th>
+                                            <th>Tradability</th>
+                                            <th>Gap</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hypothesis-recovery-tbody">
+                                        <tr><td colspan="5" class="loading-text">Waiting for recovery candidates...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel hypothesis-forecast-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Demotion Watch</span>
+                                <h3>Evidence-Based Model Cuts</h3>
+                            </div>
+                            <span class="market-chip">Research governance</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>Settled</th>
+                                        <th>Activation</th>
+                                        <th>Expected Net</th>
+                                        <th>Realized Net</th>
+                                        <th>Reasons</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hypothesis-demotion-tbody">
+                                    <tr><td colspan="6" class="loading-text">No demotion candidates yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel hypothesis-forecast-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Latest Forecast Ledger</span>
+                                <h3>Predictions Before Outcomes</h3>
+                            </div>
+                            <span class="market-chip">5m · 15m · 60m</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Model</th>
+                                        <th>Horizon</th>
+                                        <th>Direction</th>
+                                        <th>P(Net+)</th>
+                                        <th>Move</th>
+                                        <th>Cost</th>
+                                        <th>Net</th>
+                                        <th>State</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hypothesis-forecast-tbody">
+                                    <tr><td colspan="9" class="loading-text">No forecasts recorded yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </section>
+
+                <section id="executionlab-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 3</span>
+                            <h2>Execution Lab</h2>
+                        </div>
+                        <span class="mode-badge dry-run">SIMULATION ONLY · ZERO REAL ORDERS</span>
+                    </div>
+
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Lab Status</span>
+                            <div class="metric-value" id="execution-lab-status">Waiting</div>
+                            <span class="metric-caption">Deterministic execution replay</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Simulations This Run</span>
+                            <div class="metric-value" id="execution-lab-simulations">0</div>
+                            <span class="metric-caption">Policies × stress worlds</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Completed Fills</span>
+                            <div class="metric-value" id="execution-lab-completed">0</div>
+                            <span class="metric-caption" id="execution-lab-fill-rate">Fill rate: 0%</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Phase 4 Evidence</span>
+                            <div class="metric-value" id="execution-lab-evidence">0</div>
+                            <span class="metric-caption" id="execution-lab-readiness">Phase 4 gate remains closed</span>
+                        </article>
+                    </div>
+
+                    <section class="panel execution-lab-manifest native-hero-surface growth-hero-surface">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Execution Policy Tournament</span>
+                                <h3>Captured Edge After Friction</h3>
+                            </div>
+                            <span id="execution-lab-run-id" class="market-chip">No run yet</span>
+                        </div>
+                        <div class="observation-safety-strip execution-lab-safety-strip">
+                            <span>PRIVATE API WIRED: <strong>FALSE</strong></span>
+                            <span>REAL ORDERS SUBMITTED: <strong>0</strong></span>
+                            <span>FIDELITY: <strong>OBSERVATION PROXY</strong></span>
+                            <span id="execution-lab-dataset-hash">DATASET HASH: -</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>Policy</th>
+                                        <th>Scenario</th>
+                                        <th>Completed</th>
+                                        <th>Fill</th>
+                                        <th>Win Rate</th>
+                                        <th>Mean Net</th>
+                                        <th>Total Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-scorecard-tbody">
+                                    <tr><td colspan="8" class="loading-text">Waiting for execution simulations...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel execution-lab-ledger">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Simulated Order Ledger</span>
+                                <h3>Forecast → Intent → Fill → Cost</h3>
+                            </div>
+                            <span class="market-chip">MARKET · LIMIT · MAKER · CHASE</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Model</th>
+                                        <th>Policy</th>
+                                        <th>Scenario</th>
+                                        <th>State</th>
+                                        <th>Fill</th>
+                                        <th>Gross</th>
+                                        <th>Net</th>
+                                        <th>Spot?</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-orders-tbody">
+                                    <tr><td colspan="9" class="loading-text">No simulated orders recorded yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Simulation Mechanics</span>
+                                <h3>Phase 3 Capability Surface</h3>
+                            </div>
+                            <span class="market-chip">Deterministic research only</span>
+                        </div>
+                        <div class="metric-grid">
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Best Normal Policy</span>
+                                <div class="metric-value" id="execution-lab-best-policy">Waiting</div>
+                                <span class="metric-caption" id="execution-lab-best-policy-detail">No normal-cost winner yet</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Scenario Coverage</span>
+                                <div class="metric-value" id="execution-lab-scenario-count">0</div>
+                                <span class="metric-caption">Stress worlds under replay</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Policy Coverage</span>
+                                <div class="metric-value" id="execution-lab-policy-count">0</div>
+                                <span class="metric-caption">Execution styles compared</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Avg Cost Stack</span>
+                                <div class="metric-value" id="execution-lab-avg-cost">-</div>
+                                <span class="metric-caption" id="execution-lab-avg-latency">Latency cost: -</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Profitable Outcomes</span>
+                                <div class="metric-value" id="execution-lab-profitable-outcomes">0</div>
+                                <span class="metric-caption" id="execution-lab-profitable-rate">0.0% of completed simulations</span>
+                            </article>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Capability</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-capabilities-tbody">
+                                    <tr><td colspan="2" class="loading-text">Waiting for simulation capability map...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Tier</th>
+                                        <th>Model</th>
+                                        <th>Policy</th>
+                                        <th>Coverage</th>
+                                        <th>Positive Scenarios</th>
+                                        <th>Avg Net</th>
+                                        <th>Worst Net</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-robustness-tbody">
+                                    <tr><td colspan="7" class="loading-text">Waiting for robustness ranking...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Research Winner</th>
+                                        <th>Policy</th>
+                                        <th>Avg Net</th>
+                                        <th>Worst Net</th>
+                                        <th>Positive Scenarios</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-research-winners-tbody">
+                                    <tr><td colspan="5" class="loading-text">Waiting for research winner ranking...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="metric-grid">
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Recovering Slices</span>
+                                <div class="metric-value" id="execution-lab-recovering-count">0</div>
+                                <span class="metric-caption" id="execution-lab-recovering-detail">No re-entry evidence yet</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Suppressed Slices</span>
+                                <div class="metric-value" id="execution-lab-suppressed-count">0</div>
+                                <span class="metric-caption" id="execution-lab-suppressed-detail">No damaged slices identified</span>
+                            </article>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>State</th>
+                                        <th>Forecast</th>
+                                        <th>Model</th>
+                                        <th>Symbol</th>
+                                        <th>Regime</th>
+                                        <th>Recent Regime</th>
+                                        <th>Long Regime</th>
+                                        <th>Expected Net</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-recovery-tbody">
+                                    <tr><td colspan="8" class="loading-text">Waiting for recovery diagnostics...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Segment</th>
+                                        <th>Completed</th>
+                                        <th>Profitable</th>
+                                        <th>Mean Net</th>
+                                        <th>Top Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="execution-lab-adaptation-tbody">
+                                    <tr><td colspan="5" class="loading-text">Waiting for adaptation comparison...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="panel-body">
+                            <pre id="execution-lab-why-now" class="system-status-text">Waiting for execution simulation summary...</pre>
+                        </div>
+                    </section>
+                </section>
+
+                <section id="validationlab-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 4</span>
+                            <h2>Adversarial Validation Tribunal</h2>
+                        </div>
+                        <span class="mode-badge dry-run">REVIEW ONLY · ZERO REAL ORDERS</span>
+                    </div>
+
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Tribunal Status</span>
+                            <div class="metric-value" id="validation-lab-status">Waiting</div>
+                            <span class="metric-caption">Time, regime and overfit interrogation</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Candidates</span>
+                            <div class="metric-value" id="validation-lab-candidates">0</div>
+                            <span class="metric-caption">Model × execution policy</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">PBO Estimate</span>
+                            <div class="metric-value" id="validation-lab-pbo">-</div>
+                            <span class="metric-caption">CSCV-style overfit diagnostic</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Phase 5 Review</span>
+                            <div class="metric-value" id="validation-lab-ready">CLOSED</div>
+                            <span class="metric-caption" id="validation-lab-readiness">Human review remains mandatory</span>
+                        </article>
+                    </div>
+
+                    <section class="panel execution-lab-manifest">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Robustness Ledger</span>
+                                <h3>Bootstrap · DSR · Walk-Forward · Holdouts</h3>
+                            </div>
+                            <span id="validation-lab-run-id" class="market-chip">No run yet</span>
+                        </div>
+                        <div class="observation-safety-strip execution-lab-safety-strip">
+                            <span>EXECUTION WIRED: <strong>FALSE</strong></span>
+                            <span>REAL ORDERS SUBMITTED: <strong>0</strong></span>
+                            <span>AUTO-PROMOTION: <strong>FORBIDDEN</strong></span>
+                            <span id="validation-lab-dataset-hash">DATASET HASH: -</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Candidate</th>
+                                        <th>Samples</th>
+                                        <th>Mean Net</th>
+                                        <th>95% Lower</th>
+                                        <th>DSR</th>
+                                        <th>WF+</th>
+                                        <th>Symbol Conc.</th>
+                                        <th>Verdict</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="validation-lab-candidates-tbody">
+                                    <tr><td colspan="8" class="loading-text">Waiting for adversarial evidence...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel execution-lab-ledger">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Tribunal Summary</span>
+                                <h3>Champion Robustness and Failure Pressure</h3>
+                            </div>
+                            <span class="market-chip">FRAGILITY REVIEW</span>
+                        </div>
+                        <div class="metric-grid">
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Champion</span>
+                                <div class="metric-value" id="validation-lab-champion">No champion</div>
+                                <span class="metric-caption" id="validation-lab-champion-detail">Awaiting robust candidate</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Robust Score</span>
+                                <div class="metric-value" id="validation-lab-robust-score">-</div>
+                                <span class="metric-caption" id="validation-lab-bootstrap-detail">Bootstrap lower bound not available</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Pass / Fail</span>
+                                <div class="metric-value" id="validation-lab-pass-fail">0 / 0</div>
+                                <span class="metric-caption" id="validation-lab-pass-fail-detail">Candidate gate outcomes</span>
+                            </article>
+                            <article class="metric-card instrument-card">
+                                <span class="metric-label">Top Failure Mode</span>
+                                <div class="metric-value" id="validation-lab-top-failure">None</div>
+                                <span class="metric-caption" id="validation-lab-top-failure-detail">No recurring rejection pattern yet</span>
+                            </article>
+                        </div>
+                        <div id="validation-lab-why-now" class="log-viewer">Waiting for validation summary...</div>
+                    </section>
+
+                    <section class="panel execution-lab-ledger">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Gate Failure Register</span>
+                                <h3>Why the Champion Is Still Not Trusted</h3>
+                            </div>
+                            <span class="market-chip">NO SILENT PROMOTION</span>
+                        </div>
+                        <div id="validation-lab-reasons" class="log-viewer">No validation report yet.</div>
+                    </section>
+                </section>
+
+
+                <section id="shadowflight-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 5</span>
+                            <h2>Public-Market Shadow Flight</h2>
+                        </div>
+                        <span class="mode-badge dry-run">NEVER TRANSMITTED · ZERO PRIVATE API</span>
+                    </div>
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Flight Status</span>
+                            <div class="metric-value" id="shadow-flight-status">Waiting</div>
+                            <span class="metric-caption">Human-approved frozen champion</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Shadow Intents</span>
+                            <div class="metric-value" id="shadow-flight-intents">0</div>
+                            <span class="metric-caption">Venue-ready, never sent</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Settled</span>
+                            <div class="metric-value" id="shadow-flight-settled">0</div>
+                            <span class="metric-caption">Observed forward outcomes</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Phase 6 Review</span>
+                            <div class="metric-value" id="shadow-flight-ready">CLOSED</div>
+                            <span class="metric-caption" id="shadow-flight-readiness">30-day evidence gate</span>
+                        </article>
+                    </div>
+                    <section class="panel execution-lab-manifest">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Frozen Flight Contract</span>
+                                <h3 id="shadow-flight-champion">No approved champion</h3>
+                            </div>
+                            <span id="shadow-flight-run-id" class="market-chip">No run yet</span>
+                        </div>
+                        <div class="observation-safety-strip execution-lab-safety-strip">
+                            <span>PRIVATE ENDPOINT: <strong>ABSENT</strong></span>
+                            <span>TRANSMISSION ATTEMPTS: <strong id="shadow-flight-transmissions">0</strong></span>
+                            <span>REAL ORDERS: <strong>0</strong></span>
+                            <span id="shadow-flight-config-hash">FREEZE HASH: -</span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr>
+                                    <th>Symbol</th><th>Model</th><th>Policy</th><th>Order</th>
+                                    <th>Pred. Net</th><th>Status</th><th>Target</th><th>Sent?</th>
+                                </tr></thead>
+                                <tbody id="shadow-flight-intents-tbody">
+                                    <tr><td colspan="8" class="loading-text">No shadow intents yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="panel execution-lab-ledger">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Parity Scorecard</span>
+                                <h3>Predicted Cost vs Observed Public-Market Proxy</h3>
+                            </div>
+                            <span class="market-chip" id="shadow-flight-cost-mae">COST MAE: -</span>
+                        </div>
+                        <div id="shadow-flight-reasons" class="log-viewer">Awaiting human-approved freeze and live public evidence.</div>
+                    </section>
+                </section>
+
+                <section id="canary-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 6</span>
+                            <h2>Tiny Live Canary Flight Deck</h2>
+                        </div>
+                        <span class="mode-badge live">READ ONLY · OPERATOR PROCESS ONLY</span>
+                    </div>
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Canary State</span>
+                            <div class="metric-value" id="canary-state">DISARMED</div>
+                            <span class="metric-caption" id="canary-state-reason">No operator authority</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Live Orders</span>
+                            <div class="metric-value" id="canary-live-orders">0</div>
+                            <span class="metric-caption">Phase-6 projection only</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Round Trips</span>
+                            <div class="metric-value" id="canary-round-trips">0</div>
+                            <span class="metric-caption">Closed and reconciled</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Phase 7 Review</span>
+                            <div class="metric-value" id="canary-ready">CLOSED</div>
+                            <span class="metric-caption" id="canary-readiness">Human review required</span>
+                        </article>
+                    </div>
+                    <section class="panel execution-lab-manifest">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Steel-Cage Contract</span>
+                                <h3 id="canary-approval">No active approval</h3>
+                            </div>
+                            <span id="canary-cap" class="market-chip">MAX $5.00</span>
+                        </div>
+                        <div class="observation-safety-strip execution-lab-safety-strip">
+                            <span>DESKTOP ARMING: <strong>ABSENT</strong></span>
+                            <span>MAX ENTRY / LEASE: <strong id="canary-entry-cap">1</strong></span>
+                            <span>LEVERAGE: <strong>1×</strong></span>
+                            <span>AUTO SCALE: <strong>NEVER</strong></span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr>
+                                    <th>Order</th><th>Symbol</th><th>Side</th><th>Status</th>
+                                    <th>Filled</th><th>Avg Price</th><th>Reconciled</th><th>Updated</th>
+                                </tr></thead>
+                                <tbody id="canary-orders-tbody">
+                                    <tr><td colspan="8" class="loading-text">No Phase-6 orders.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="visual-grid">
+                        <article class="panel">
+                            <div class="panel-heading">
+                                <div><span class="eyebrow">Positions</span><h3>Canary Inventory</h3></div>
+                                <span id="canary-open-positions" class="market-chip">OPEN: 0</span>
+                            </div>
+                            <div id="canary-position-log" class="log-viewer">No canary positions.</div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-heading">
+                                <div><span class="eyebrow">Incident Register</span><h3>Unknown Means HALT</h3></div>
+                                <span id="canary-incidents" class="market-chip">OPEN: 0</span>
+                            </div>
+                            <div id="canary-incident-log" class="log-viewer">No unresolved incidents.</div>
+                        </article>
+                    </section>
+                    <section class="panel execution-lab-ledger">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Reconciliation & Gate</span>
+                                <h3>No Ambiguity, No Scaling</h3>
+                            </div>
+                            <span id="canary-reconciliation" class="market-chip">NO RECONCILIATION</span>
+                        </div>
+                        <div id="canary-reasons" class="log-viewer">Awaiting canary evidence.</div>
+                    </section>
+                </section>
+
+                <section id="growth-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Phoenix Phase 7</span>
+                            <h2>Controlled Growth Governor</h2>
+                        </div>
+                        <span class="mode-badge live">READ ONLY · NO DESKTOP ACTIVATION</span>
+                    </div>
+                    <div class="metric-grid">
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Growth State</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_swarm_health.png" alt=""></span>
+                            <div class="metric-value" id="growth-state">LOCKED</div>
+                            <span class="metric-caption" id="growth-state-reason">No stage activated</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Current Stage</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_portfolio.png" alt=""></span>
+                            <div class="metric-value" id="growth-stage">CANARY</div>
+                            <span class="metric-caption" id="growth-envelope">$5.00 · 1 symbol</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">New Round Trips</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_total_trades.png" alt=""></span>
+                            <div class="metric-value" id="growth-round-trips">0</div>
+                            <span class="metric-caption" id="growth-days">0 live days</span>
+                        </article>
+                        <article class="metric-card instrument-card">
+                            <span class="metric-label">Next Proposal</span>
+                            <span class="metric-glyph"><img src="../../static/hivelord_pack/metric_readiness_gate.png" alt=""></span>
+                            <div class="metric-value" id="growth-ready">CLOSED</div>
+                            <span class="metric-caption">Human proposal and approval required</span>
+                        </article>
+                    </div>
+                    <section class="panel execution-lab-manifest">
+                        <div class="panel-heading">
+                            <div><span class="eyebrow">Growth Ladder</span><h3>One Dimension at a Time</h3></div>
+                            <span id="growth-next-stage" class="market-chip">NEXT: EMBER</span>
+                        </div>
+                        <div class="observation-safety-strip execution-lab-safety-strip">
+                            <span>AUTO PROMOTION: <strong>NEVER</strong></span>
+                            <span>AUTO DEMOTION: <strong>ENABLED</strong></span>
+                            <span>MAX OPEN POSITIONS: <strong>1</strong></span>
+                            <span>LEVERAGE: <strong>1×</strong></span>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>Stage</th><th>Notional Cap</th><th>Symbols</th><th>Evidence Block</th><th>Status</th></tr></thead>
+                                <tbody id="growth-stages-tbody"><tr><td colspan="5" class="loading-text">Loading growth ladder…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="visual-grid">
+                        <article class="panel">
+                            <div class="panel-heading"><div><span class="eyebrow">Evidence</span><h3>Live Performance Gate</h3></div><span id="growth-pnl" class="market-chip">P&L: -</span></div>
+                            <div id="growth-evidence-log" class="log-viewer">Awaiting genuine Phase-6 evidence.</div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-heading"><div><span class="eyebrow">Proposals & Incidents</span><h3>Human Up, Automatic Down</h3></div><span id="growth-incidents" class="market-chip">OPEN: 0</span></div>
+                            <div id="growth-proposal-log" class="log-viewer">No growth proposals.</div>
+                        </article>
+                    </section>
+                    <section class="panel execution-lab-ledger">
+                        <div class="panel-heading"><div><span class="eyebrow">Governor Verdict</span><h3>Scaling Cannot Be Self-Granted</h3></div><span id="growth-authority" class="market-chip">LOCKED</span></div>
+                        <div id="growth-reasons" class="log-viewer">The Phase-7 operator process owns proposal, approval, activation and demotion authority.</div>
+                    </section>
+                </section>
+
+                <section id="agents-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Swarm Health</span>
+                            <h2>Agent Status</h2>
+                        </div>
+                    </div>
+                    <section class="agent-command-grid">
+                        <article class="panel swarm-card hive-dashboard-surface">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Bee Matrix</span>
+                                    <h3>Swarm Readiness</h3>
+                                </div>
+                                <span class="bee-chip"><img src="../../static/coordinator.png" alt=""> Agents</span>
+                            </div>
+                            <div class="swarm-orbit">
+                                <div class="swarm-ring" id="agent-swarm-ring" style="--meter: 0deg">
+                                    <span class="bee-node node-a"><img src="../../static/oracle.png" alt=""></span>
+                                    <span class="bee-node node-b"><img src="../../static/swarmguard.png" alt=""></span>
+                                    <span class="bee-node node-c"><img src="../../static/council.png" alt=""></span>
+                                    <div class="swarm-core">
+                                        <strong id="agent-swarm-score">0%</strong>
+                                        <small>Ready</small>
+                                    </div>
+                                </div>
+                                <div class="swarm-stats">
+                                    <div class="readout-row">
+                                        <span>Active</span>
+                                        <strong id="agents-active-count">-</strong>
+                                    </div>
+                                    <div class="readout-row">
+                                        <span>Inactive</span>
+                                        <strong id="agents-inactive-count">-</strong>
+                                    </div>
+                                    <div class="readout-row">
+                                        <span>Workers</span>
+                                        <strong id="agents-worker-count">-</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="panel price-graph-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Coin Pulse</span>
+                                    <h3 id="agent-price-title">Price Graph</h3>
+                                </div>
+                                <span id="agent-price-latest" class="market-chip">-</span>
+                            </div>
+                            <div class="chart-wrap">
+                                <svg id="agent-price-chart" class="price-chart" viewBox="0 0 640 220" preserveAspectRatio="none" role="img" aria-label="Coin price graph">
+                                    <defs>
+                                        <linearGradient id="priceLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stop-color="#f3bf3d"></stop>
+                                            <stop offset="100%" stop-color="#47d18c"></stop>
+                                        </linearGradient>
+                                        <linearGradient id="priceAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stop-color="#f3bf3d" stop-opacity="0.26"></stop>
+                                            <stop offset="100%" stop-color="#f3bf3d" stop-opacity="0"></stop>
+                                        </linearGradient>
+                                    </defs>
+                                    <path id="agent-price-area" class="price-area" d=""></path>
+                                    <path id="agent-price-line" class="price-line" d=""></path>
+                                </svg>
+                                <div class="chart-axis">
+                                    <span id="agent-price-start">-</span>
+                                    <span id="agent-price-range">-</span>
+                                    <span id="agent-price-end">-</span>
+                                </div>
+                            </div>
+                        </article>
+                    </section>
                     <div id="agents-container" class="agents-grid">
                         <p class="loading-text">Loading agents...</p>
                     </div>
-                </div>
+                </section>
 
-                <!-- Trades View -->
-                <div id="trades-view" class="view">
-                    <h2>Recent Trades</h2>
-                    <div class="card">
+                <section id="trades-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Execution Tape</span>
+                            <h2>Recent Trades</h2>
+                        </div>
+                    </div>
+                    <section class="panel">
                         <div id="trades-table" class="table-container">
                             <table>
                                 <thead>
@@ -126,74 +1471,463 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
+                    </section>
+                </section>
 
-                <!-- Performance View -->
-                <div id="performance-view" class="view">
-                    <h2>Performance Metrics</h2>
-                    <div class="card-grid">
-                        <div class="card">
-                            <h3>Total P&L</h3>
+                <section id="performance-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Portfolio Intelligence</span>
+                            <h2>Performance Metrics</h2>
+                        </div>
+                    </div>
+                    <div class="metric-grid">
+                        <article class="metric-card">
+                            <span class="metric-label">Total P&amp;L</span>
                             <div class="metric-value" id="total-pnl">$0.00</div>
-                        </div>
-                        <div class="card">
-                            <h3>Win Rate</h3>
+                            <span class="metric-caption">Realized plus tracked exposure</span>
+                        </article>
+                        <article class="metric-card">
+                            <span class="metric-label">Win Rate</span>
                             <div class="metric-value" id="win-rate">0%</div>
-                        </div>
-                        <div class="card">
-                            <h3>Total Trades</h3>
+                            <span class="metric-caption">Closed trade accuracy</span>
+                        </article>
+                        <article class="metric-card">
+                            <span class="metric-label">Total Trades</span>
                             <div class="metric-value" id="total-trades">0</div>
-                        </div>
-                        <div class="card">
-                            <h3>Sharpe Ratio</h3>
+                            <span class="metric-caption">Execution count</span>
+                        </article>
+                        <article class="metric-card">
+                            <span class="metric-label">Sharpe Ratio</span>
                             <div class="metric-value" id="sharpe-ratio">-</div>
+                            <span class="metric-caption">Risk-adjusted return</span>
+                        </article>
+                    </div>
+                </section>
+
+                <section id="integrations-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Public Bot Command Deck</span>
+                            <h2>Integrations</h2>
+                        </div>
+                        <div class="button-row">
+                            <button id="integration-refresh-btn" class="btn btn-secondary">Refresh</button>
+                            <button id="integration-plan-btn" class="btn btn-primary">Build Plan</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Logs View -->
-                <div id="logs-view" class="view">
-                    <h2>System Logs</h2>
-                    <div class="card">
-                        <div class="logs-controls">
-                            <button id="clear-logs-btn" class="btn btn-secondary">Clear</button>
-                            <button id="refresh-logs-btn" class="btn btn-secondary">Refresh</button>
+                    <section class="integration-hero panel">
+                        <div class="integration-orbital" id="integration-orbital" style="--meter: 0deg">
+                            <div class="integration-ring"></div>
+                            <strong id="integration-score">0%</strong>
+                            <span>Synced</span>
                         </div>
+                        <div class="integration-hero-copy">
+                            <span class="eyebrow">Executor Fabric</span>
+                            <h3 id="integration-hero-title">Hummingbot V2 Adapter</h3>
+                            <p id="integration-hero-text">Loading executor lifecycle, public-bot research, and quote-quality planes.</p>
+                            <div class="integration-chip-row">
+                                <span id="hb-live-chip" class="market-chip">Sidecar -</span>
+                                <span id="promotion-chip" class="market-chip blue-chip">Promotion -</span>
+                                <span id="quote-chip" class="market-chip red-chip">Quotes -</span>
+                            </div>
+                        </div>
+                        <div class="integration-launch-panel">
+                            <label class="field">
+                                <span>Symbol</span>
+                                <input type="text" id="integration-symbol" value="ETH/USD">
+                            </label>
+                            <label class="field">
+                                <span>Side</span>
+                                <input type="text" id="integration-side" value="BUY">
+                            </label>
+                            <label class="field">
+                                <span>Notional USD</span>
+                                <input type="number" id="integration-notional" value="50" min="0" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Executor</span>
+                                <input type="text" id="integration-executor" value="position">
+                            </label>
+                            <button id="integration-create-btn" class="btn btn-primary">Create Lifecycle</button>
+                            <span id="integration-action-result" class="inline-result">Ready</span>
+                        </div>
+                    </section>
+
+                    <div class="integration-kpi-grid">
+                        <article class="metric-card integration-kpi">
+                            <span class="metric-label">Lifecycle</span>
+                            <div class="metric-value" id="integration-lifecycle-state">-</div>
+                            <span class="metric-caption" id="integration-lifecycle-count">No executors</span>
+                        </article>
+                        <article class="metric-card integration-kpi">
+                            <span class="metric-label">Backtesting</span>
+                            <div class="metric-value" id="integration-backtest-state">-</div>
+                            <span class="metric-caption" id="integration-backtest-caption">Waiting for metrics</span>
+                        </article>
+                        <article class="metric-card integration-kpi">
+                            <span class="metric-label">Quote Quality</span>
+                            <div class="metric-value" id="integration-quote-state">-</div>
+                            <span class="metric-caption" id="integration-quote-caption">Watch-only</span>
+                        </article>
+                        <article class="metric-card integration-kpi">
+                            <span class="metric-label">Protections</span>
+                            <div class="metric-value" id="integration-protection-state">-</div>
+                            <span class="metric-caption" id="integration-protection-caption">Pair rules</span>
+                        </article>
+                    </div>
+
+                    <section class="integration-grid">
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Lifecycle</span>
+                                    <h3>Executor States</h3>
+                                </div>
+                                <button id="integration-monitor-btn" class="btn btn-secondary">Monitor</button>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Type</th>
+                                            <th>Symbol</th>
+                                            <th>Side</th>
+                                            <th>State</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="integration-lifecycle-body">
+                                        <tr><td colspan="5" class="loading-text">Loading executors...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Quote Advisors</span>
+                                    <h3>Market-Making Watchlist</h3>
+                                </div>
+                                <span id="integration-advisor-mode" class="market-chip">Watch-only</span>
+                            </div>
+                            <div id="integration-advisor-list" class="integration-list">
+                                <p class="loading-text">Loading advisors...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Research Loop</span>
+                                    <h3>Public-Bot Backtests</h3>
+                                </div>
+                                <div class="button-row">
+                                    <button id="integration-export-btn" class="btn btn-secondary">Export</button>
+                                    <button id="integration-apply-btn" class="btn btn-secondary">Apply Metrics</button>
+                                </div>
+                            </div>
+                            <div class="integration-list" id="integration-backtest-list">
+                                <p class="loading-text">Loading backtest status...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Toggle Plane</span>
+                                    <h3>Runtime Settings</h3>
+                                </div>
+                                <span id="integration-updated" class="market-chip blue-chip">-</span>
+                            </div>
+                            <div id="integration-control-list" class="integration-list">
+                                <p class="loading-text">Loading controls...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Worker Performance</span>
+                                    <h3>Feedback Scores</h3>
+                                </div>
+                                <span id="integration-worker-count" class="market-chip blue-chip">-</span>
+                            </div>
+                            <div id="integration-worker-list" class="integration-list">
+                                <p class="loading-text">Loading worker feedback...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Pair Protections</span>
+                                    <h3>Safety Gates</h3>
+                                </div>
+                                <span id="integration-protection-count" class="market-chip red-chip">-</span>
+                            </div>
+                            <div id="integration-protection-list" class="integration-list">
+                                <p class="loading-text">Loading pair protections...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Queen Alerts</span>
+                                    <h3>Governance Calls</h3>
+                                </div>
+                                <span id="queen-alert-count" class="market-chip">-</span>
+                            </div>
+                            <div id="queen-alert-list" class="integration-list">
+                                <p class="loading-text">Waiting for Queen alerts...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Architecture</span>
+                                    <h3>Active Layer</h3>
+                                </div>
+                                <span id="architecture-layer-state" class="market-chip blue-chip">-</span>
+                            </div>
+                            <div id="architecture-layer-list" class="integration-list">
+                                <p class="loading-text">Loading architecture layer...</p>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="panel raw-plane-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Raw Plane</span>
+                                <h3>Integration Snapshot</h3>
+                            </div>
+                            <span class="market-chip blue-chip">JSON</span>
+                        </div>
+                        <pre id="integration-raw-plane" class="raw-json">Waiting for integration plane...</pre>
+                    </section>
+                </section>
+
+                <section id="logs-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Telemetry</span>
+                            <h2>System Logs</h2>
+                        </div>
+                        <div class="button-row">
+                            <button id="clear-logs-btn" class="btn btn-secondary">Clear</button>
+                            <button id="refresh-logs-btn" class="btn btn-primary">Refresh</button>
+                        </div>
+                    </div>
+                    <section class="panel">
                         <div id="logs-container" class="logs-container">
                             <p class="loading-text">Waiting for logs...</p>
                         </div>
-                    </div>
-                </div>
+                    </section>
+                </section>
 
-                <!-- Settings View -->
-                <div id="settings-view" class="view">
-                    <h2>Settings</h2>
-                    <div class="card">
-                        <h3>Backend Connection</h3>
-                        <div class="form-group">
-                            <label for="backend-url">Backend URL:</label>
-                            <input type="text" id="backend-url" value="http://127.0.0.1:5000">
-                            <button id="save-backend-url" class="btn btn-primary">Save</button>
+                <section id="buzzcoin-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Buzz Economy</span>
+                            <h2>BuzzCoin</h2>
                         </div>
-                        <div class="form-group">
-                            <button id="test-connection-btn" class="btn btn-secondary">Test Connection</button>
-                            <span id="connection-test-result"></span>
+                        <span class="bee-chip"><img src="../../static/buzzcoin.png" alt=""> BuzzCoin</span>
+                    </div>
+                    <section class="native-page-grid buzzcoin-grid">
+                        <article class="panel native-hero-card buzzcoin-hero hive-hero-panel" style="--hero-image: url('../../static/hivelord_pack/hero_buzzcoin.png');">
+                            <div class="native-hero-icon">
+                                <img src="../../static/buzzcoin.png" alt="">
+                            </div>
+                            <div>
+                                <span class="eyebrow">Account</span>
+                                <h3 id="buzzcoin-account-title">BuzzService</h3>
+                                <p id="buzzcoin-status-text">Checking service...</p>
+                            </div>
+                            <div class="native-stat-row">
+                                <div>
+                                    <span>Available</span>
+                                    <strong id="buzzcoin-available">-</strong>
+                                </div>
+                                <div>
+                                    <span>Locked</span>
+                                    <strong id="buzzcoin-locked">-</strong>
+                                </div>
+                                <div>
+                                    <span>Total</span>
+                                    <strong id="buzzcoin-total">-</strong>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Ledger</span>
+                                    <h3>Recent Buzz Activity</h3>
+                                </div>
+                                <span id="buzzcoin-ledger-state" class="market-chip">Live</span>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Type</th>
+                                            <th>Amount</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="buzzcoin-ledger-body">
+                                        <tr><td colspan="4" class="loading-text">Loading ledger...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Leaderboard</span>
+                                    <h3>Buzz Balances</h3>
+                                </div>
+                            </div>
+                            <div id="buzzcoin-leaderboard" class="leaderboard-list">
+                                <p class="loading-text">Loading leaderboard...</p>
+                            </div>
+                        </article>
+                    </section>
+                </section>
+
+                <section id="swarmguard-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Protection Layer</span>
+                            <h2>SwarmGuard</h2>
+                        </div>
+                        <span class="bee-chip"><img src="../../static/swarmguard.png" alt=""> SwarmGuard</span>
+                    </div>
+                    <section class="native-page-grid swarmguard-grid">
+                        <article class="panel native-hero-card guard-hero hive-hero-panel" style="--hero-image: url('../../static/hivelord_pack/hero_swarmguard.png');">
+                            <div class="native-hero-icon">
+                                <img src="../../static/swarmguard.png" alt="">
+                            </div>
+                            <div>
+                                <span class="eyebrow">Decision</span>
+                                <h3 id="swarmguard-decision">-</h3>
+                                <p id="swarmguard-reason">Waiting for guard decision...</p>
+                            </div>
+                            <div class="native-stat-row">
+                                <div>
+                                    <span>Action</span>
+                                    <strong id="swarmguard-action">-</strong>
+                                </div>
+                                <div>
+                                    <span>Symbol</span>
+                                    <strong id="swarmguard-symbol">-</strong>
+                                </div>
+                                <div>
+                                    <span>Size</span>
+                                    <strong id="swarmguard-size">-</strong>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="panel meter-panel">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Rulebook</span>
+                                    <h3>Regime Caps</h3>
+                                </div>
+                            </div>
+                            <div id="swarmguard-rulebook" class="rulebook-list">
+                                <p class="loading-text">Loading rules...</p>
+                            </div>
+                        </article>
+
+                        <article class="panel native-table-card">
+                            <div class="panel-heading">
+                                <div>
+                                    <span class="eyebrow">Risk Register</span>
+                                    <h3>Primary Controls</h3>
+                                </div>
+                            </div>
+                            <div id="swarmguard-risks" class="risk-card-list">
+                                <p class="loading-text">Loading risk register...</p>
+                            </div>
+                        </article>
+                    </section>
+                </section>
+
+                <section id="settings-view" class="view">
+                    <div class="view-header">
+                        <div>
+                            <span class="eyebrow">Control Room</span>
+                            <h2>Settings</h2>
                         </div>
                     </div>
 
-                    <div class="card">
-                        <h3>Application</h3>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="auto-refresh">
-                                Auto-refresh data (every 5 seconds)
+                    <section class="panel settings-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Backend</span>
+                                <h3>Connection</h3>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <label class="field">
+                                <span>Backend URL</span>
+                                <input type="text" id="backend-url">
                             </label>
+                            <div class="button-row align-end">
+                                <button id="save-backend-url" class="btn btn-primary">Save URL</button>
+                                <button id="test-connection-btn" class="btn btn-secondary">Test</button>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+                        <span id="connection-test-result" class="inline-result"></span>
+                    </section>
+
+                    <section class="panel settings-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Trading</span>
+                                <h3>Core Parameters</h3>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <label class="field"><span>Symbol</span><input type="text" id="setting-symbol"></label>
+                            <label class="field"><span>Interval</span><input type="text" id="setting-interval"></label>
+                            <label class="field"><span>Risk %</span><input type="number" id="setting-risk_pct" step="0.001"></label>
+                            <label class="field"><span>Max Notional</span><input type="number" id="setting-max_notional" step="0.1"></label>
+                        </div>
+                        <div class="button-row">
+                            <button onclick="saveSettings()" class="btn btn-primary">Save Settings</button>
+                        </div>
+                    </section>
+
+                    <section class="panel settings-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <span class="eyebrow">Application</span>
+                                <h3>Runtime Preferences</h3>
+                            </div>
+                        </div>
+                        <label class="toggle-row">
+                            <input type="checkbox" id="auto-refresh">
+                            <span class="toggle-control"></span>
+                            <span>
+                                <strong>Auto-refresh data</strong>
+                                <small>Refresh dashboard values every 5 seconds.</small>
+                            </span>
+                        </label>
+                    </section>
+                </section>
+            </main>
+        </div>
     </div>
 
     <script src="app.js"></script>

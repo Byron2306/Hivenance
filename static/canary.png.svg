@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Tiny Canary bee icon">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)" stroke="#0f1622" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="92" cy="102" rx="32" ry="24" fill="#ffffff"/>
+    <ellipse cx="164" cy="102" rx="32" ry="24" fill="#ffffff"/>
+    <path d="M107 71c-7-14-18-20-30-24" fill="none"/>
+    <path d="M149 71c7-14 18-20 30-24" fill="none"/>
+    <ellipse cx="128" cy="117" rx="43" ry="48" fill="#101722"/>
+    <circle cx="112" cy="110" r="8" fill="#ffffff" stroke="none"/>
+    <circle cx="144" cy="110" r="8" fill="#ffffff" stroke="none"/>
+    <path d="M103 137h50" fill="none"/>
+    <path d="M99 153h58" fill="none"/>
+    <path d="M103 169h50" fill="none"/>
+    <path d="M104 53h48l-6 20h-36z" fill="#f3bf3d"/>
+    <circle cx="128" cy="192" r="24" fill="#ff8a00"/>
+    <path d="M128 175v12" fill="none" stroke="#fff6d5" stroke-width="10"/>
+    <circle cx="128" cy="198" r="3" fill="#fff6d5" stroke="none"/>
+  </g>
+</svg>

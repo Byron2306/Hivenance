@@ -1,10 +1,9 @@
-version: '3.8'
 services:
   swarm-agent:
+    # Development override: live-mount the repo while keeping the container web UI on 5001.
+    # For a pure image rebuild test, run:
+    #   docker compose -f docker/docker-compose.yml up -d --build --force-recreate
     volumes:
       - ..:/app:cached
-    command: ["python", "main.py"]
-    ports:
-      - "5000:5000"
     environment:
       - UI_DEBUG_MODE=1

@@ -4,11 +4,15 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import sys
 import time
 import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 from typing import Any
 
 from strategies.relative_value_lab.microstructure import SequentialMicrostructureEngine

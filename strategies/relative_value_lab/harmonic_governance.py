@@ -317,14 +317,27 @@ class HarmonicForecastGovernance:
         voices, controls = self._collapse_family_voices(rows)
         independent = [voice for voice in voices if voice.independent]
         families = sorted({voice.family for voice in independent})
-        signs = [voice.sign for voice in independent]
+
+        # Global choir: exactly one vote per independent family, irrespective
+        # of how many horizons/models that family emits.
+        family_predictions: dict[str, list[float]] = defaultdict(list)
+        for voice in independent:
+            family_predictions[voice.family].append(float(voice.predicted_signed_bps))
+        family_values = {
+            family: statistics.fmean(values)
+            for family, values in family_predictions.items()
+        }
+        signs = [
+            _sign(family_values[family], self.config.deadband_bps)
+            for family in sorted(family_values)
+        ]
         agreement = self._agreement(signs)
         entropy = _entropy(signs)
-        dispersion = self._magnitude_dispersion([voice.predicted_signed_bps for voice in independent])
+        dispersion = self._magnitude_dispersion(list(family_values.values()))
 
         aggregate = 0.0
-        if independent:
-            aggregate = statistics.fmean(voice.predicted_signed_bps for voice in independent)
+        if family_values:
+            aggregate = statistics.fmean(family_values.values())
         aggregate_sign = _sign(aggregate, self.config.deadband_bps)
 
         cadence = self._cadence_features(

@@ -767,3 +767,57 @@ Current semantics:
 
 The historical v1 discovery results remain historical evidence and are not
 reinterpreted as v2 validation.
+
+## Canonical World Score — the page every voice reads
+
+**Implemented v1.**
+
+Current implementation:
+
+- `strategies/relative_value_lab/world_score.py`;
+- public observations enter only through the `observed_market` namespace;
+- observations are evidence-root bound and deterministically ordered;
+- future observations are refused;
+- conflicting same-source observations at the same observed time/scope are
+  refused;
+- the immutable observed page produces:
+  - `observed_digest`;
+  - `world_state_id`;
+  - `world_state_hash`;
+  - freshness bounds;
+  - source and scope inventories;
+- interpretations live in `interpreted_research` and cite the parent world
+  score without changing the observed digest;
+- Mystique and other counterfactual branches remain
+  `synthetic_counterfactual`;
+- synthetic branches may cite the parent page but never count as observed
+  binding completeness;
+- a score-binding audit detects any bee, Queen, model, pulse, cascade or other
+  research organ performing from a different score page;
+- stale score pages are explicitly invalid;
+- Harmony Law can validate testimony directly against a CanonicalScoreFrame;
+- Governance Epoch can start and validate directly from the same frame.
+
+The meaning of `world_state_id/world_state_hash` is now concrete:
+
+> the deterministic binding of one immutable observed market score page.
+
+This is not another cognition state machine. It is the shared sheet music.
+
+```text
+public market observations
+        ↓
+observed_market
+        ↓
+Canonical Score Frame
+        ↓
+world_state_id + world_state_hash
+        ↓
+Harmony Law / Epoch / Queen / ML / Pulse / Cascade / Triune
+```
+
+Interpretation may change.
+
+Synthetic variation may branch.
+
+The observed bars do not mutate.

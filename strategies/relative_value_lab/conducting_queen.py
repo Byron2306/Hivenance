@@ -20,6 +20,7 @@ from .hive_pulse import HivePulse, HivePulseEngine
 from .polyphonic_resonance import PolyphonicResonanceReceipt
 from .mystique_variations import MystiqueFalsificationReceipt
 from .cognitive_metabolism import CognitiveMetabolismReceipt
+from .ml_challenger import LearnedChallengerReceipt
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -172,6 +173,12 @@ class QueenPolyphonicReceipt:
     metabolic_strain: float
     cognitive_breath: float
     metabolism_texture: str
+    learned_voice_count: int
+    learned_independent_count: int
+    learned_health: float
+    learned_drift_pressure: float
+    learned_uncertainty_pressure: float
+    learned_dissent: float
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -232,6 +239,7 @@ class ConductingQueen:
         polyphonic_resonance: PolyphonicResonanceReceipt | None = None,
         mystique: MystiqueFalsificationReceipt | None = None,
         metabolism: CognitiveMetabolismReceipt | None = None,
+        learned_challengers: Sequence[LearnedChallengerReceipt] = (),
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -293,6 +301,14 @@ class ConductingQueen:
         cognitive_breath = float(metabolism.breath) if metabolism else 1.0
         metabolism_texture = metabolism.texture if metabolism else "UNHEARD"
 
+        learned_music = self._learned_music(learned_challengers, notes)
+        learned_voice_count = int(learned_music["voice_count"])
+        learned_independent_count = int(learned_music["independent_count"])
+        learned_health = float(learned_music["health"])
+        learned_drift = float(learned_music["drift"])
+        learned_uncertainty = float(learned_music["uncertainty"])
+        learned_dissent = float(learned_music["dissent"])
+
         polyphonic_pressure = _clamp(
             0.12 * motif.dynamic_intensity
             + 0.10 * motif.crescendo
@@ -317,6 +333,8 @@ class ConductingQueen:
             + 0.04 * overtone_coherence
             + 0.03 * (1.0 - resonance_drift)
             + 0.04 * (1.0 - mystique_fragility)
+            + 0.04 * learned_health
+            + 0.03 * learned_dissent
         )
 
         triune_scores = self._write_triune_scores(
@@ -343,6 +361,8 @@ class ConductingQueen:
             polyphonic_resonance=polyphonic_resonance,
             mystique=mystique,
             metabolism=metabolism,
+            learned_challengers=learned_challengers,
+            learned_music=learned_music,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -367,6 +387,8 @@ class ConductingQueen:
             polyphonic_resonance=polyphonic_resonance,
             mystique=mystique,
             metabolism=metabolism,
+            learned_challengers=learned_challengers,
+            learned_music=learned_music,
             now_ms=now_ms,
         )
 
@@ -389,6 +411,8 @@ class ConductingQueen:
             polyphonic_resonance=polyphonic_resonance,
             mystique=mystique,
             metabolism=metabolism,
+            learned_challengers=learned_challengers,
+            learned_music=learned_music,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -439,6 +463,14 @@ class ConductingQueen:
             reasons.append("duplicate_evidence_burn")
         if metabolism and not metabolism.denominator_resolved:
             reasons.append("metabolic_settlement_unresolved")
+        if learned_voice_count:
+            reasons.append("learned_challenger_audible")
+        if learned_drift > 0.55:
+            reasons.append("learned_challenger_drift")
+        if learned_uncertainty > 0.70:
+            reasons.append("learned_challenger_uncertainty")
+        if learned_dissent > 0.50:
+            reasons.append("learned_counterpoint")
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -492,6 +524,12 @@ class ConductingQueen:
             metabolic_strain=round(metabolic_strain, 6),
             cognitive_breath=round(cognitive_breath, 6),
             metabolism_texture=metabolism_texture,
+            learned_voice_count=learned_voice_count,
+            learned_independent_count=learned_independent_count,
+            learned_health=round(learned_health, 6),
+            learned_drift_pressure=round(learned_drift, 6),
+            learned_uncertainty_pressure=round(learned_uncertainty, 6),
+            learned_dissent=round(learned_dissent, 6),
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -581,6 +619,57 @@ class ConductingQueen:
             row.effective_amplitude * row.effective_confidence
             for row in active
         ))
+
+    @staticmethod
+    def _learned_music(
+        challengers: Sequence[LearnedChallengerReceipt],
+        notes: Sequence[MotifNote],
+    ) -> dict[str, float]:
+        if not challengers:
+            return {
+                "voice_count": 0.0,
+                "independent_count": 0.0,
+                "health": 0.0,
+                "drift": 0.0,
+                "uncertainty": 0.0,
+                "dissent": 0.0,
+            }
+
+        def band_for_horizon(horizon: int) -> str:
+            if horizon <= 10:
+                return "micro"
+            if horizon <= 60:
+                return "meso"
+            return "macro"
+
+        note_signs: dict[str, list[int]] = {}
+        for note in notes:
+            if not note.independent_voice:
+                continue
+            sign = _sign(note.direction)
+            if sign:
+                note_signs.setdefault(note.horizon_band, []).append(sign)
+
+        dissent = []
+        for challenger in challengers:
+            csign = _sign(challenger.direction)
+            if not csign:
+                continue
+            signs = note_signs.get(band_for_horizon(challenger.horizon_seconds), [])
+            if not signs:
+                continue
+            choir_sign = 1 if sum(signs) > 0 else -1 if sum(signs) < 0 else 0
+            if choir_sign:
+                dissent.append(float(csign != choir_sign))
+
+        return {
+            "voice_count": float(len(challengers)),
+            "independent_count": float(sum(1 for c in challengers if c.independent_vote_eligible)),
+            "health": statistics.fmean(float(c.voice_health) for c in challengers),
+            "drift": statistics.fmean(float(c.drift_pressure) for c in challengers),
+            "uncertainty": statistics.fmean(float(c.uncertainty_pressure) for c in challengers),
+            "dissent": statistics.fmean(dissent) if dissent else 0.0,
+        }
 
     @staticmethod
     def _voice_acoustics(notes: Sequence[MotifNote]) -> list[VoiceAcoustics]:
@@ -730,6 +819,8 @@ class ConductingQueen:
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
         mystique: MystiqueFalsificationReceipt | None,
         metabolism: CognitiveMetabolismReceipt | None,
+        learned_challengers: Sequence[LearnedChallengerReceipt],
+        learned_music: Mapping[str, float],
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -753,6 +844,8 @@ class ConductingQueen:
             f"mystique_fragility:{(mystique.fragility_score if mystique else 0.0):.3f}",
             f"metabolic_strain:{(metabolism.metabolic_strain if metabolism else 0.0):.3f}",
             f"cognitive_breath:{(metabolism.breath if metabolism else 1.0):.3f}",
+            f"learned_health:{float(learned_music['health']):.3f}",
+            f"learned_dissent:{float(learned_music['dissent']):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -781,6 +874,8 @@ class ConductingQueen:
             metatron_dynamics.append("theme_and_variations_tested")
         if metabolism:
             metatron_dynamics.append("metabolism_" + metabolism.texture.lower())
+        if learned_challengers:
+            metatron_dynamics.append("learned_challenger_timbre")
         scores.append(self._score_sheet(
             mind="METATRON",
             motifs=metatron_motifs,
@@ -830,6 +925,10 @@ class ConductingQueen:
             michael_invites.append("discount_duplicate_rehearsal")
         if metabolism and metabolism.metabolic_strain > 0.55:
             michael_invites.append("thin_orchestration")
+        if learned_challengers and float(learned_music["drift"]) > 0.55:
+            michael_invites.append("retune_learned_voice")
+        if learned_challengers and any(not c.independent_vote_eligible for c in learned_challengers):
+            michael_invites.append("preserve_ml_dependence_labels")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -881,6 +980,12 @@ class ConductingQueen:
                 loki_invites.append("challenge_low_information_rehearsal")
             if metabolism.duplicate_pressure > 0.45:
                 loki_invites.append("seek_non_echo_evidence")
+        if learned_challengers:
+            loki_invites.append("challenge_learned_voice")
+            if float(learned_music["dissent"]) > 0.50:
+                loki_invites.append("preserve_ml_counterpoint")
+            if any(c.synthetic_training_used for c in learned_challengers):
+                loki_invites.append("keep_synthetic_ml_out_of_edge_truth")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -950,6 +1055,8 @@ class ConductingQueen:
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
         mystique: MystiqueFalsificationReceipt | None,
         metabolism: CognitiveMetabolismReceipt | None,
+        learned_challengers: Sequence[LearnedChallengerReceipt],
+        learned_music: Mapping[str, float],
         now_ms: int,
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
@@ -1014,6 +1121,13 @@ class ConductingQueen:
                 gestures.append("INVITE_FRESH_TIMBRE")
             if metabolism.breath > 0.75 and metabolism.evidence_novelty > 0.55:
                 gestures.append("SUSTAIN_COGNITIVE_BREATH")
+        if learned_challengers:
+            if float(learned_music["dissent"]) > 0.50:
+                gestures.append("HEAR_LEARNED_COUNTERPOINT")
+            if float(learned_music["drift"]) > 0.55:
+                gestures.append("RETUNE_LEARNED_VOICE")
+            if float(learned_music["uncertainty"]) > 0.70:
+                gestures.append("SOFTEN_LEARNED_DYNAMIC")
         if any(
             p.authority_effect == "REDUCE_OR_FREEZE_ONLY"
             and not HivePulseEngine.decay(p, now_ms=now_ms).expired
@@ -1045,6 +1159,8 @@ class ConductingQueen:
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
         mystique: MystiqueFalsificationReceipt | None,
         metabolism: CognitiveMetabolismReceipt | None,
+        learned_challengers: Sequence[LearnedChallengerReceipt],
+        learned_music: Mapping[str, float],
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -1254,6 +1370,24 @@ class ConductingQueen:
                 _clamp(0.40 + 0.40 * metabolism.duplicate_pressure),
                 ("lineage_registry", "harmony_law"),
                 "SEARCH_NEW_LINEAGE_OR_REST",
+            ))
+
+        if learned_challengers and float(learned_music["dissent"]) > 0.50:
+            phrases.append((
+                "loki_counterpoint",
+                "CHALLENGE_LEARNED_VOICE",
+                _clamp(0.45 + 0.40 * float(learned_music["dissent"])),
+                ("ml_challenger", "harmony_law", "lineage_registry"),
+                "DISSENT_OR_CORROBORATE",
+            ))
+
+        if learned_challengers and float(learned_music["drift"]) > 0.55:
+            phrases.append((
+                "learned_challenger",
+                "RETUNE_LEARNED_VOICE",
+                _clamp(0.45 + 0.40 * float(learned_music["drift"])),
+                ("model_provenance", "fresh_validation"),
+                "RECALIBRATE_OR_ABSTAIN",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from .contracts import RELATIVE_VALUE_AUTHORITY
+from .world_score import CanonicalScoreFrame
 
 
 MESSAGE_TYPES = {
@@ -245,6 +246,21 @@ class HarmonyLaw:
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,
+        )
+
+    def validate_message_against_frame(
+        self,
+        message: HarmonyBeeMessage,
+        *,
+        frame: CanonicalScoreFrame,
+        now_ms: int,
+    ) -> HarmonyLawDecision:
+        """Validate testimony against the authoritative observed score page."""
+        return self.validate_message(
+            message,
+            current_world_state_id=frame.world_state_id,
+            current_world_state_hash=frame.world_state_hash,
+            now_ms=now_ms,
         )
 
     def validate_chorus(

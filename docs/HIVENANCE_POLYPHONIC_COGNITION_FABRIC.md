@@ -548,35 +548,34 @@ High burn with low information gain should lead toward ABANDON.
 
 ## 17. Learned Challenger / ML
 
-Metatron contains network anomaly, classification, time-series and ensemble ML.
+**Implemented v1.**
 
-Phoenix ML is a challenger family, not an oracle.
+Current implementation:
 
-Permitted roles:
+- `strategies/relative_value_lab/ml_challenger.py`;
+- model artifact, training lineage and feature lineage digests are mandatory;
+- training cutoff and validation window are explicit;
+- calibration health, baseline competition, leave-one-pair / leave-one-asset
+  generalization, freshness, drift and uncertainty are first-class;
+- market direction remains per horizon;
+- multiple learned models collapse into one `learned` harmonic family voice per
+  horizon rather than multiplying votes;
+- shared dependence groups remain audible but non-independent;
+- stale, drifting, uncalibrated or provenance-dependent challengers may dissent
+  but do not silently gain independent-family authority;
+- synthetic-trained challengers are audible but non-voting and cannot become
+  prospective edge evidence;
+- the Conducting Queen hears learned health, drift, uncertainty and same-band
+  dissent;
+- Michael protects lineage/dependence labels and retunes drifting learned voices;
+- Loki challenges learned disagreement and preserves useful learned counterpoint;
+- no learned challenger can grant execution or promotion authority.
 
-- anomaly detection;
-- event classification;
-- probability-of-threshold-crossing models;
-- flow-exhaustion classification;
-- regime classification;
-- learned forecast challenger;
-- calibrated ensemble challenger.
+The learned family is an instrument in Polyphia, never the conductor.
 
-Requirements:
-
-- time-ordered training;
-- outcome-lag protection;
-- explicit train / validation provenance;
-- baseline comparison;
-- calibration;
-- leave-one-pair / leave-one-asset diagnostics;
-- dependence-aware uncertainty;
-- versioned model lineage;
-- no same-window tuning presented as validation.
-
-Synthetic training may test software behavior only.
-
-It cannot establish edge or promotion evidence.
+Health scales, staleness windows and calibration references are provisional
+engineering priors. They must be frozen before fresh prospective validation and
+must not be tuned on the same validation window they are used to judge.
 
 ## 18. Triune research council
 

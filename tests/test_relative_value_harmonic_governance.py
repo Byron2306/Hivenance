@@ -31,6 +31,10 @@ def prediction(
     )
 
 
+def by_horizon(receipt, horizon):
+    return next(state for state in receipt.horizon_states if state.horizon_seconds == horizon)
+
+
 def test_controls_do_not_count_as_independent_forecast_families():
     engine = HarmonicForecastGovernance()
     rows = [
@@ -41,29 +45,41 @@ def test_controls_do_not_count_as_independent_forecast_families():
     receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=1_000, predictions=rows)
 
     assert receipt.independent_families == ("structural",)
-    assert receipt.state == "INSUFFICIENT"
-    assert "insufficient_independent_forecast_families" in receipt.reasons
+    assert by_horizon(receipt, 10).state == "INSUFFICIENT"
     assert receipt.execution_eligible is False
     assert receipt.promotion_eligible is False
 
 
-def test_family_gets_one_global_vote_even_with_multiple_horizons():
+def test_global_receipt_has_no_market_direction_field():
     engine = HarmonicForecastGovernance()
     rows = [
         prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=10, predicted=4.0),
-        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=30, predicted=4.0),
-        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=60, predicted=4.0),
-        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=120, predicted=4.0),
-        prediction(model_id="relative_value_expanding_ridge_v1", horizon=10, predicted=-1.0),
+        prediction(model_id="relative_value_expanding_ridge_v1", horizon=10, predicted=3.0),
+    ]
+    receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=1_000, predictions=rows)
+    payload = receipt.to_dict()
+    assert "direction" not in payload
+    assert by_horizon(receipt, 10).direction == "LONG_A_SHORT_B"
+
+
+def test_opposite_micro_and_macro_directions_can_coexist():
+    engine = HarmonicForecastGovernance()
+    rows = [
+        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=10, predicted=3.0),
+        prediction(model_id="relative_value_expanding_ridge_v1", horizon=10, predicted=2.0),
+        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=120, predicted=-3.0),
+        prediction(model_id="relative_value_expanding_ridge_v1", horizon=120, predicted=-2.0),
     ]
     receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=1_000, predictions=rows)
 
-    assert receipt.independent_families == ("statistical", "structural")
-    # One structural family vote vs one statistical family vote -> global tie.
-    assert receipt.direction == "ABSTAIN"
+    assert by_horizon(receipt, 10).direction == "LONG_A_SHORT_B"
+    assert by_horizon(receipt, 120).direction == "LONG_B_SHORT_A"
+    assert receipt.spectrum.micro is not None
+    assert receipt.spectrum.macro is not None
+    assert "direction" not in receipt.to_dict()
 
 
-def test_resonant_state_requires_registered_family_agreement():
+def test_resonant_state_requires_registered_family_agreement_within_horizon():
     cfg = HarmonicGovernanceConfig(
         min_resonance=0.55,
         max_discord=0.55,
@@ -88,15 +104,16 @@ def test_resonant_state_requires_registered_family_agreement():
         ]
         receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=ts, predictions=rows)
 
-    assert receipt.direction == "LONG_A_SHORT_B"
-    assert receipt.resonance_score >= cfg.min_resonance
-    assert receipt.discord_score <= cfg.max_discord
-    assert receipt.confidence >= cfg.min_confidence
-    assert receipt.state == "RESONANT"
+    state = by_horizon(receipt, 10)
+    assert state.direction == "LONG_A_SHORT_B"
+    assert state.resonance_score >= cfg.min_resonance
+    assert state.discord_score <= cfg.max_discord
+    assert state.confidence >= cfg.min_confidence
+    assert state.state == "RESONANT"
     assert receipt.execution_eligible is False
 
 
-def test_forecast_flipping_increases_cadence_risk():
+def test_forecast_flipping_increases_same_horizon_cadence_risk():
     cfg = HarmonicGovernanceConfig(min_resonance=0.0, max_discord=1.0, min_confidence=0.0)
     engine = HarmonicForecastGovernance(cfg)
     receipt = None
@@ -120,8 +137,24 @@ def test_forecast_flipping_increases_cadence_risk():
         receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=ts, predictions=rows)
 
     assert receipt is not None
-    assert receipt.direction_flip_rate > 0.70
-    assert receipt.forecast_jitter > 0.0
+    state = by_horizon(receipt, 10)
+    assert state.direction_flip_rate > 0.70
+    assert state.forecast_jitter > 0.0
+
+
+def test_control_dissent_compares_with_same_horizon_only():
+    engine = HarmonicForecastGovernance()
+    rows = [
+        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=10, predicted=2.0),
+        prediction(model_id="relative_value_expanding_ridge_v1", horizon=10, predicted=1.5),
+        prediction(model_id="relative_value_ou_mean_reversion_v1", horizon=120, predicted=-2.0),
+        prediction(model_id="relative_value_expanding_ridge_v1", horizon=120, predicted=-1.5),
+        prediction(model_id="baseline_continuation_v1", horizon=10, predicted=1.0),
+        prediction(model_id="baseline_continuation_v1", horizon=120, predicted=1.0),
+    ]
+    receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=1_000, predictions=rows)
+    assert receipt.control_dissent["baseline_continuation_v1:10s"]["agrees_with_same_horizon_direction"] is True
+    assert receipt.control_dissent["baseline_continuation_v1:120s"]["agrees_with_same_horizon_direction"] is False
 
 
 def test_unregistered_challenger_does_not_silently_gain_independent_vote():
@@ -133,4 +166,4 @@ def test_unregistered_challenger_does_not_silently_gain_independent_vote():
     receipt = engine.score(pair_id="A/USD__B/USD", timestamp_ms=1_000, predictions=rows)
 
     assert receipt.independent_families == ("structural",)
-    assert receipt.state == "INSUFFICIENT"
+    assert by_horizon(receipt, 10).state == "INSUFFICIENT"

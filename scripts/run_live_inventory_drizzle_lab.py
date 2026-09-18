@@ -116,6 +116,7 @@ class InventoryDrizzleLab:
         self.direct_pairs:set[frozenset[str]]=set()
         self.pending:dict[tuple[str,str,str],int]=defaultdict(int)
         self.last_trade_ts:dict[str,float]=defaultdict(float)
+        self.horizon_database=Path(args.horizon_database)
         self.conn=sqlite3.connect(args.database)
         self.conn.row_factory=sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
@@ -407,6 +408,27 @@ class InventoryDrizzleLab:
             )
         return rows
 
+    def _latest_horizon_context(self,symbol:str) -> dict[str,Any]:
+        """Passive read-only context bridge. Never affects admission in v1."""
+        if not self.horizon_database.exists():
+            return {}
+        try:
+            conn=sqlite3.connect(self.horizon_database)
+            conn.row_factory=sqlite3.Row
+            try:
+                row=conn.execute(
+                    "SELECT context_json FROM horizon_context WHERE symbol=? ORDER BY ts DESC LIMIT 1",
+                    (symbol,),
+                ).fetchone()
+                if not row:
+                    return {}
+                value=json.loads(row["context_json"] or "{}")
+                return value if isinstance(value,dict) else {}
+            finally:
+                conn.close()
+        except Exception:
+            return {}
+
     def _rebalance(self,mid:str,row:dict[str,Any],ts:float,batch_count:int) -> None:
         wallet=self.wallets[mid]
         from_symbol,to_symbol=row["from_symbol"],row["to_symbol"]
@@ -439,6 +461,9 @@ class InventoryDrizzleLab:
             "rebound":row["rebound"],"streak":row["streak"],
             "support_delta":row["support_delta"],"family_delta":row["family_delta"],
             "route":route,
+            "horizon_context_passive":True,
+            "from_horizon":self._latest_horizon_context(from_symbol),
+            "to_horizon":self._latest_horizon_context(to_symbol),
         }
         self.conn.execute(
             "INSERT INTO inventory_trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -507,6 +532,10 @@ class InventoryDrizzleLab:
         family="positive_capability" if net_capture>0 else "negative_capability"
         strength=min(1.0,abs(net_capture)/max(1.0,float(trade["total_route_cost_bps"] or 1.0)))
         scope=f"{trade['mutation_id']}|{trade['from_symbol']}->{trade['to_symbol']}|route={trade['route_sides']}|cheap={float(trade['cheapness_z'] or 0):.2f}"
+        try:
+            trade_context=json.loads(trade["context_json"] or "{}")
+        except Exception:
+            trade_context={}
         payload={
             "schema":"hivenance_inventory_drizzle_learning_crystal_v1",
             "candidate_only":True,"automatic_promotion":False,
@@ -517,6 +546,9 @@ class InventoryDrizzleLab:
             "gross_edge_bps":trade["gross_edge_bps"],"expected_net_edge_bps":trade["net_edge_bps"],
             "gross_capture_bps":gross_capture,"net_capture_bps":net_capture,
             "evidence_horizon_sec":horizon,
+            "horizon_context_passive":trade_context.get("horizon_context_passive",False),
+            "from_horizon":trade_context.get("from_horizon") or {},
+            "to_horizon":trade_context.get("to_horizon") or {},
         }
         self.conn.execute(
             "INSERT INTO inventory_learning_crystals VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -691,6 +723,7 @@ def parse_args() -> argparse.Namespace:
     p=argparse.ArgumentParser(description="Paper-only relative inventory volatility-harvest lab")
     p.add_argument("--symbols",nargs="+",default=["BTC/USD","ETH/USD","SOL/USD","XRP/USD","ADA/USD","AVAX/USD","DOGE/USD","HYPE/USD"])
     p.add_argument("--database",default="data/live_inventory_drizzle_lab.db")
+    p.add_argument("--horizon-database",default="data/hivenance_horizon_context.db")
     p.add_argument("--duration-sec",type=int,default=900)
     p.add_argument("--interval-sec",type=float,default=1.0)
     p.add_argument("--start-usd",type=float,default=1000.0)

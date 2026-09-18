@@ -83,6 +83,184 @@ class NurseAgent:
         return summary
 
 
+    def review_profit_streak_lab(self, database: str, run_id: str | None = None) -> Dict[str, Any]:
+        """Read-only Nurse autopsy for the live public-market profit-streak lab."""
+        conn = sqlite3.connect(database)
+        conn.row_factory = sqlite3.Row
+        try:
+            if run_id is None:
+                run = conn.execute(
+                    "SELECT run_id,status,started_ts,ended_ts,config_json "
+                    "FROM live_streak_runs ORDER BY started_ts DESC LIMIT 1"
+                ).fetchone()
+            else:
+                run = conn.execute(
+                    "SELECT run_id,status,started_ts,ended_ts,config_json "
+                    "FROM live_streak_runs WHERE run_id=?",
+                    (run_id,),
+                ).fetchone()
+            if not run:
+                return {
+                    "schema": "hivenance_nurse_profit_streak_review_v1",
+                    "status": "NO_STREAK_RUN",
+                    "authority": "read_only_learning_review",
+                }
+            rid = str(run["run_id"])
+            try:
+                start_usd = float(json.loads(run["config_json"] or "{}").get("start_usd", 1000.0))
+            except Exception:
+                start_usd = 1000.0
+
+            marks = conn.execute(
+                """
+                SELECT w.mutation_id,w.equity_usd,w.cumulative_cost_usd
+                FROM live_wallet_marks w
+                JOIN (
+                  SELECT mutation_id,MAX(ts) AS max_ts
+                  FROM live_wallet_marks WHERE run_id=? GROUP BY mutation_id
+                ) x ON x.mutation_id=w.mutation_id AND x.max_ts=w.ts
+                WHERE w.run_id=?
+                """,
+                (rid, rid),
+            ).fetchall()
+            actions = conn.execute(
+                "SELECT mutation_id,action,reason,votes_json,regime_json,cost_usd "
+                "FROM live_paper_actions WHERE run_id=?",
+                (rid,),
+            ).fetchall()
+            sparks = conn.execute(
+                "SELECT mutation_id,COUNT(*) AS n,AVG(delta_1s_usd) AS d1,"
+                "AVG(delta_3s_usd) AS d3,AVG(delta_5s_usd) AS d5,"
+                "AVG(delta_10s_usd) AS d10 "
+                "FROM live_streak_events WHERE run_id=? GROUP BY mutation_id",
+                (rid,),
+            ).fetchall()
+
+            by_mutation: Dict[str, Dict[str, Any]] = {}
+            for mark in marks:
+                mid = str(mark["mutation_id"])
+                by_mutation[mid] = {
+                    "mutation_id": mid,
+                    "final_equity_usd": round(float(mark["equity_usd"] or 0.0), 6),
+                    "net_usd": round(float(mark["equity_usd"] or 0.0) - start_usd, 6),
+                    "modeled_cost_usd": round(float(mark["cumulative_cost_usd"] or 0.0), 6),
+                    "actions": 0,
+                    "buy_actions": 0,
+                    "sell_actions": 0,
+                    "entry_regimes": {},
+                    "mean_entry_positive_votes": None,
+                }
+
+            vote_sums: Dict[str, float] = {}
+            vote_counts: Dict[str, int] = {}
+            for action in actions:
+                mid = str(action["mutation_id"])
+                bucket = by_mutation.setdefault(mid, {
+                    "mutation_id": mid,
+                    "final_equity_usd": None,
+                    "net_usd": None,
+                    "modeled_cost_usd": 0.0,
+                    "actions": 0,
+                    "buy_actions": 0,
+                    "sell_actions": 0,
+                    "entry_regimes": {},
+                    "mean_entry_positive_votes": None,
+                })
+                bucket["actions"] += 1
+                typ = str(action["action"] or "").upper()
+                if typ == "BUY":
+                    bucket["buy_actions"] += 1
+                elif typ == "SELL":
+                    bucket["sell_actions"] += 1
+                if typ == "BUY":
+                    try:
+                        regime = json.loads(action["regime_json"] or "{}")
+                    except Exception:
+                        regime = {}
+                    label = str(regime.get("label") or "unknown")
+                    bucket["entry_regimes"][label] = bucket["entry_regimes"].get(label, 0) + 1
+                    try:
+                        votes = json.loads(action["votes_json"] or "{}")
+                    except Exception:
+                        votes = {}
+                    positive_votes = sum(1 for value in votes.values() if float(value or 0) > 0)
+                    vote_sums[mid] = vote_sums.get(mid, 0.0) + positive_votes
+                    vote_counts[mid] = vote_counts.get(mid, 0) + 1
+
+            for mid, bucket in by_mutation.items():
+                if vote_counts.get(mid):
+                    bucket["mean_entry_positive_votes"] = round(
+                        vote_sums[mid] / vote_counts[mid], 6
+                    )
+                cost = float(bucket.get("modeled_cost_usd") or 0.0)
+                net = bucket.get("net_usd")
+                bucket["cost_to_net_ratio"] = (
+                    round(cost / abs(float(net)), 6)
+                    if net not in (None, 0, 0.0) else None
+                )
+
+            spark_map = {
+                str(row["mutation_id"]): {
+                    "events": int(row["n"] or 0),
+                    "mean_delta_1s_usd": round(float(row["d1"] or 0.0), 6),
+                    "mean_delta_3s_usd": round(float(row["d3"] or 0.0), 6),
+                    "mean_delta_5s_usd": round(float(row["d5"] or 0.0), 6),
+                    "mean_delta_10s_usd": round(float(row["d10"] or 0.0), 6),
+                }
+                for row in sparks
+            }
+
+            observations = []
+            for bucket in by_mutation.values():
+                mid = bucket["mutation_id"]
+                net = bucket.get("net_usd")
+                cost = float(bucket.get("modeled_cost_usd") or 0.0)
+                action_count = int(bucket.get("actions") or 0)
+                if action_count and net is not None and float(net) <= 0 and cost > 0:
+                    observations.append({
+                        "type": "cost_drag_candidate",
+                        "mutation_id": mid,
+                        "evidence": {
+                            "net_usd": net,
+                            "modeled_cost_usd": cost,
+                            "actions": action_count,
+                        },
+                    })
+                spark = spark_map.get(mid)
+                if spark and spark["events"] > 0:
+                    observations.append({
+                        "type": "equity_streak_candidate",
+                        "mutation_id": mid,
+                        "evidence": spark,
+                    })
+
+            return {
+                "schema": "hivenance_nurse_profit_streak_review_v1",
+                "authority": "read_only_learning_review",
+                "run_id": rid,
+                "run_status": str(run["status"]),
+                "online_learning_was_attached": False,
+                "review_mode": "post_run_autopsy_from_recorded_evidence",
+                "mutations": sorted(
+                    by_mutation.values(),
+                    key=lambda item: (
+                        float(item.get("net_usd") if item.get("net_usd") is not None else -1e18),
+                        -int(item.get("actions") or 0),
+                    ),
+                    reverse=True,
+                ),
+                "streak_events": spark_map,
+                "candidate_learning_observations": observations,
+                "promotion_state": "NOT_PROMOTED",
+                "notes": (
+                    "Nurse did not participate online in this already-running lab. "
+                    "This is a deterministic post-run autopsy; no weights, canonical crystals "
+                    "or execution authority are changed."
+                ),
+            }
+        finally:
+            conn.close()
+
     def review_rotation_lab(self, database: str, run_id: str | None = None) -> Dict[str, Any]:
         """Read-only post-run learning review for the paper rotation lab.
 

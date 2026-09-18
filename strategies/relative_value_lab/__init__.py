@@ -2,6 +2,13 @@ from .pair_lab import PairDiagnostics, PairRelationshipLab
 from .pair_graph import PairGraphEdge, RelativeValueGraph
 from .forecast import OUMeanReversionForecaster, OUForecastConfig
 from .research_council import LocalOllamaResearchCouncil
+from .harmonic_governance import (
+    HarmonicForecastGovernance,
+    HarmonicGovernanceConfig,
+    HarmonicForecastReceipt,
+    HarmonicForecastVoice,
+    HarmonicSpectrum,
+)
 from .dataset import RelativeValueDatasetBuilder, RelativeValueExample, DatasetBuildSummary
 from .evaluation import (
     ExpandingRidgeModel,
@@ -40,6 +47,11 @@ __all__ = [
     "OUMeanReversionForecaster",
     "OUForecastConfig",
     "LocalOllamaResearchCouncil",
+    "HarmonicForecastGovernance",
+    "HarmonicGovernanceConfig",
+    "HarmonicForecastReceipt",
+    "HarmonicForecastVoice",
+    "HarmonicSpectrum",
     "RelativeValueDatasetBuilder",
     "RelativeValueExample",
     "DatasetBuildSummary",

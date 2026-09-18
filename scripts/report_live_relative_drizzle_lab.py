@@ -108,36 +108,57 @@ def main() -> int:
                     f"admissible={bool(row['admissible'])}"
                 )
 
-        transitions=conn.execute(
+        leg_rows=conn.execute(
             """
-            SELECT json_extract(exit_context_json,'$.challenger') AS challenger,
-                   symbol AS incumbent,
-                   mutation_id,
-                   COUNT(*) AS n,
-                   AVG(net_return_bps) AS mean_bps,
-                   SUM(CASE WHEN net_return_bps>0 THEN 1 ELSE 0 END) AS wins,
-                   SUM(net_pnl_usd) AS net_usd,
-                   AVG(duration_sec) AS mean_duration
+            SELECT mutation_id,symbol,entry_context_json,net_return_bps,
+                   net_pnl_usd,duration_sec
             FROM relative_legs
             WHERE run_id=? AND status='CLOSED' AND exit_reason='relative_switch'
-            GROUP BY mutation_id,incumbent,challenger
-            ORDER BY mean_bps DESC
-            LIMIT 12
             """,(rid,)
         ).fetchall()
+        transition_map={}
+        for row in leg_rows:
+            try:
+                entry_context=json.loads(row["entry_context_json"] or "{}")
+            except Exception:
+                entry_context={}
+            from_symbol=str(entry_context.get("from_symbol") or "initial_anchor")
+            to_symbol=str(row["symbol"])
+            key=(str(row["mutation_id"]),from_symbol,to_symbol)
+            bucket=transition_map.setdefault(key,{
+                "n":0,"wins":0,"net_bps_sum":0.0,"net_usd":0.0,"duration_sum":0.0
+            })
+            net_bps=float(row["net_return_bps"] or 0.0)
+            bucket["n"]+=1
+            bucket["wins"]+=1 if net_bps>0 else 0
+            bucket["net_bps_sum"]+=net_bps
+            bucket["net_usd"]+=float(row["net_pnl_usd"] or 0.0)
+            bucket["duration_sum"]+=float(row["duration_sec"] or 0.0)
+        transitions=[]
+        for (mid,from_symbol,to_symbol),bucket in transition_map.items():
+            n=max(1,int(bucket["n"]))
+            transitions.append({
+                "mutation_id":mid,"from_symbol":from_symbol,"to_symbol":to_symbol,
+                "n":int(bucket["n"]),"wins":int(bucket["wins"]),
+                "mean_bps":bucket["net_bps_sum"]/n,
+                "net_usd":bucket["net_usd"],
+                "mean_duration":bucket["duration_sum"]/n,
+            })
+        transitions.sort(key=lambda row:float(row["mean_bps"]),reverse=True)
+        transitions=transitions[:12]
         if transitions:
             print()
             print("Observed relative transitions")
             print("-----------------------------")
             for row in transitions:
-                n=int(row["n"] or 0)
-                wins=int(row["wins"] or 0)
+                n=int(row["n"])
+                wins=int(row["wins"])
                 print(
-                    f"{str(row['mutation_id']):28s} {row['incumbent']} -> {row['challenger']} "
+                    f"{str(row['mutation_id']):28s} {row['from_symbol']} -> {row['to_symbol']} "
                     f"n={n:3d} win={wins/max(1,n)*100:5.1f}% "
-                    f"mean={float(row['mean_bps'] or 0):+7.2f}bps "
-                    f"net={float(row['net_usd'] or 0):+8.4f}USD "
-                    f"dur={float(row['mean_duration'] or 0):5.1f}s"
+                    f"mean={float(row['mean_bps']):+7.2f}bps "
+                    f"net={float(row['net_usd']):+8.4f}USD "
+                    f"dur={float(row['mean_duration']):5.1f}s"
                 )
 
         latency=conn.execute(

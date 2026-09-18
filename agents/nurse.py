@@ -522,6 +522,7 @@ class NurseAgent:
                 bucket["net_usd_sum"] += net_usd
                 bucket["duration_sum"] += duration
 
+            learned_legs = 0
             for leg in legs:
                 mid = str(leg["mutation_id"])
                 symbol = str(leg["symbol"])
@@ -532,7 +533,10 @@ class NurseAgent:
                     entry_context = json.loads(leg["entry_context_json"] or "{}")
                 except Exception:
                     entry_context = {}
-                from_symbol = str(entry_context.get("from_symbol") or "initial_anchor")
+                if str(entry_context.get("type") or "") != "relative_switch":
+                    continue
+                learned_legs += 1
+                from_symbol = str(entry_context.get("from_symbol") or "unknown")
                 acc(by_mutation,mid,net_bps,net_usd,duration)
                 acc(by_symbol,symbol,net_bps,net_usd,duration)
                 acc(by_transition,f"{from_symbol}->{symbol}",net_bps,net_usd,duration)
@@ -615,7 +619,7 @@ class NurseAgent:
                 "run_status":str(run["status"]),
                 "objective":"tiny_incremental_relative_gains_after_costs",
                 "final_scorecard":sorted(final.values(),key=lambda item:float(item["net_usd"]),reverse=True),
-                "closed_switch_legs":len(legs),
+                "closed_switch_legs":learned_legs,
                 "candidate_crystals":len(crystals),
                 "positive_candidate_crystals":positives,
                 "negative_candidate_crystals":negatives,

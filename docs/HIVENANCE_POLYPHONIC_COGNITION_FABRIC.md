@@ -194,39 +194,88 @@ Its receipts remain bound to:
 
 `research_evidence_only_no_execution_or_promotion_authority`
 
-## 8. Hypothesis accumulation
+## 8. Musical cognition — motif, rhythm and cadence
 
-This adapts the temporal accumulation pattern of Metatron AATL without importing threat semantics.
+HiveNance does **not** model a hypothesis as a rigid lifecycle or workflow state
+machine.
 
-Phoenix tracks:
+A market idea is represented as a **motif**: a recurring bounded pattern carried
+by one or more independent voices through time.
 
-- hypothesis history;
-- evidence persistence;
-- supporting families;
-- dissent history;
-- confidence trajectory;
-- direction persistence;
-- goal / hypothesis convergence;
-- lifecycle progression.
+The cognition fabric listens for musical structure:
 
-Lifecycle:
+- **note** — one evidence-bound observation or testimony;
+- **voice** — one independent evidentiary lineage;
+- **motif** — a recognizable hypothesis pattern recurring through time;
+- **phrase** — a bounded temporal development of a motif;
+- **call** — a voice introduces or re-introduces a motif;
+- **response** — another voice answers it independently;
+- **counterpoint** — distinct voices carry compatible but non-identical lines;
+- **dissonance** — meaningful unresolved disagreement;
+- **consonance** — locally coherent relationship among voices;
+- **pulse** — urgency / accent, not authority;
+- **tempo** — rate at which meaningful evidence arrives;
+- **rhythm** — temporal spacing and recurrence structure;
+- **cadence** — tendency toward local resolution;
+- **syncopation** — informative off-pattern timing;
+- **rest** — intentional abstention / absence of sufficient evidence;
+- **crescendo** — increasing independent evidentiary pressure;
+- **decrescendo** — fading support;
+- **modulation** — change of regime, horizon or relationship context;
+- **resolution** — a motif becomes prospectively settleable or is resolved by
+  later evidence;
+- **coda** — closed evidentiary phrase retained for Nurse / Crystal learning.
+
+There is no mandatory sequence such as FORMING → CORROBORATED → CHALLENGED.
+A motif may:
 
 ```text
-OBSERVED
-→ SEARCHING
-→ FORMING
-→ RECRUITING
-→ CORROBORATED
-→ CHALLENGED
-→ PROSPECTIVE
-→ SETTLED
+enter softly
+→ be answered in counterpoint
+→ become dissonant
+→ rest
+→ return in a different key / regime
+→ crescendo
+→ cadence
+→ resolve
 ```
 
-Terminal alternatives:
+or it may simply fade without resolution.
 
-- ABANDONED;
-- FALSIFIED;
-- EXPIRED.
+The accumulator therefore tracks continuous musical features rather than
+categorical belief states:
+
+- motif recurrence;
+- voice diversity;
+- phrase duration;
+- inter-onset intervals;
+- tempo and tempo drift;
+- rhythmic regularity;
+- syncopation;
+- call / response latency;
+- counterpoint diversity;
+- consonance and dissonance;
+- tension trajectory;
+- dynamic intensity;
+- crescendo / decrescendo;
+- modulation events;
+- rest density;
+- cadence strength;
+- resolution evidence.
+
+**Silence is evidence.** A missing response, a long rest, or a motif that fails to
+recur can be as informative as another supporting note.
+
+**Dissonance is not failure.** It is preserved as musical tension and may be more
+informative than premature consensus.
+
+**Cadence is not authority.** A strong cadence may make a motif eligible for a
+prospective research transition, but cannot create execution or promotion
+authority.
+
+The Law of Harmony remains constitutional: it determines whether a voice may
+enter the score. Musical cognition determines how lawful voices relate through
+time.
 
 ## 9. Market Hunting
 
@@ -497,345 +546,3 @@ How could this interpretation be wrong?
 What evidence is duplicated?
 
 What alternative explanation survives?
-
-Typed research verdicts:
-
-- SUPPORTED_FOR_PROSPECTIVE_TEST;
-- NEEDS_EVIDENCE;
-- ABSTAIN;
-- FALSIFIED;
-- STALE_WORLD_STATE.
-
-Triune cannot issue a live order.
-
-## 19. Outbound Gate
-
-Nothing crosses cognition simply because models agree.
-
-The gate must bind:
-
-- world_state_id;
-- evidence_root;
-- VNS freshness;
-- family lineage;
-- pulse / cascade state;
-- polyphonic receipt;
-- harmonic receipt;
-- Mystique receipt;
-- cognitive-metabolism state;
-- Triune verdict;
-- cost model;
-- phase authority.
-
-Relative-value branch authority remains:
-
-`research_evidence_only_no_execution_or_promotion_authority`
-
-Possible current outputs:
-
-- ALLOW_RESEARCH;
-- REFUSE;
-- NEEDS_YOU.
-
-
-
-## 20. Edge Chorus
-
-Edge Chorus governs the integrity of a specific research transition.
-
-It is not a forecast choir and not a substitute for Polyphonic Resonance.
-
-Adapted from Metatron's `ChorusEngine`, Phoenix Edge Chorus verifies that a bounded research edge contains the right companions, sequence, timing, closure and settlement evidence.
-
-A Phoenix research edge may define:
-
-- required participants;
-- optional participants;
-- expected sequence;
-- timing tolerances;
-- required state events;
-- required audit events;
-- required companions;
-- settlement timeout.
-
-Example research edge:
-
-```text
-prospective_hypothesis_settlement
-
-required participants:
-  world_state_bind
-  triune_verdict
-  outbound_gate
-  settlement_engine
-  nurse
-  audit_closure
-
-expected sequence:
-  edge_opened
-  world_state_bound
-  triune_resolved
-  research_release
-  settlement_started
-  settlement_completed
-  nurse_recorded
-  audit_closed
-  edge_settled
-```
-
-Edge Chorus scores:
-
-- companion presence;
-- sequence resolution;
-- mesh entrainment / timing;
-- audit closure;
-- settlement completeness.
-
-Resolution classes:
-
-- CONSONANT;
-- STRAINED;
-- DISSONANT;
-- FRACTURED.
-
-A fractured or materially dissonant research edge cannot be treated as settled evidence.
-
-Edge Chorus therefore answers:
-
-> Did this research transition occur correctly?
-
-It does not answer:
-
-> Was the market hypothesis true?
-
-## 21. Notation Tokens
-
-Notation Tokens are narrow, world-state-bound permissions to perform one specific governed research transition.
-
-They are adapted from Metatron's notation-token lifecycle while preserving Phoenix's research-only authority.
-
-A Phoenix Research Notation Token should bind at minimum:
-
-- token_id;
-- governance_epoch_id;
-- score / programme id;
-- voice role;
-- capability class;
-- world_state_id / world_state_hash;
-- issued_to;
-- entry window;
-- sequence slot;
-- required companions;
-- response class;
-- action digest;
-- target digest;
-- authority-request digest;
-- consequence class;
-- audience;
-- maximum uses;
-- issued_at;
-- expires_at;
-- status;
-- signature / receipt reference.
-
-Default behaviour should be:
-
-- short-lived;
-- single use;
-- invalid after material world-state drift;
-- invalid outside its entry window;
-- invalid for a different target or research transition;
-- invalid if required companions are absent;
-- invalid if revoked by pulse, harmonic, Triune, or authority state.
-
-Notation does not create new authority.
-
-It narrows already-granted research authority into a concrete, bounded transition.
-
-Examples:
-
-```text
-ALLOW:
-  settle forecast F against horizon H
-  open prospective observation window W
-  publish research receipt R
-  invoke Mystique challenge M
-  run approved challenger model C
-
-NOT ALLOW:
-  submit real order
-  change Phase 6/7 authority
-  promote model from same-window evidence
-```
-
-## 22. Governance epoch and score
-
-Notation is most useful when issued inside a frozen research governance epoch.
-
-A governance epoch binds:
-
-- active experiment definition;
-- world-state hash;
-- model / lineage registry;
-- harmonic thresholds;
-- hunt rules;
-- pulse rules;
-- cost model;
-- settlement schema;
-- authority boundary.
-
-The score defines the expected research sequence.
-
-The token is therefore not merely permission.
-
-It is permission to play one specific note in one specific score, inside one specific world state.
-
-## 23. Revised constitutional seam
-
-The final cognition-to-transition path is:
-
-```text
-TRIUNE VERDICT
-    ↓
-GOVERNANCE EPOCH / SCORE
-    ↓
-RESEARCH NOTATION TOKEN
-    ↓
-OUTBOUND GATE
-    ↓
-EDGE CHORUS OPENS
-    ↓
-bounded research transition
-    ↓
-settlement / audit / Nurse
-    ↓
-EDGE CHORUS RESOLUTION
-    ↓
-WORLD-STATE FEEDBACK
-```
-
-This separates three distinct questions:
-
-1. **Triune:** should this research transition be supported?
-2. **Notation + Outbound Gate:** is this exact transition permitted now?
-3. **Edge Chorus:** did the transition actually complete correctly?
-
-
-## 24. Settlement and learning
-
-All hypotheses must eventually settle against future public observations where labels become available.
-
-Settlement flows back into:
-
-- Nurse;
-- crystals;
-- model scorecards;
-- hypothesis priors;
-- context-burn accounting;
-- world state.
-
-Execution evidence must never directly mutate production authority.
-
-## 25. Implementation programme
-
-### Phase 4A — Microstructure exhaustion voice
-
-Build the first genuinely independent event-family predictor.
-
-### Phase 4B — Harmonic Forecast Governance
-
-Implemented v1. Current retrospective result is discovery evidence only.
-
-### Phase 4C — Waggle Protocol + lineage registry
-
-**Implemented v1.**
-
-Current implementation:
-
-- `strategies/relative_value_lab/waggle_protocol.py`
-- deterministic `BeeLineage` and `LineageRegistry`;
-- Harmony-gated `WaggleProtocol`;
-- typed WAGGLE / FOLLOW / DISSENT / SEARCH / ABANDON / ALARM / SETTLE testimony;
-- append-only hash-linked receipts;
-- one independent root-lineage vote per hypothesis + horizon band + world state;
-- clone/descendant testimony remains visible but cannot manufacture quorum;
-- dissent and abandonment remain first-class state;
-- ALARM/FREEZE can only reduce or freeze authority;
-- no Waggle receipt can grant execution or promotion authority.
-
-The Waggle bus is cognition transport, not a forecasting engine and not an execution bus.
-
-### Phase 4D — Hypothesis accumulation
-
-Temporal state machine and convergence.
-
-### Phase 4E — Market Hunting
-
-Proactive falsifiable hunt rules over VNS / world state.
-
-### Phase 4F — Colony Correlation
-
-Cross-pair, shared-asset and temporal linkage.
-
-### Phase 4G — Causal Cascade + Hive Pulse
-
-Evidence-bound propagation and warning nervous system.
-
-### Phase 4H — Polyphonic Resonance
-
-Micro / meso / macro / global choir.
-
-### Phase 4I — Mystique Falsification
-
-Counterfactual mirror-world challenge.
-
-### Phase 4J — Cognitive Metabolism
-
-CBR / TBCR / CDI research-resource accounting.
-
-### Phase 4K — Learned Challenger / ML
-
-Leakage-safe challenger family with baseline and calibration requirements.
-
-### Phase 4L — VNS + Canonical World State
-
-Single bounded reality for every cognitive organ.
-
-### Phase 4M — Triune Research Council
-
-Synthesis, validation and adversarial dissent.
-
-### Phase 4N — Research Notation + Outbound Gate
-
-World-state-bound, single-use research transition tokens and deterministic gate enforcement.
-
-### Phase 4O — Edge Chorus
-
-Companion, sequence, timing, audit and settlement verification for research transitions.
-
-### Phase 4P — Freeze
-
-Evidence- and authority-bound research release.
-
-Freeze schemas, thresholds, lineage registry, models, score, notation rules and gates.
-
-### Phase 5 — Fresh prospective validation
-
-Only Phase 5 may evaluate the frozen organism against genuinely unseen public-market evidence.
-
-## 26. Success condition
-
-The system succeeds only if fresh prospective evidence shows that the full cognition fabric improves one or more of:
-
-- forecast calibration;
-- directional discrimination;
-- magnitude selection;
-- cost-clearing event selection;
-- false-positive suppression;
-- early structural-break detection;
-- research efficiency;
-- robustness across assets and regimes;
-
-without relying on duplicated evidence, retrospective threshold tuning, or hidden execution authority.
-
-A beautiful internal narrative without prospective improvement is a failed experiment.

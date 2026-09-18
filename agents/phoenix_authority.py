@@ -169,6 +169,16 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "descriptive_temporal_research_cognition",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_causal_cascade": {
+        "role": "evidence_bound_propagation_phrase_builder",
+        "mode": "research_propagation_only",
+        "phoenix_entry_phase": 4,
+    },
+    "relative_value_hive_pulse": {
+        "role": "decaying_colony_accent_and_scope_signal",
+        "mode": "research_attention_and_safety_pulse_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

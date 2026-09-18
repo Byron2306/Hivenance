@@ -110,6 +110,14 @@ __all__ = [
     "ProspectiveForecastSettler",
     "SettledRelativeForecast",
     "ResearchGovernanceEpoch",
+    "ConductingQueen",
+    "QueenPolyphonicReceipt",
+    "QueenNotationToken",
+    "TriuneScoreSheet",
+    "VoiceAcoustics",
+    "VNSSensoryPulse",
+    "ResearchGovernanceEpochService",
+    "EpochValidation",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,

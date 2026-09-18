@@ -222,5 +222,5 @@ These become falsification tests for every new model family.
 - [x] DIO integration boundary identified
 - [x] existing Phoenix hypothesis rails mapped
 - [ ] authority/contracts tests passing in repository runtime
-- [ ] A-D autopsy provenance copied/registered in repo
-- [ ] Phase 1 microstructure evidence schema frozen
+- [x] A-D autopsy provenance copied/registered in repo
+- [x] Phase 1 microstructure evidence schema frozen

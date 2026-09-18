@@ -17,6 +17,7 @@ from .market_hunting import MotifHuntMatch
 from .colony_correlation import ColonyCorrelationReceipt
 from .causal_cascade import CausalCascadeReceipt
 from .hive_pulse import HivePulse, HivePulseEngine
+from .polyphonic_resonance import PolyphonicResonanceReceipt
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -154,6 +155,12 @@ class QueenPolyphonicReceipt:
     cascade_strength: float
     cascade_crescendo: float
     hive_pulse_energy: float
+    polyphonic_resonance: float
+    cross_band_tension: float
+    register_diversity: float
+    overtone_coherence: float
+    resonance_drift: float
+    resonance_texture: str
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -211,6 +218,7 @@ class ConductingQueen:
         correlations: Sequence[ColonyCorrelationReceipt] = (),
         cascade: CausalCascadeReceipt | None = None,
         hive_pulses: Sequence[HivePulse] = (),
+        polyphonic_resonance: PolyphonicResonanceReceipt | None = None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -254,6 +262,13 @@ class ConductingQueen:
         discord = _clamp(float(harmonic_context.get("discord", motif.dissonance)))
         harmonic_confidence = _clamp(float(harmonic_context.get("confidence", 0.0)))
 
+        spectrum_resonance = float(polyphonic_resonance.global_resonance) if polyphonic_resonance else resonance
+        cross_band_tension = float(polyphonic_resonance.cross_band_tension) if polyphonic_resonance else 0.0
+        register_diversity = float(polyphonic_resonance.register_diversity) if polyphonic_resonance else 0.0
+        overtone_coherence = float(polyphonic_resonance.overtone_coherence) if polyphonic_resonance else 0.0
+        resonance_drift = float(polyphonic_resonance.resonance_drift) if polyphonic_resonance else 0.0
+        resonance_texture = polyphonic_resonance.texture if polyphonic_resonance else "UNHEARD"
+
         polyphonic_pressure = _clamp(
             0.12 * motif.dynamic_intensity
             + 0.10 * motif.crescendo
@@ -273,6 +288,10 @@ class ConductingQueen:
             + 0.06 * cascade_strength
             + 0.06 * cascade_crescendo
             + 0.05 * hive_pulse_energy
+            + 0.07 * spectrum_resonance
+            + 0.04 * register_diversity
+            + 0.04 * overtone_coherence
+            + 0.03 * (1.0 - resonance_drift)
         )
 
         triune_scores = self._write_triune_scores(
@@ -296,6 +315,7 @@ class ConductingQueen:
             correlations=correlations,
             cascade=cascade,
             hive_pulses=hive_pulses,
+            polyphonic_resonance=polyphonic_resonance,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -317,6 +337,7 @@ class ConductingQueen:
             correlations=correlations,
             cascade=cascade,
             hive_pulses=hive_pulses,
+            polyphonic_resonance=polyphonic_resonance,
             now_ms=now_ms,
         )
 
@@ -336,6 +357,7 @@ class ConductingQueen:
             correlations=correlations,
             cascade=cascade,
             hive_pulses=hive_pulses,
+            polyphonic_resonance=polyphonic_resonance,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -368,6 +390,12 @@ class ConductingQueen:
             reasons.append("cascade_crescendo")
         if hive_pulse_energy > 0.35:
             reasons.append("hive_pulse_accent")
+        if cross_band_tension > 0.55:
+            reasons.append("cross_band_counterpoint")
+        if resonance_drift > 0.45:
+            reasons.append("polyphonic_modulation")
+        if resonance_texture != "UNHEARD":
+            reasons.append("resonance_texture_" + resonance_texture.lower())
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -406,6 +434,12 @@ class ConductingQueen:
             cascade_strength=round(cascade_strength, 6),
             cascade_crescendo=round(cascade_crescendo, 6),
             hive_pulse_energy=round(hive_pulse_energy, 6),
+            polyphonic_resonance=round(spectrum_resonance, 6),
+            cross_band_tension=round(cross_band_tension, 6),
+            register_diversity=round(register_diversity, 6),
+            overtone_coherence=round(overtone_coherence, 6),
+            resonance_drift=round(resonance_drift, 6),
+            resonance_texture=resonance_texture,
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -641,6 +675,7 @@ class ConductingQueen:
         correlations: Sequence[ColonyCorrelationReceipt],
         cascade: CausalCascadeReceipt | None,
         hive_pulses: Sequence[HivePulse],
+        polyphonic_resonance: PolyphonicResonanceReceipt | None,
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -657,6 +692,9 @@ class ConductingQueen:
             f"correlation_harmony:{self._correlation_harmony(correlations):.3f}",
             f"cascade_strength:{(cascade.propagation_strength if cascade else 0.0):.3f}",
             f"cascade_crescendo:{(cascade.crescendo if cascade else 0.0):.3f}",
+            f"register_diversity:{(polyphonic_resonance.register_diversity if polyphonic_resonance else 0.0):.3f}",
+            f"overtone_coherence:{(polyphonic_resonance.overtone_coherence if polyphonic_resonance else 0.0):.3f}",
+            f"cross_band_tension:{(polyphonic_resonance.cross_band_tension if polyphonic_resonance else 0.0):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -679,6 +717,8 @@ class ConductingQueen:
             metatron_dynamics.append("cascade_crescendo")
         if hive_pulses:
             metatron_dynamics.append("hive_pulse_accent")
+        if polyphonic_resonance:
+            metatron_dynamics.append("resonance_" + polyphonic_resonance.texture.lower())
         scores.append(self._score_sheet(
             mind="METATRON",
             motifs=metatron_motifs,
@@ -716,6 +756,8 @@ class ConductingQueen:
             michael_invites.append("repair_cascade_evidence")
         if any(p.authority_effect == "REDUCE_OR_FREEZE_ONLY" for p in hive_pulses):
             michael_invites.append("honour_negative_pulse")
+        if polyphonic_resonance and polyphonic_resonance.resonance_drift > 0.45:
+            michael_invites.append("retune_polyphonic_registers")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -754,6 +796,8 @@ class ConductingQueen:
             loki_invites.append("challenge_propagation_mechanism")
         if hive_pulses:
             loki_invites.append("challenge_pulse_amplification")
+        if polyphonic_resonance and polyphonic_resonance.cross_band_tension > 0.55:
+            loki_invites.append("preserve_cross_band_counterpoint")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -820,6 +864,7 @@ class ConductingQueen:
         correlations: Sequence[ColonyCorrelationReceipt],
         cascade: CausalCascadeReceipt | None,
         hive_pulses: Sequence[HivePulse],
+        polyphonic_resonance: PolyphonicResonanceReceipt | None,
         now_ms: int,
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
@@ -861,6 +906,15 @@ class ConductingQueen:
             gestures.append("EXPAND_LISTENING_SCOPE")
         if self._hive_pulse_energy(hive_pulses, now_ms=now_ms) > 0.30:
             gestures.append("ACCENT_HIVE_PULSE")
+        if polyphonic_resonance:
+            if polyphonic_resonance.texture == "COUNTERPOINT":
+                gestures.append("CONDUCT_COUNTERPOINT")
+            elif polyphonic_resonance.texture == "FULL_CHORD":
+                gestures.append("SUSTAIN_FULL_CHORD")
+            elif polyphonic_resonance.texture == "SUSPENDED":
+                gestures.append("HOLD_SUSPENSION")
+            elif polyphonic_resonance.texture == "MODULATING":
+                gestures.append("FOLLOW_REGISTER_MODULATION")
         if any(
             p.authority_effect == "REDUCE_OR_FREEZE_ONLY"
             and not HivePulseEngine.decay(p, now_ms=now_ms).expired
@@ -889,6 +943,7 @@ class ConductingQueen:
         correlations: Sequence[ColonyCorrelationReceipt],
         cascade: CausalCascadeReceipt | None,
         hive_pulses: Sequence[HivePulse],
+        polyphonic_resonance: PolyphonicResonanceReceipt | None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -1023,6 +1078,24 @@ class ConductingQueen:
                 0.90,
                 ("hive_pulse", "governance_epoch"),
                 "REDUCE_OR_FREEZE_RESEARCH_ONLY",
+            ))
+
+        if polyphonic_resonance and polyphonic_resonance.texture == "COUNTERPOINT":
+            phrases.append((
+                "polyphonic_choir",
+                "PRESERVE_COUNTERPOINT",
+                _clamp(0.40 + 0.40 * polyphonic_resonance.cross_band_tension),
+                ("harmonic_governance", "harmony_law"),
+                "SING_REGISTER_WITHOUT_COLLAPSE",
+            ))
+
+        if polyphonic_resonance and polyphonic_resonance.texture == "MODULATING":
+            phrases.append((
+                "polyphonic_choir",
+                "TRACE_REGISTER_MODULATION",
+                _clamp(0.40 + 0.40 * polyphonic_resonance.resonance_drift),
+                ("world_state_bind", "harmonic_governance"),
+                "SEARCH_OR_DISSENT",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

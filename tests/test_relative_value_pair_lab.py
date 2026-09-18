@@ -96,3 +96,21 @@ def test_relative_value_graph_builds_unique_edges():
     assert len(diagnostics)==3
     edge=next(e for e in edges if set((e.symbol_a,e.symbol_b))=={"A/USD","B/USD"})
     assert edge.direct_route_available is True
+
+
+def test_timestamped_graph_aligns_on_common_buckets():
+    a,b=_mean_reverting_pair(n=120)
+    points_a=[(1000.0+i*5.0,price) for i,price in enumerate(a)]
+    points_b=[(1000.8+i*5.0,price) for i,price in enumerate(b)]
+    # Add an unmatched extra observation to prove pairwise intersection rather
+    # than naïve list-position alignment.
+    points_a.append((1000.0+120*5.0,a[-1]))
+    graph=RelativeValueGraph(PairRelationshipLab(min_samples=60,min_stability_score=0.20))
+    edges,crystals,diagnostics=graph.analyze_timestamped_basket(
+        points={"A/USD":points_a,"B/USD":points_b},
+        sample_interval_sec=5.0,
+    )
+    assert len(edges)==1
+    diag=next(iter(diagnostics.values()))
+    assert diag.samples==120
+    assert next(iter(crystals.values())).execution_eligible is False

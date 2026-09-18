@@ -2,7 +2,10 @@ import math
 import requests
 import ccxt
 import logging
-from binance.client import Client
+try:
+    from binance.client import Client
+except ImportError:  # Optional on Termux/public-Kraken-only research paths.
+    Client = Any
 from typing import Tuple, List, Optional, Dict, Any
 
 

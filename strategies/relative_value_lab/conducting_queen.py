@@ -15,6 +15,8 @@ from .temporal_texture import TemporalTextureReceipt
 from .edge_chorus_harmony import EdgeChorusHarmony
 from .market_hunting import MotifHuntMatch
 from .colony_correlation import ColonyCorrelationReceipt
+from .causal_cascade import CausalCascadeReceipt
+from .hive_pulse import HivePulse, HivePulseEngine
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -149,6 +151,9 @@ class QueenPolyphonicReceipt:
     edge_settlement: float
     hunt_pressure: float
     correlation_harmony: float
+    cascade_strength: float
+    cascade_crescendo: float
+    hive_pulse_energy: float
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -204,6 +209,8 @@ class ConductingQueen:
         edge_chorus: EdgeChorusHarmony | None = None,
         hunt_matches: Sequence[MotifHuntMatch] = (),
         correlations: Sequence[ColonyCorrelationReceipt] = (),
+        cascade: CausalCascadeReceipt | None = None,
+        hive_pulses: Sequence[HivePulse] = (),
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -238,6 +245,9 @@ class ConductingQueen:
 
         hunt_pressure = self._hunt_pressure(hunt_matches)
         correlation_harmony = self._correlation_harmony(correlations)
+        cascade_strength = float(cascade.propagation_strength) if cascade else 0.0
+        cascade_crescendo = float(cascade.crescendo) if cascade else 0.0
+        hive_pulse_energy = self._hive_pulse_energy(hive_pulses, now_ms=now_ms)
 
         harmonic_context = dict(harmonic_context or {})
         resonance = _clamp(float(harmonic_context.get("resonance", 0.0)))
@@ -260,6 +270,9 @@ class ConductingQueen:
             + 0.06 * edge_quality
             + 0.05 * hunt_pressure
             + 0.05 * correlation_harmony
+            + 0.06 * cascade_strength
+            + 0.06 * cascade_crescendo
+            + 0.05 * hive_pulse_energy
         )
 
         triune_scores = self._write_triune_scores(
@@ -281,6 +294,8 @@ class ConductingQueen:
             edge_chorus=edge_chorus,
             hunt_matches=hunt_matches,
             correlations=correlations,
+            cascade=cascade,
+            hive_pulses=hive_pulses,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -300,6 +315,9 @@ class ConductingQueen:
             edge_chorus=edge_chorus,
             hunt_matches=hunt_matches,
             correlations=correlations,
+            cascade=cascade,
+            hive_pulses=hive_pulses,
+            now_ms=now_ms,
         )
 
         notation = self._issue_notation(
@@ -316,6 +334,8 @@ class ConductingQueen:
             edge_chorus=edge_chorus,
             hunt_matches=hunt_matches,
             correlations=correlations,
+            cascade=cascade,
+            hive_pulses=hive_pulses,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -342,6 +362,12 @@ class ConductingQueen:
             reasons.append("motif_hunt_pressure")
         if correlation_harmony > 0.5:
             reasons.append("colony_correlation_harmony")
+        if cascade_strength > 0.45:
+            reasons.append("cascade_propagation_audible")
+        if cascade_crescendo > 0.45:
+            reasons.append("cascade_crescendo")
+        if hive_pulse_energy > 0.35:
+            reasons.append("hive_pulse_accent")
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -377,6 +403,9 @@ class ConductingQueen:
             edge_settlement=round(edge_settlement, 6),
             hunt_pressure=round(hunt_pressure, 6),
             correlation_harmony=round(correlation_harmony, 6),
+            cascade_strength=round(cascade_strength, 6),
+            cascade_crescendo=round(cascade_crescendo, 6),
+            hive_pulse_energy=round(hive_pulse_energy, 6),
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -449,6 +478,23 @@ class ConductingQueen:
         if independent:
             return _clamp(statistics.fmean(independent))
         return _clamp(0.5 * statistics.fmean(float(r.confidence) for r in rows))
+
+    @staticmethod
+    def _hive_pulse_energy(pulses: Sequence[HivePulse], *, now_ms: int) -> float:
+        if not pulses:
+            return 0.0
+        live = [
+            HivePulseEngine.decay(pulse, now_ms=now_ms)
+            for pulse in pulses
+            if pulse.world_state_id
+        ]
+        active = [row for row in live if not row.expired]
+        if not active:
+            return 0.0
+        return _clamp(statistics.fmean(
+            row.effective_amplitude * row.effective_confidence
+            for row in active
+        ))
 
     @staticmethod
     def _voice_acoustics(notes: Sequence[MotifNote]) -> list[VoiceAcoustics]:
@@ -593,6 +639,8 @@ class ConductingQueen:
         edge_chorus: EdgeChorusHarmony | None,
         hunt_matches: Sequence[MotifHuntMatch],
         correlations: Sequence[ColonyCorrelationReceipt],
+        cascade: CausalCascadeReceipt | None,
+        hive_pulses: Sequence[HivePulse],
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -607,6 +655,8 @@ class ConductingQueen:
             f"edge_chorus:{(edge_chorus.chorus_quality if edge_chorus else 0.0):.3f}",
             f"hunt_pressure:{self._hunt_pressure(hunt_matches):.3f}",
             f"correlation_harmony:{self._correlation_harmony(correlations):.3f}",
+            f"cascade_strength:{(cascade.propagation_strength if cascade else 0.0):.3f}",
+            f"cascade_crescendo:{(cascade.crescendo if cascade else 0.0):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -623,6 +673,12 @@ class ConductingQueen:
             metatron_dynamics.append("jittered_cadence")
         if edge_chorus and edge_chorus.resolution_class != "consonant":
             metatron_dynamics.append("edge_" + edge_chorus.resolution_class)
+        if cascade and cascade.depth > 0:
+            metatron_dynamics.append("cascade_depth_" + str(cascade.depth))
+        if cascade and cascade.crescendo > 0.45:
+            metatron_dynamics.append("cascade_crescendo")
+        if hive_pulses:
+            metatron_dynamics.append("hive_pulse_accent")
         scores.append(self._score_sheet(
             mind="METATRON",
             motifs=metatron_motifs,
@@ -656,6 +712,10 @@ class ConductingQueen:
             michael_invites.append("rehearse_edge_chorus")
         if any(r.shared_lineage or r.shared_evidence_root for r in correlations):
             michael_invites.append("discount_dependent_correlation")
+        if cascade and any(not edge.accepted for edge in cascade.edges):
+            michael_invites.append("repair_cascade_evidence")
+        if any(p.authority_effect == "REDUCE_OR_FREEZE_ONLY" for p in hive_pulses):
+            michael_invites.append("honour_negative_pulse")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -690,6 +750,10 @@ class ConductingQueen:
             loki_invites.append("falsify_hunt_motif")
         if correlations:
             loki_invites.append("challenge_correlation_not_causation")
+        if cascade:
+            loki_invites.append("challenge_propagation_mechanism")
+        if hive_pulses:
+            loki_invites.append("challenge_pulse_amplification")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -754,6 +818,9 @@ class ConductingQueen:
         edge_chorus: EdgeChorusHarmony | None,
         hunt_matches: Sequence[MotifHuntMatch],
         correlations: Sequence[ColonyCorrelationReceipt],
+        cascade: CausalCascadeReceipt | None,
+        hive_pulses: Sequence[HivePulse],
+        now_ms: int,
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
         if pulse_energy > 0.35:
@@ -786,6 +853,20 @@ class ConductingQueen:
             gestures.append("TRACE_SHARED_ASSET")
         if correlations and self._correlation_harmony(correlations) > 0.45:
             gestures.append("WEAVE_COLONY_COUNTERPOINT")
+        if cascade and cascade.propagation_strength > 0.30:
+            gestures.append("FOLLOW_CASCADE")
+        if cascade and cascade.crescendo > 0.40:
+            gestures.append("SHAPE_CASCADE_CRESCENDO")
+        if cascade and len(cascade.scope_path) > 1:
+            gestures.append("EXPAND_LISTENING_SCOPE")
+        if self._hive_pulse_energy(hive_pulses, now_ms=now_ms) > 0.30:
+            gestures.append("ACCENT_HIVE_PULSE")
+        if any(
+            p.authority_effect == "REDUCE_OR_FREEZE_ONLY"
+            and not HivePulseEngine.decay(p, now_ms=now_ms).expired
+            for p in hive_pulses
+        ):
+            gestures.append("HOLD_FREEZE_ACCENT")
         if epoch_consonance < 0.8 or world_state_tension > 0.2:
             gestures.append("REKEY_PROGRESSIVELY")
         return list(dict.fromkeys(gestures))
@@ -806,6 +887,8 @@ class ConductingQueen:
         edge_chorus: EdgeChorusHarmony | None,
         hunt_matches: Sequence[MotifHuntMatch],
         correlations: Sequence[ColonyCorrelationReceipt],
+        cascade: CausalCascadeReceipt | None,
+        hive_pulses: Sequence[HivePulse],
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -909,6 +992,37 @@ class ConductingQueen:
                 _clamp(0.40 + 0.40 * self._correlation_harmony(correlations)),
                 ("harmony_law", "lineage_registry"),
                 "FOLLOW_DISSENT_OR_SEARCH",
+            ))
+
+        if cascade and cascade.propagation_strength > 0.30:
+            phrases.append((
+                "cascade_listener",
+                "TRACE_PROPAGATION",
+                _clamp(0.35 + 0.45 * cascade.propagation_strength),
+                ("world_state_bind", "cascade_evidence"),
+                "FOLLOW_OR_CHALLENGE_PROPAGATION",
+            ))
+
+        if cascade and cascade.crescendo > 0.40:
+            phrases.append((
+                "hive_pulse",
+                "ACCENT_CRESCENDO",
+                _clamp(0.35 + 0.50 * cascade.crescendo),
+                ("cascade_evidence", "harmony_law"),
+                "PULSE_OR_DISSENT",
+            ))
+
+        if any(
+            p.authority_effect == "REDUCE_OR_FREEZE_ONLY"
+            and not HivePulseEngine.decay(p, now_ms=now_ms).expired
+            for p in hive_pulses
+        ):
+            phrases.append((
+                "michael_tuning",
+                "HOLD_FREEZE_ACCENT",
+                0.90,
+                ("hive_pulse", "governance_epoch"),
+                "REDUCE_OR_FREEZE_RESEARCH_ONLY",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

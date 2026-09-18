@@ -84,6 +84,36 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "advisory_only",
         "phoenix_entry_phase": 2,
     },
+    "relative_value_pair_lab": {
+        "role": "pair_relationship_research",
+        "mode": "research_only",
+        "phoenix_entry_phase": 2,
+    },
+    "relative_value_microstructure": {
+        "role": "public_microstructure_observer",
+        "mode": "telemetry_only",
+        "phoenix_entry_phase": 1,
+    },
+    "relative_value_forecaster": {
+        "role": "forward_relative_return_forecaster",
+        "mode": "research_only",
+        "phoenix_entry_phase": 2,
+    },
+    "relative_value_research_council": {
+        "role": "local_advisory_inference",
+        "mode": "advisory_only",
+        "phoenix_entry_phase": 2,
+    },
+    "relative_value_graph": {
+        "role": "pair_graph_research",
+        "mode": "research_only",
+        "phoenix_entry_phase": 2,
+    },
+    "relative_value_execution_lab": {
+        "role": "paper_execution_research",
+        "mode": "simulation_only",
+        "phoenix_entry_phase": 3,
+    },
 }
 
 

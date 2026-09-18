@@ -611,3 +611,46 @@ bee / edge response
 
 No single layer owns truth. The organism hears the interaction among all of
 them.
+
+### Mystique — theme and variations implementation
+
+HiveNance now implements Mystique as a sealed synthetic falsification chamber:
+
+`strategies/relative_value_lab/mystique_variations.py`
+
+The Metatron mirror-world idea is translated into musical **theme and
+variations** rather than defensive deception.
+
+Observed score:
+
+```text
+observed_market
+  ↓ parent digest
+synthetic_counterfactual world
+  ↓ variation
+synthetic evaluation
+  ↓
+fragility / dependency receipt
+```
+
+Synthetic worlds never write back into observed evidence. Their evidence roots
+are distinct, their namespace is explicit, and their receipts carry
+`prospective_evidence_eligible=false`.
+
+The Conducting Queen hears fragility as musical texture:
+
+- high fragility → HOLD_FRAGILE_CADENCE;
+- synthetic survival → NOTE_SYNTHETIC_ROBUSTNESS only;
+- strong unresolved cadence with no Mystique challenge →
+  RUN_MYSTIQUE_VARIATIONS.
+
+Triune roles:
+
+- Metatron hears how much of the composition survives variation;
+- Michael enforces synthetic isolation;
+- Loki attacks failed variations and critical dependencies.
+
+This preserves the constitutional rule:
+
+> Synthetic robustness may strengthen a research question. It cannot establish
+> real-market truth.

@@ -1,5 +1,8 @@
 import math
-import requests
+try:
+    import requests
+except ImportError:  # Optional on stdlib-only Termux public-market labs.
+    requests = None
 try:
     import ccxt
 except ImportError:  # Optional on stdlib-only Termux public-market labs.

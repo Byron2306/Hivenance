@@ -122,7 +122,9 @@ def main() -> int:
                 entry_context=json.loads(row["entry_context_json"] or "{}")
             except Exception:
                 entry_context={}
-            from_symbol=str(entry_context.get("from_symbol") or "initial_anchor")
+            if str(entry_context.get("type") or "") != "relative_switch":
+                continue
+            from_symbol=str(entry_context.get("from_symbol") or "unknown")
             to_symbol=str(row["symbol"])
             key=(str(row["mutation_id"]),from_symbol,to_symbol)
             bucket=transition_map.setdefault(key,{

@@ -12,6 +12,7 @@ START="${HIVENANCE_INVENTORY_START_USD:-1000}"
 ACTIVE="${HIVENANCE_INVENTORY_ACTIVE_USD:-200}"
 SLICE="${HIVENANCE_INVENTORY_REBALANCE_USD:-5}"
 COST="${HIVENANCE_INVENTORY_COST_BPS_SIDE:-4.0}"
+MAKER_COST="${HIVENANCE_INVENTORY_MAKER_COST_BPS_SIDE:--1.0}"
 SYMBOLS="${HIVENANCE_INVENTORY_SYMBOLS:-BTC/USD ETH/USD SOL/USD XRP/USD ADA/USD AVAX/USD DOGE/USD HYPE/USD}"
 
 cd "$ROOT"
@@ -33,7 +34,7 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   exit 0
 fi
 
-CMD="'$PY' -u scripts/run_live_inventory_drizzle_lab.py --duration-sec '$DURATION' --interval-sec '$INTERVAL' --database '$DB' --horizon-database '$HORIZON_DB' --start-usd '$START' --inventory-usd '$ACTIVE' --rebalance-usd '$SLICE' --cost-bps-side '$COST' --symbols $SYMBOLS"
+CMD="'$PY' -u scripts/run_live_inventory_drizzle_lab.py --duration-sec '$DURATION' --interval-sec '$INTERVAL' --database '$DB' --horizon-database '$HORIZON_DB' --start-usd '$START' --inventory-usd '$ACTIVE' --rebalance-usd '$SLICE' --cost-bps-side '$COST' --maker-cost-bps-side '$MAKER_COST' --symbols $SYMBOLS"
 
 tmux new-session -d -s "$SESSION" -n inventory-live "cd '$ROOT' && $CMD; status=\$?; echo INVENTORY_DRIZZLE_EXITED_\$status; exec bash"
 tmux new-window -t "$SESSION" -n nurse-learning "cd '$ROOT' && while true; do clear; '$PY' scripts/report_live_inventory_drizzle_lab.py --database '$DB' --latest || true; sleep 10; done"
@@ -45,6 +46,7 @@ echo "Session: $SESSION"
 echo "Duration: ${DURATION}s | cadence: ${INTERVAL}s | fee model: ${COST} bps/side"
 echo "Active equal-weight inventory: ${ACTIVE} USD"
 echo "Rebalance slice: ${SLICE} USD"
+echo "Maker counterfactual cost/side: $MAKER_COST (<0 = break-even only)"
 echo "Benchmark: equal-weight inventory_hold"
 echo "Direct pair graph: Kraken public AssetPairs"
 echo "Private API keys loaded: NO"

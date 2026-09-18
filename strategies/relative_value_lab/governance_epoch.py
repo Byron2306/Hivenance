@@ -192,6 +192,49 @@ class ResearchGovernanceEpochService:
         )
 
     @staticmethod
+    def validate_against_frame(
+        epoch: ResearchGovernanceEpoch,
+        *,
+        frame: CanonicalScoreFrame,
+        now_ms: int,
+        scope: Optional[str] = None,
+        required_epoch_id: Optional[str] = None,
+        required_score_id: Optional[str] = None,
+    ) -> EpochValidation:
+        reasons: list[str] = []
+        if not frame.is_fresh(now_ms):
+            reasons.append("canonical_score_frame_stale")
+
+        base = ResearchGovernanceEpochService.validate(
+            epoch,
+            now_ms=now_ms,
+            world_state_id=frame.world_state_id,
+            world_state_hash=frame.world_state_hash,
+            scope=scope,
+            required_epoch_id=required_epoch_id,
+            required_score_id=required_score_id,
+        )
+        reasons.extend(base.reasons)
+
+        body = {
+            "epoch_id": epoch.epoch_id,
+            "frame_id": frame.world_state_id,
+            "valid": not reasons,
+            "reasons": sorted(set(reasons)),
+            "now_ms": int(now_ms),
+        }
+        return EpochValidation(
+            schema="hivenance_epoch_frame_validation_v1",
+            validation_id="epf_" + _digest(body).split(":", 1)[1][:24],
+            epoch_id=epoch.epoch_id,
+            valid=not reasons,
+            reasons=tuple(sorted(set(reasons))),
+            authority=RELATIVE_VALUE_AUTHORITY,
+            execution_eligible=False,
+            promotion_eligible=False,
+        )
+
+    @staticmethod
     def validate(
         epoch: ResearchGovernanceEpoch,
         *,
@@ -241,46 +284,3 @@ class ResearchGovernanceEpochService:
             execution_eligible=False,
             promotion_eligible=False,
         )
-
-def _validate_epoch_against_frame(
-    epoch: ResearchGovernanceEpoch,
-    *,
-    frame: CanonicalScoreFrame,
-    now_ms: int,
-    scope: Optional[str] = None,
-    required_epoch_id: Optional[str] = None,
-    required_score_id: Optional[str] = None,
-) -> EpochValidation:
-    reasons = []
-    if not frame.is_fresh(now_ms):
-        reasons.append("canonical_score_frame_stale")
-    base = ResearchGovernanceEpochService.validate(
-        epoch,
-        now_ms=now_ms,
-        world_state_id=frame.world_state_id,
-        world_state_hash=frame.world_state_hash,
-        scope=scope,
-        required_epoch_id=required_epoch_id,
-        required_score_id=required_score_id,
-    )
-    reasons.extend(base.reasons)
-    body = {
-        "epoch_id": epoch.epoch_id,
-        "frame_id": frame.world_state_id,
-        "valid": not reasons,
-        "reasons": sorted(set(reasons)),
-        "now_ms": int(now_ms),
-    }
-    return EpochValidation(
-        schema="hivenance_epoch_frame_validation_v1",
-        validation_id="epf_" + _digest(body).split(":", 1)[1][:24],
-        epoch_id=epoch.epoch_id,
-        valid=not reasons,
-        reasons=tuple(sorted(set(reasons))),
-        authority=RELATIVE_VALUE_AUTHORITY,
-        execution_eligible=False,
-        promotion_eligible=False,
-    )
-
-
-ResearchGovernanceEpochService.validate_against_frame = staticmethod(_validate_epoch_against_frame)

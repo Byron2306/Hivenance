@@ -654,3 +654,46 @@ This preserves the constitutional rule:
 
 > Synthetic robustness may strengthen a research question. It cannot establish
 > real-market truth.
+
+### Cognitive Metabolism — breath and rehearsal budget
+
+Metatron's Agenticity service formalizes:
+
+- CBR — Context Burn Rate;
+- TBCR — Tool Budget Consumption Rate;
+- CDI — Confidence Degradation Index.
+
+HiveNance preserves those meanings while changing the research denominator from
+cybersecurity `real_assets_discovered` to **useful settled information units**.
+
+`strategies/relative_value_lab/cognitive_metabolism.py`
+
+The Queen hears cognition itself as part of the composition:
+
+```text
+fresh independent evidence
+        ↓
+information gain
+        ↓
+breath / sustained phrase
+
+duplicate rehearsal
+        ↓
+context + tool/model burn
+        ↓
+metabolic strain
+        ↓
+decrescendo / thin orchestration / rest
+```
+
+Critically, no-settlement cognition does not receive a fabricated denominator.
+CBR/TBCR remain unresolved and the unresolved burn stays audible.
+
+Triune hears metabolism differently:
+
+- Metatron synthesizes metabolic texture into the whole score;
+- Michael protects denominator truth and discounts duplicate rehearsal;
+- Loki challenges low-information repetition and seeks non-echo evidence.
+
+Cognitive Metabolism manages attention and research density only. It cannot
+increase execution, promotion, or settlement authority.

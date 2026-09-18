@@ -245,6 +245,7 @@ class LearnedChallenger:
         independent_vote_eligible=(
             voice_health>=.55
             and not dependence_known
+            and not provenance.synthetic_training_used
             and "forecast_precedes_training_cutoff" not in reasons
             and "validation_window_overlaps_forecast" not in reasons
         )

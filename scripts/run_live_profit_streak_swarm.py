@@ -188,7 +188,7 @@ class KrakenPublicFeed:
         self.symbols = symbols
         self.symbol_set = set(symbols)
         self.timeout_sec = timeout_sec
-        self.from_ts = _iso_now_minus(2.0)
+        self.from_ts: str | None = None
         self.last_prices: dict[str, float] = {}
 
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -208,7 +208,10 @@ class KrakenPublicFeed:
             payload = json.loads(response.read().decode("utf-8"))
         errors = payload.get("error") or []
         if errors:
-            raise RuntimeError(";".join(str(item) for item in errors))
+            raise RuntimeError(
+                f"{';'.join(str(item) for item in errors)} "
+                f"endpoint={endpoint} params={params}"
+            )
         result = payload.get("result")
         return result if isinstance(result, dict) else {}
 
@@ -224,10 +227,22 @@ class KrakenPublicFeed:
                         break
                 except Exception:
                     continue
+
+        # Bootstrap the streaming cursor from Kraken itself rather than the
+        # handset wall clock. Kraken documents last_ts as the value intended
+        # for the next from_ts request.
+        cursor_result = self._get("PostTrade", {"count": 1})
+        cursor = str(cursor_result.get("last_ts") or "").strip()
+        if not cursor:
+            raise RuntimeError("Kraken PostTrade did not return last_ts cursor")
+        self.from_ts = cursor
         return dict(self.last_prices)
 
     def poll(self) -> tuple[dict[str, float], dict[str, float], dict[str, Any]]:
-        result = self._get("PostTrade", {"from_ts": self.from_ts, "count": 1000})
+        params: dict[str, Any] = {"count": 1000}
+        if self.from_ts:
+            params["from_ts"] = self.from_ts
+        result = self._get("PostTrade", params)
         trades = result.get("trades") or []
         volume_by_symbol: dict[str, float] = defaultdict(float)
         seen = 0

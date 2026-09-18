@@ -752,3 +752,19 @@ bee / edge response
 
 No single layer owns truth. The organism hears the interaction among all of
 them.
+
+### Harmonic Governance v2 — per-horizon direction
+
+The original discovery implementation carried one top-level direction derived
+from forecasts spanning multiple horizons. That representation is now retired.
+
+Current semantics:
+
+- market direction exists only inside `HarmonicHorizonState`;
+- cadence history is tracked per pair + horizon;
+- controls compare only against their own horizon;
+- global harmonic fields describe coherence, discord, confidence and spectrum;
+- opposite 10s and 120s directions may coexist without forced resolution.
+
+The historical v1 discovery results remain historical evidence and are not
+reinterpreted as v2 validation.

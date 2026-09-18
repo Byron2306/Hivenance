@@ -172,7 +172,13 @@ def main() -> int:
             "min_stability_score":args.min_stability_score,
         }
         conn.execute(
-            "INSERT INTO pair_lab_runs VALUES (?,?,?,?,?,?,?,?)",
+            """
+            INSERT INTO pair_lab_runs(
+              run_id, created_ts, horizon_database, lookback_sec,
+              sample_interval_sec, symbol_count, pair_count,
+              eligible_pair_count, config_json
+            ) VALUES (?,?,?,?,?,?,?,?,?)
+            """,
             (
                 run_id,time.time(),str(horizon),args.lookback_sec,args.sample_interval_sec,
                 len(usable),len(edges),eligible,json.dumps(config,sort_keys=True),

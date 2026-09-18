@@ -529,13 +529,13 @@ class NurseAgent:
                 net_bps = float(leg["net_return_bps"] or 0.0)
                 duration = float(leg["duration_sec"] or 0.0)
                 try:
-                    exit_context = json.loads(leg["exit_context_json"] or "{}")
+                    entry_context = json.loads(leg["entry_context_json"] or "{}")
                 except Exception:
-                    exit_context = {}
-                challenger = str(exit_context.get("challenger") or "unknown")
+                    entry_context = {}
+                from_symbol = str(entry_context.get("from_symbol") or "initial_anchor")
                 acc(by_mutation,mid,net_bps,net_usd,duration)
                 acc(by_symbol,symbol,net_bps,net_usd,duration)
-                acc(by_transition,f"{symbol}->{challenger}",net_bps,net_usd,duration)
+                acc(by_transition,f"{from_symbol}->{symbol}",net_bps,net_usd,duration)
 
             for crystal in crystals:
                 mid = str(crystal["mutation_id"])
@@ -598,8 +598,8 @@ class NurseAgent:
                 strong.append({
                     "mutation_id":str(row["mutation_id"]),
                     "family":str(row["crystal_family"]),
-                    "incumbent":str(payload.get("incumbent") or row["symbol"]),
-                    "challenger":str(payload.get("challenger") or "unknown"),
+                    "incumbent":str(payload.get("from_symbol") or "unknown"),
+                    "challenger":str(payload.get("to_symbol") or row["symbol"]),
                     "evidence_strength":round(float(row["evidence_strength"] or 0.0),6),
                     "cheapness_z":round(float(row["cheapness_z"] or 0.0),6),
                     "streak_persistence":round(float(row["streak_persistence"] or 0.0),6),

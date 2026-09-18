@@ -20,6 +20,7 @@ COMPONENTS = (
     "relative_value_harmonic_governance",
     "relative_value_harmony_law",
     "relative_value_waggle_protocol",
+    "relative_value_musical_cognition",
     "relative_value_market_hunting",
     "relative_value_colony_correlation",
     "relative_value_ml_challenger",

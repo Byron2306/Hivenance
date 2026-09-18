@@ -159,6 +159,41 @@ A Waggle receipt should bind:
 - evidence root;
 - authority.
 
+## 7A. Law of Harmony
+
+All bee testimony must pass a deterministic constitutional validator before it may enter the choir.
+
+The Law of Harmony v1 enforces:
+
+1. **World-state fidelity** — testimony must bind to the current world-state id/hash and freshness window.
+2. **Lineage honesty** — independence is earned only by a registered lineage; clones cannot manufacture quorum.
+3. **Horizon polyphony** — micro, meso and macro voices remain distinct; a global direction may not be collapsed across bands.
+4. **Dissent preservation** — valid DISSENT remains visible and may not be silently discarded.
+5. **Authority conservation** — testimony, resonance, harmony and positive pulses cannot create execution or promotion authority.
+6. **Asymmetric safety** — SEARCH/DISCOVERY/CLEAR pulses may increase attention only; ALARM/FREEZE may reduce or freeze authority.
+7. **Evidence binding** — admitted testimony must carry an evidence root.
+8. **Fail-closed staleness** — stale, future-skewed or world-drifted testimony is refused.
+
+The Harmony Law answers:
+
+> Is this bee allowed to sing this testimony into this choir now?
+
+It does not answer:
+
+> Is the hypothesis correct?
+
+Nor:
+
+> May Phoenix trade?
+
+The current implementation is:
+
+`strategies/relative_value_lab/harmony_law.py`
+
+Its receipts remain bound to:
+
+`research_evidence_only_no_execution_or_promotion_authority`
+
 ## 8. Hypothesis accumulation
 
 This adapts the temporal accumulation pattern of Metatron AATL without importing threat semantics.

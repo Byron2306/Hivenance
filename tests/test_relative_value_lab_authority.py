@@ -17,6 +17,7 @@ COMPONENTS = (
     "relative_value_pair_lab",
     "relative_value_forecaster",
     "relative_value_research_council",
+    "relative_value_harmonic_governance",
     "relative_value_graph",
     "relative_value_execution_lab",
 )

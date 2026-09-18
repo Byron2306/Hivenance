@@ -190,6 +190,13 @@ class KrakenPublicFeed:
         self.timeout_sec = timeout_sec
         self.last_prices: dict[str, float] = {}
         self.last_cumulative_volume: dict[str, float] = {}
+        self.last_bid: dict[str, float] = {}
+        self.last_ask: dict[str, float] = {}
+        self.last_spread_bps: dict[str, float] = {}
+        self.last_24h_open: dict[str, float] = {}
+        self.last_24h_high: dict[str, float] = {}
+        self.last_24h_low: dict[str, float] = {}
+        self.last_24h_volume: dict[str, float] = {}
         self.api_pairs: dict[str, str] = {}
         self.result_key_to_symbol: dict[str, str] = {}
         self._load_pair_map()
@@ -273,12 +280,36 @@ class KrakenPublicFeed:
                 continue
             close = row.get("c") or []
             volume = row.get("v") or []
+            bid = row.get("b") or []
+            ask = row.get("a") or []
+            high = row.get("h") or []
+            low = row.get("l") or []
             if not close:
                 continue
             price = _finite(close[0])
             if price <= 0:
                 continue
             cumulative = _finite(volume[0]) if volume else 0.0
+            bid_price = _finite(bid[0]) if bid else 0.0
+            ask_price = _finite(ask[0]) if ask else 0.0
+            if bid_price > 0:
+                self.last_bid[symbol] = bid_price
+            if ask_price > 0:
+                self.last_ask[symbol] = ask_price
+            if bid_price > 0 and ask_price >= bid_price:
+                mid = (bid_price + ask_price) / 2.0
+                self.last_spread_bps[symbol] = ((ask_price - bid_price) / max(mid, 1e-12)) * 10000.0
+            open_24h = _finite(row.get("o"))
+            if open_24h > 0:
+                self.last_24h_open[symbol] = open_24h
+            high_24h = _finite(high[0]) if high else 0.0
+            low_24h = _finite(low[0]) if low else 0.0
+            if high_24h > 0:
+                self.last_24h_high[symbol] = high_24h
+            if low_24h > 0:
+                self.last_24h_low[symbol] = low_24h
+            if cumulative > 0:
+                self.last_24h_volume[symbol] = cumulative
             previous_cumulative = self.last_cumulative_volume.get(symbol)
             if seed_only or previous_cumulative is None:
                 delta_volume = 0.0
@@ -299,6 +330,7 @@ class KrakenPublicFeed:
             "ticker_pairs": len(result),
             "tracked_pairs": len(prices),
             "updated_pairs": updated,
+            "spread_bps": dict(self.last_spread_bps),
             "transport": "kraken_public_multi_pair_ticker",
         }
 

@@ -154,6 +154,16 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "descriptive_music_only_research_cognition",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_governance_epoch": {
+        "role": "world_state_bound_score_key_and_genre_context",
+        "mode": "research_score_governance_only",
+        "phoenix_entry_phase": 4,
+    },
+    "relative_value_conducting_queen": {
+        "role": "vns_listening_triune_score_and_notation_conductor",
+        "mode": "continuous_polyphonic_research_conductor",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

@@ -5,9 +5,16 @@ import argparse
 import math
 import sqlite3
 import statistics
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from agents.nurse import NurseAgent
 
 
 def pearson(xs: list[float], ys: list[float]) -> float | None:
@@ -209,9 +216,39 @@ def report(database: Path, run_id: str | None) -> int:
                     f"{candidate_net-random_net:+.4f} USD"
                 )
 
+    conn.close()
+
+    nurse = NurseAgent().review_profit_streak_lab(str(database), run_id)
+    print()
+    print("Nurse post-run learning/autopsy")
+    print("------------------------------")
+    print(
+        f"mode={nurse.get('review_mode', 'unknown')} "
+        f"online_learning_attached={nurse.get('online_learning_was_attached', False)} "
+        f"promotion={nurse.get('promotion_state', 'NOT_PROMOTED')}"
+    )
+    for item in nurse.get("mutations") or []:
+        net = item.get("net_usd")
+        net_text = "n/a" if net is None else f"{float(net):+.4f}"
+        votes = item.get("mean_entry_positive_votes")
+        votes_text = "n/a" if votes is None else f"{float(votes):.2f}"
+        print(
+            f"{str(item.get('mutation_id')):22s} net={net_text:>9s} "
+            f"cost={float(item.get('modeled_cost_usd') or 0):7.4f} "
+            f"actions={int(item.get('actions') or 0):4d} "
+            f"mean_entry_positive_votes={votes_text}"
+        )
+    observations = nurse.get("candidate_learning_observations") or []
+    if observations:
+        print("candidate learning observations:")
+        for item in observations[:12]:
+            print(
+                f"  {item.get('type')} // {item.get('mutation_id')} // "
+                f"{item.get('evidence')}"
+            )
+    print(f"note: {nurse.get('notes', '')}")
     print()
     print("PRIVATE ORDERS: 0")
-    conn.close()
     return 0
 
 

@@ -239,8 +239,6 @@ class RelativeValueDatasetBuilder:
 
         # Histories contain only observations seen up through the current loop.
         histories: dict[str, list[tuple[int, float]]] = {symbol: [] for symbol in symbols}
-        spread_histories: dict[str, list[float]] = {}
-
         for index, ts in enumerate(timestamps):
             snapshot = by_ts[ts]
             for symbol, row in snapshot.items():
@@ -288,10 +286,13 @@ class RelativeValueDatasetBuilder:
                 beta = float(diagnostics.hedge_ratio)
                 current_spread = float(diagnostics.spread_last)
 
-                pair_spreads = spread_histories.setdefault(diagnostics.pair_id, [])
-                pair_spreads.append(current_spread)
-                if len(pair_spreads) > self.relationship_window_samples:
-                    del pair_spreads[0]
+                # Historical relative returns are recomputed under the CURRENT
+                # frozen relationship parameters. This avoids fabricating motion
+                # from changing hedge-ratio estimates across observations.
+                frozen_spread_history = [
+                    _spread(math.log(pa), math.log(pb), alpha, beta)
+                    for pa, pb in zip(prices_a, prices_b)
+                ]
 
                 labels: dict[str, Optional[float]] = {}
                 label_ts: dict[str, Optional[int]] = {}
@@ -375,9 +376,9 @@ class RelativeValueDatasetBuilder:
                     structural_break_state=diagnostics.structural_break_state,
                     spread=current_spread,
                     spread_zscore=diagnostics.spread_zscore,
-                    relative_return_1step_bps=self._step_return(pair_spreads, 1),
-                    relative_return_3step_bps=self._step_return(pair_spreads, 3),
-                    relative_return_6step_bps=self._step_return(pair_spreads, 6),
+                    relative_return_1step_bps=self._step_return(frozen_spread_history, 1),
+                    relative_return_3step_bps=self._step_return(frozen_spread_history, 3),
+                    relative_return_6step_bps=self._step_return(frozen_spread_history, 6),
                     pair_spread_cost_bps_proxy=self._pair_cost_proxy(row_a, row_b),
                     quote_ofi_delta=self._delta(row_a, row_b, "quote_ofi_proxy"),
                     aggressor_flow_delta=self._delta(row_a, row_b, "aggressor_flow_imbalance"),

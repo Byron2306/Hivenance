@@ -424,3 +424,39 @@ A successful outcome is one of:
 2. the hypothesis is falsified with enough precision to stop wasting search budget and redirect Phoenix.
 
 The programme must prefer a truthful REFUSE over manufactured edge.
+
+---
+
+## Polyphonic Cognition Fabric expansion
+
+The relative-value laboratory is now the first proving ground for the canonical
+HiveNance Polyphonic Cognition Fabric:
+
+`docs/HIVENANCE_POLYPHONIC_COGNITION_FABRIC.md`
+
+This expansion adds governed research phases for:
+
+- Waggle Protocol and lineage identity;
+- hypothesis accumulation;
+- proactive Market Hunting;
+- Colony Correlation;
+- causal Cascade and Hive Pulse;
+- Polyphonic Resonance;
+- Harmonic Governance;
+- Mystique counterfactual falsification;
+- cognitive metabolism (CBR/TBCR/CDI);
+- learned ML challengers;
+- VNS-bound canonical Phoenix World State;
+- Triune synthesis / validation / dissent;
+- research Outbound Gate.
+
+Threat-hunting, correlation and ML patterns are adapted from Metatron as research
+architecture only. Cybersecurity-specific semantics are not copied into market
+truth. Synthetic model data may test plumbing but cannot establish market edge.
+
+All new cognition organs remain bound by:
+
+`research_evidence_only_no_execution_or_promotion_authority`
+
+The entire organism must be frozen before the next fresh prospective validation
+window.

@@ -237,12 +237,19 @@ class RelativeValueWalkForwardEvaluator:
         horizons_seconds: Sequence[int] = (10, 30, 60, 120),
         ridge_alpha: float = 8.0,
         minimum_train_samples: int = 80,
+        ridge_refit_interval_ms: int = 0,
+        progress_callback: Any | None = None,
     ) -> None:
         self.horizons_seconds = tuple(sorted({max(1, int(h)) for h in horizons_seconds}))
         self.ridge = ExpandingRidgeModel(
             ridge_alpha=ridge_alpha,
             minimum_train_samples=minimum_train_samples,
         )
+        # 0 preserves exact per-timestamp refitting for unit tests and small
+        # datasets. CLI/runtime callers can choose a coarser cadence. Reusing a
+        # frozen historical fit between refits remains leakage-safe.
+        self.ridge_refit_interval_ms = max(0, int(ridge_refit_interval_ms))
+        self.progress_callback = progress_callback
 
     @staticmethod
     def _ou_prediction(example: RelativeValueExample, horizon: int) -> Optional[float]:
@@ -321,6 +328,12 @@ class RelativeValueWalkForwardEvaluator:
             ridge_history: list[RelativeValueExample] = []
             cached_cutoff: Optional[int] = None
             cached_fit: Optional[RidgeFit] = None
+            last_refit_ms: Optional[int] = None
+            if self.progress_callback is not None:
+                self.progress_callback("horizon_start", {
+                    "horizon_seconds": horizon,
+                    "examples": len(ordered),
+                })
 
             for example in ordered:
                 realized = _finite(example.labels_bps.get(key))
@@ -345,15 +358,25 @@ class RelativeValueWalkForwardEvaluator:
                         realized=realized,
                     ))
 
-                # Refit only when the timestamp advances. All pairs observed at
-                # the same timestamp see exactly the same historical label set.
+                # All pairs observed at the same timestamp see exactly the same
+                # historical label set. Runtime callers may intentionally refit
+                # less often; predictions between refits use the last frozen fit.
+                should_refit = False
                 if cached_cutoff != example.timestamp_ms:
+                    if self.ridge_refit_interval_ms <= 0:
+                        should_refit = True
+                    elif last_refit_ms is None:
+                        should_refit = True
+                    elif example.timestamp_ms - last_refit_ms >= self.ridge_refit_interval_ms:
+                        should_refit = True
+                if should_refit:
                     cached_fit = self.ridge.fit(
                         ridge_history,
                         horizon_seconds=horizon,
                         cutoff_timestamp_ms=example.timestamp_ms,
                     )
                     cached_cutoff = example.timestamp_ms
+                    last_refit_ms = example.timestamp_ms
                 if cached_fit is not None:
                     predicted = cached_fit.predict(example)
                     predictions.append(self._prediction_row(
@@ -366,6 +389,12 @@ class RelativeValueWalkForwardEvaluator:
                     ))
 
                 ridge_history.append(example)
+
+            if self.progress_callback is not None:
+                self.progress_callback("horizon_complete", {
+                    "horizon_seconds": horizon,
+                    "predictions": sum(1 for row in predictions if row.horizon_seconds == horizon),
+                })
 
         metrics = self.summarize(predictions)
         return predictions, metrics

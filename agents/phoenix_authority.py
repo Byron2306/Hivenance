@@ -179,6 +179,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "research_attention_and_safety_pulse_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_polyphonic_resonance": {
+        "role": "directionless_cross_register_resonance_listener",
+        "mode": "descriptive_polyphonic_research_cognition",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

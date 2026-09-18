@@ -18,6 +18,13 @@ from .harmony_law import (
     horizon_band,
     make_message_id,
 )
+from .waggle_protocol import (
+    BeeLineage,
+    LineageRegistry,
+    WaggleProtocol,
+    WaggleReceipt,
+    WaggleChorusSnapshot,
+)
 from .dataset import RelativeValueDatasetBuilder, RelativeValueExample, DatasetBuildSummary
 from .evaluation import (
     ExpandingRidgeModel,
@@ -68,6 +75,11 @@ __all__ = [
     "HarmonyChorusDecision",
     "horizon_band",
     "make_message_id",
+    "BeeLineage",
+    "LineageRegistry",
+    "WaggleProtocol",
+    "WaggleReceipt",
+    "WaggleChorusSnapshot",
     "RelativeValueDatasetBuilder",
     "RelativeValueExample",
     "DatasetBuildSummary",

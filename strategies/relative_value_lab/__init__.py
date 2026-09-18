@@ -139,6 +139,10 @@ __all__ = [
     "CascadeEdge",
     "CascadeLink",
     "CascadeEvent",
+    "PolyphonicResonance",
+    "PolyphonicResonanceReceipt",
+    "RegisterRelationship",
+    "RegisterResonance",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -164,3 +168,9 @@ from .market_hunting import HuntObservation, MotifHuntRule, MotifHuntMatch, Moti
 from .colony_correlation import CorrelationEvent, ColonyCorrelationReceipt, ColonyCorrelator
 from .causal_cascade import CascadeEvent, CascadeLink, CascadeEdge, CausalCascadeReceipt, CausalCascade
 from .hive_pulse import HivePulse, DecayedHivePulse, HivePulseEngine
+from .polyphonic_resonance import (
+    RegisterResonance,
+    RegisterRelationship,
+    PolyphonicResonanceReceipt,
+    PolyphonicResonance,
+)

@@ -456,3 +456,74 @@ Nurse / Crystals / World-State coda
 8. Independent voices may converge, but independence must remain provable.
 9. Dissonance must remain audible.
 10. External settlement has the final note.
+
+---
+
+## Conducting Queen — progressive Polyphia
+
+The Conducting Queen is the continuous orchestration organ of HiveNance.
+
+She is not a binary gate and she does not wait for the hive to become "valid"
+before listening. She remains inside the composition at all times.
+
+She listens simultaneously to:
+
+- VNS sensory pulses and their syncopation;
+- motif rhythm, rest, cadence and dynamics;
+- timbre, tone and pitch of independent voices;
+- polyphonic entrainment and false-unison risk;
+- harmonic resonance, discord and confidence;
+- governance-epoch consonance and world-state tension.
+
+She writes three linked score sheets continuously:
+
+- **Metatron** — whole-composition synthesis;
+- **Michael** — tuning, epoch, provenance and world-state discipline;
+- **Loki** — counterpoint, alternative interpretation and counterfeit-harmony challenge.
+
+From those three score sheets, the Queen emits narrow, single-use,
+world-state-bound research notation to selected roles.
+
+Notation is progressive and musical:
+
+- LISTEN;
+- ANSWER_MOTIF;
+- ENTER_WITH_NEW_TIMBRE;
+- TRACE_MODULATION;
+- CHALLENGE_CADENCE;
+- REKEY_SCORE.
+
+Epoch drift does not make the Queen deaf. It increases world-state tension,
+changes the three score sheets, narrows notation, and invites re-keying.
+
+The hard boundary exists only at authority:
+no Queen score, notation, crescendo, resonance or entrainment grants live
+execution or promotion authority.
+
+Current implementations:
+
+- `strategies/relative_value_lab/governance_epoch.py`
+- `strategies/relative_value_lab/conducting_queen.py`
+
+The governing loop is recursive:
+
+```text
+VNS pulses
+  ↕
+motif / timbre / tone / pitch
+  ↕
+entrainment / resonance / dissonance
+  ↕
+Triune score sheets
+  ↕
+Conducting Queen
+  ↕
+research notation
+  ↕
+bee response / counterpoint
+  ↺
+```
+
+This is **Polyphia**: progressive, syncopated, reciprocal cognition in which
+every organ changes how the others listen without erasing provenance or
+independence.

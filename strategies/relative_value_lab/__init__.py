@@ -25,6 +25,12 @@ from .waggle_protocol import (
     WaggleReceipt,
     WaggleChorusSnapshot,
 )
+from .musical_cognition import (
+    MotifNote,
+    MotifScore,
+    MusicalCognitionConfig,
+    MusicalMotifAccumulator,
+)
 from .dataset import RelativeValueDatasetBuilder, RelativeValueExample, DatasetBuildSummary
 from .evaluation import (
     ExpandingRidgeModel,
@@ -80,6 +86,10 @@ __all__ = [
     "WaggleProtocol",
     "WaggleReceipt",
     "WaggleChorusSnapshot",
+    "MotifNote",
+    "MotifScore",
+    "MusicalCognitionConfig",
+    "MusicalMotifAccumulator",
     "RelativeValueDatasetBuilder",
     "RelativeValueExample",
     "DatasetBuildSummary",

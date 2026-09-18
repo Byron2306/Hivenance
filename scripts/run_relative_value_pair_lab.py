@@ -18,28 +18,39 @@ from strategies.relative_value_lab.pair_graph import RelativeValueGraph
 from strategies.relative_value_lab.pair_lab import PairRelationshipLab
 
 
-def _load_prices(
+def _load_price_points(
     database: Path,
     symbols: list[str],
     *,
     lookback_sec: int,
-) -> dict[str,list[float]]:
+) -> tuple[dict[str,list[tuple[float,float]]], float | None, float | None]:
     conn=sqlite3.connect(database)
     conn.row_factory=sqlite3.Row
     try:
-        cutoff=time.time()-float(lookback_sec)
+        now=time.time()
+        cutoff=now-float(lookback_sec)
         out={}
+        global_min=None
+        global_max=None
         for symbol in symbols:
             rows=conn.execute(
                 """
-                SELECT price FROM horizon_ticks
+                SELECT ts,price FROM horizon_ticks
                 WHERE symbol=? AND ts>=?
                 ORDER BY ts ASC
                 """,
                 (symbol,cutoff),
             ).fetchall()
-            out[symbol]=[float(row["price"]) for row in rows if float(row["price"] or 0)>0]
-        return out
+            points=[]
+            for row in rows:
+                ts=float(row["ts"] or 0.0)
+                price=float(row["price"] or 0.0)
+                if ts>0 and price>0:
+                    points.append((ts,price))
+                    global_min=ts if global_min is None else min(global_min,ts)
+                    global_max=ts if global_max is None else max(global_max,ts)
+            out[symbol]=points
+        return out,global_min,global_max
     finally:
         conn.close()
 
@@ -128,11 +139,15 @@ def main() -> int:
         print(f"Horizon database not found: {horizon}")
         return 2
 
-    prices=_load_prices(horizon,args.symbols,lookback_sec=args.lookback_sec)
-    usable={s:v for s,v in prices.items() if len(v)>=args.min_samples}
+    points,oldest_ts,newest_ts=_load_price_points(horizon,args.symbols,lookback_sec=args.lookback_sec)
+    usable={s:v for s,v in points.items() if len(v)>=args.min_samples}
     if len(usable)<2:
-        counts=", ".join(f"{s}={len(v)}" for s,v in prices.items())
+        counts=", ".join(f"{s}={len(v)}" for s,v in points.items())
+        freshness="unknown"
+        if newest_ts is not None:
+            freshness=f"{max(0.0,time.time()-newest_ts):.1f}s old"
         print(f"Not enough warmed symbols for pair analysis. {counts}")
+        print(f"latest_horizon_tick={freshness}")
         return 3
 
     try:
@@ -149,8 +164,8 @@ def main() -> int:
     )
     graph=RelativeValueGraph(lab)
     observed_at_ms=int(time.time()*1000)
-    edges,crystals,diagnostics=graph.analyze_basket(
-        prices=usable,
+    edges,crystals,diagnostics=graph.analyze_timestamped_basket(
+        points=usable,
         sample_interval_sec=args.sample_interval_sec,
         venue="kraken",
         observed_at_ms=observed_at_ms,
@@ -166,6 +181,10 @@ def main() -> int:
         eligible=sum(1 for edge in edges if edge.eligible)
         config={
             "symbols":list(usable),
+            "timestamp_alignment":"common_floor_buckets_latest_sample",
+            "oldest_tick_ts":oldest_ts,
+            "newest_tick_ts":newest_ts,
+            "newest_tick_age_sec":None if newest_ts is None else max(0.0,time.time()-newest_ts),
             "requested_symbols":args.symbols,
             "min_samples":args.min_samples,
             "min_return_correlation":args.min_return_correlation,
@@ -206,6 +225,8 @@ def main() -> int:
     print(f"Phoenix Pair Laboratory // {run_id}")
     print(f"warmed_symbols={len(usable)} pairs={len(edges)} eligible={sum(1 for e in edges if e.eligible)}")
     print(f"lookback={args.lookback_sec}s sample_interval={args.sample_interval_sec:.1f}s")
+    if newest_ts is not None:
+        print(f"latest_horizon_tick_age={max(0.0,time.time()-newest_ts):.1f}s timestamp_alignment=common_buckets")
     print()
     print("Ranked pair relationships")
     print("-------------------------")

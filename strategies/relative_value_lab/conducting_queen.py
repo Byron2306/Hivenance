@@ -19,6 +19,7 @@ from .causal_cascade import CausalCascadeReceipt
 from .hive_pulse import HivePulse, HivePulseEngine
 from .polyphonic_resonance import PolyphonicResonanceReceipt
 from .mystique_variations import MystiqueFalsificationReceipt
+from .cognitive_metabolism import CognitiveMetabolismReceipt
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -165,6 +166,12 @@ class QueenPolyphonicReceipt:
     mystique_fragility: float
     mystique_survival_rate: float
     mystique_contamination_guard: bool
+    metabolic_cbr: Optional[float]
+    metabolic_tbcr: Optional[float]
+    metabolic_cdi: float
+    metabolic_strain: float
+    cognitive_breath: float
+    metabolism_texture: str
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -224,6 +231,7 @@ class ConductingQueen:
         hive_pulses: Sequence[HivePulse] = (),
         polyphonic_resonance: PolyphonicResonanceReceipt | None = None,
         mystique: MystiqueFalsificationReceipt | None = None,
+        metabolism: CognitiveMetabolismReceipt | None = None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -278,6 +286,13 @@ class ConductingQueen:
         mystique_survival = float(mystique.survival_rate) if mystique else 0.0
         mystique_guard = bool(mystique.contamination_guard_passed) if mystique else True
 
+        metabolic_cbr = metabolism.cbr if metabolism else None
+        metabolic_tbcr = metabolism.tbcr if metabolism else None
+        metabolic_cdi = float(metabolism.cdi) if metabolism else 0.0
+        metabolic_strain = float(metabolism.metabolic_strain) if metabolism else 0.0
+        cognitive_breath = float(metabolism.breath) if metabolism else 1.0
+        metabolism_texture = metabolism.texture if metabolism else "UNHEARD"
+
         polyphonic_pressure = _clamp(
             0.12 * motif.dynamic_intensity
             + 0.10 * motif.crescendo
@@ -327,6 +342,7 @@ class ConductingQueen:
             hive_pulses=hive_pulses,
             polyphonic_resonance=polyphonic_resonance,
             mystique=mystique,
+            metabolism=metabolism,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -350,6 +366,7 @@ class ConductingQueen:
             hive_pulses=hive_pulses,
             polyphonic_resonance=polyphonic_resonance,
             mystique=mystique,
+            metabolism=metabolism,
             now_ms=now_ms,
         )
 
@@ -371,6 +388,7 @@ class ConductingQueen:
             hive_pulses=hive_pulses,
             polyphonic_resonance=polyphonic_resonance,
             mystique=mystique,
+            metabolism=metabolism,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -415,6 +433,12 @@ class ConductingQueen:
             reasons.append("synthetic_variation_survival_high")
         if mystique and not mystique_guard:
             reasons.append("mystique_contamination_guard_failed")
+        if metabolism and metabolic_strain > 0.55:
+            reasons.append("cognitive_metabolic_strain")
+        if metabolism and metabolism.duplicate_pressure > 0.45:
+            reasons.append("duplicate_evidence_burn")
+        if metabolism and not metabolism.denominator_resolved:
+            reasons.append("metabolic_settlement_unresolved")
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -462,6 +486,12 @@ class ConductingQueen:
             mystique_fragility=round(mystique_fragility, 6),
             mystique_survival_rate=round(mystique_survival, 6),
             mystique_contamination_guard=mystique_guard,
+            metabolic_cbr=metabolic_cbr,
+            metabolic_tbcr=metabolic_tbcr,
+            metabolic_cdi=round(metabolic_cdi, 6),
+            metabolic_strain=round(metabolic_strain, 6),
+            cognitive_breath=round(cognitive_breath, 6),
+            metabolism_texture=metabolism_texture,
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -699,6 +729,7 @@ class ConductingQueen:
         hive_pulses: Sequence[HivePulse],
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
         mystique: MystiqueFalsificationReceipt | None,
+        metabolism: CognitiveMetabolismReceipt | None,
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -720,6 +751,8 @@ class ConductingQueen:
             f"cross_band_tension:{(polyphonic_resonance.cross_band_tension if polyphonic_resonance else 0.0):.3f}",
             f"mystique_survival:{(mystique.survival_rate if mystique else 0.0):.3f}",
             f"mystique_fragility:{(mystique.fragility_score if mystique else 0.0):.3f}",
+            f"metabolic_strain:{(metabolism.metabolic_strain if metabolism else 0.0):.3f}",
+            f"cognitive_breath:{(metabolism.breath if metabolism else 1.0):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -746,6 +779,8 @@ class ConductingQueen:
             metatron_dynamics.append("resonance_" + polyphonic_resonance.texture.lower())
         if mystique:
             metatron_dynamics.append("theme_and_variations_tested")
+        if metabolism:
+            metatron_dynamics.append("metabolism_" + metabolism.texture.lower())
         scores.append(self._score_sheet(
             mind="METATRON",
             motifs=metatron_motifs,
@@ -789,6 +824,12 @@ class ConductingQueen:
             michael_invites.append("seal_synthetic_chamber")
         if mystique and not mystique.prospective_evidence_eligible:
             michael_invites.append("keep_synthetic_out_of_prospective_truth")
+        if metabolism and not metabolism.denominator_resolved:
+            michael_invites.append("keep_burn_denominator_unresolved")
+        if metabolism and metabolism.duplicate_pressure > 0.45:
+            michael_invites.append("discount_duplicate_rehearsal")
+        if metabolism and metabolism.metabolic_strain > 0.55:
+            michael_invites.append("thin_orchestration")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -835,6 +876,11 @@ class ConductingQueen:
                 loki_invites.append("challenge_fragile_cadence")
             if mystique.critical_dependencies:
                 loki_invites.append("attack_critical_dependencies")
+        if metabolism:
+            if metabolism.information_efficiency < 0.25:
+                loki_invites.append("challenge_low_information_rehearsal")
+            if metabolism.duplicate_pressure > 0.45:
+                loki_invites.append("seek_non_echo_evidence")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -903,6 +949,7 @@ class ConductingQueen:
         hive_pulses: Sequence[HivePulse],
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
         mystique: MystiqueFalsificationReceipt | None,
+        metabolism: CognitiveMetabolismReceipt | None,
         now_ms: int,
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
@@ -958,6 +1005,15 @@ class ConductingQueen:
                 gestures.append("HOLD_FRAGILE_CADENCE")
             elif mystique.survival_rate > 0.75:
                 gestures.append("NOTE_SYNTHETIC_ROBUSTNESS")
+        if metabolism:
+            if metabolism.metabolic_strain > 0.70:
+                gestures.append("THIN_ORCHESTRATION")
+            if metabolism.unresolved_burn > 0.65:
+                gestures.append("LET_MOTIF_REST")
+            if metabolism.duplicate_pressure > 0.45:
+                gestures.append("INVITE_FRESH_TIMBRE")
+            if metabolism.breath > 0.75 and metabolism.evidence_novelty > 0.55:
+                gestures.append("SUSTAIN_COGNITIVE_BREATH")
         if any(
             p.authority_effect == "REDUCE_OR_FREEZE_ONLY"
             and not HivePulseEngine.decay(p, now_ms=now_ms).expired
@@ -988,6 +1044,7 @@ class ConductingQueen:
         hive_pulses: Sequence[HivePulse],
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
         mystique: MystiqueFalsificationReceipt | None,
+        metabolism: CognitiveMetabolismReceipt | None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -1170,6 +1227,33 @@ class ConductingQueen:
                 1.0,
                 ("mystique", "governance_epoch"),
                 "RESEARCH_ISOLATION_ONLY",
+            ))
+
+        if metabolism and metabolism.metabolic_strain > 0.70:
+            phrases.append((
+                "cognition_fabric",
+                "THIN_ORCHESTRATION",
+                _clamp(0.45 + 0.45 * metabolism.metabolic_strain),
+                ("cognitive_metabolism", "triune_michael"),
+                "REDUCE_RESEARCH_DENSITY",
+            ))
+
+        if metabolism and metabolism.unresolved_burn > 0.65:
+            phrases.append((
+                "motif_choir",
+                "LET_MOTIF_REST",
+                _clamp(0.45 + 0.40 * metabolism.unresolved_burn),
+                ("cognitive_metabolism", "world_state_bind"),
+                "REST_AND_AWAIT_FRESH_EVIDENCE",
+            ))
+
+        if metabolism and metabolism.duplicate_pressure > 0.45:
+            phrases.append((
+                "independent_counterpoint",
+                "SEEK_FRESH_EVIDENCE",
+                _clamp(0.40 + 0.40 * metabolism.duplicate_pressure),
+                ("lineage_registry", "harmony_law"),
+                "SEARCH_NEW_LINEAGE_OR_REST",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

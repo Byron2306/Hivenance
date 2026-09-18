@@ -139,6 +139,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "fail_closed_research_governance_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_waggle_protocol": {
+        "role": "harmony_gated_interorgan_hypothesis_bus",
+        "mode": "append_only_research_communication",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

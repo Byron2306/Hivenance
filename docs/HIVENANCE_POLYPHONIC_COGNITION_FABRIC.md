@@ -668,3 +668,87 @@ bee response / counterpoint
 This is **Polyphia**: progressive, syncopated, reciprocal cognition in which
 every organ changes how the others listen without erasing provenance or
 independence.
+
+---
+
+## Temporal Texture + Edge Chorus Harmony
+
+Polyphia listens not only to motif direction and voice agreement, but to the
+**texture of time itself** and the **harmony of governed research edges**.
+
+### Temporal texture
+
+Adapted from Metatron Harmonic Governance timing features and AATL contextual
+pressure. The relevant live Metatron timing fields are:
+
+- drift;
+- jitter;
+- burstiness;
+- entropy signature;
+- dominant frequency;
+- sequence class.
+
+AATL contributes contextual pressure and temporal accumulation; the explicit
+jitter/burstiness feature calculations live in Metatron's Harmonic Engine /
+TimingFeatures rather than inside the AATL service itself.
+
+HiveNance exposes these through:
+
+`strategies/relative_value_lab/temporal_texture.py`
+
+The Queen hears them continuously as rhythmic texture, not as a binary pass/fail
+gate.
+
+### Edge Chorus Harmony
+
+Adapted from Metatron ChorusEngine.
+
+Each governed research edge is itself a musical phrase with:
+
+- companion presence;
+- sequence resolution;
+- mesh entrainment;
+- audit closure;
+- settlement;
+- overall chorus quality;
+- consonant / strained / dissonant / fractured resolution.
+
+HiveNance exposes these through:
+
+`strategies/relative_value_lab/edge_chorus_harmony.py`
+
+The Conducting Queen now hears Edge Chorus state at the same time as VNS pulse,
+motif cadence, timbre, pitch, entrainment, harmonic resonance and epoch tension.
+
+A strained edge may invite rehearsal. An incomplete settlement leaves the coda
+open. A fractured edge becomes productive dissonance for Triune rather than
+being silently discarded.
+
+### Integrated Polyphia loop
+
+```text
+VNS sensory pulse
+    ↕
+Temporal Texture
+  jitter / drift / burstiness / entropy / frequency
+    ↕
+Motif + timbre + tone + pitch
+    ↕
+Polyphonic Entrainment
+    ↕
+Edge Chorus Harmony
+    ↕
+Harmonic Governance
+    ↕
+Triune score sheets
+    ↕
+Conducting Queen
+    ↕
+progressive notation
+    ↕
+bee / edge response
+    ↺
+```
+
+No single layer owns truth. The organism hears the interaction among all of
+them.

@@ -109,6 +109,21 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "research_filter_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_market_hunting": {
+        "role": "proactive_market_hypothesis_hunter",
+        "mode": "research_discovery_only",
+        "phoenix_entry_phase": 4,
+    },
+    "relative_value_colony_correlation": {
+        "role": "cross_pair_temporal_correlation_engine",
+        "mode": "research_correlation_only",
+        "phoenix_entry_phase": 4,
+    },
+    "relative_value_ml_challenger": {
+        "role": "learned_forecast_challenger",
+        "mode": "offline_and_walk_forward_research_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

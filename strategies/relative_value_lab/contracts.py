@@ -86,6 +86,7 @@ class ForwardRelativeForecast:
     feature_digest: Optional[str] = None
     model_lineage: Mapping[str, Any] = field(default_factory=dict)
     inputs: Mapping[str, Any] = field(default_factory=dict)
+    direction: str = "ABSTAIN"
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
 

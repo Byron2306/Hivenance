@@ -134,6 +134,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "research_transition_authority_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_harmony_law": {
+        "role": "constitutional_bee_testimony_validator",
+        "mode": "fail_closed_research_governance_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

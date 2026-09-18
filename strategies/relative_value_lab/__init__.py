@@ -4,6 +4,7 @@ Research-only package for pair structure, forward relative-return forecasting,
 microstructure evidence, and bounded advisory inference.
 """
 
+from .microstructure import MicrostructureSnapshot, SequentialMicrostructureEngine
 from .contracts import (
     PairRelationshipCrystal,
     RelativeMarketState,
@@ -18,4 +19,6 @@ __all__ = [
     "ForwardRelativeForecast",
     "ResearchCouncilReceipt",
     "RELATIVE_VALUE_AUTHORITY",
+    "MicrostructureSnapshot",
+    "SequentialMicrostructureEngine",
 ]

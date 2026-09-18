@@ -18,6 +18,13 @@ COMPONENTS = (
     "relative_value_forecaster",
     "relative_value_research_council",
     "relative_value_harmonic_governance",
+    "relative_value_harmony_law",
+    "relative_value_waggle_protocol",
+    "relative_value_market_hunting",
+    "relative_value_colony_correlation",
+    "relative_value_ml_challenger",
+    "relative_value_edge_chorus",
+    "relative_value_notation_token",
     "relative_value_graph",
     "relative_value_execution_lab",
 )

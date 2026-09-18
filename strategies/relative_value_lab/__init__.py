@@ -7,6 +7,7 @@ from .harmonic_governance import (
     HarmonicGovernanceConfig,
     HarmonicForecastReceipt,
     HarmonicForecastVoice,
+    HarmonicHorizonState,
     HarmonicSpectrum,
 )
 from .harmony_law import (
@@ -79,6 +80,7 @@ __all__ = [
     "HarmonicGovernanceConfig",
     "HarmonicForecastReceipt",
     "HarmonicForecastVoice",
+    "HarmonicHorizonState",
     "HarmonicSpectrum",
     "HarmonyBeeMessage",
     "HarmonyLaw",
@@ -143,6 +145,15 @@ __all__ = [
     "PolyphonicResonanceReceipt",
     "RegisterRelationship",
     "RegisterResonance",
+    "MystiqueCounterfactualVariations",
+    "MystiqueConfig",
+    "MystiqueFalsificationReceipt",
+    "MystiqueObservedScore",
+    "CounterfactualEvaluation",
+    "CounterfactualWorld",
+    "CounterfactualVariation",
+    "SYNTHETIC_NAMESPACE",
+    "OBSERVED_NAMESPACE",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -173,4 +184,15 @@ from .polyphonic_resonance import (
     RegisterRelationship,
     PolyphonicResonanceReceipt,
     PolyphonicResonance,
+)
+from .mystique_variations import (
+    OBSERVED_NAMESPACE,
+    SYNTHETIC_NAMESPACE,
+    CounterfactualVariation,
+    CounterfactualWorld,
+    CounterfactualEvaluation,
+    MystiqueObservedScore,
+    MystiqueFalsificationReceipt,
+    MystiqueConfig,
+    MystiqueCounterfactualVariations,
 )

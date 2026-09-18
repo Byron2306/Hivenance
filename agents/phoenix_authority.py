@@ -149,6 +149,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "continuous_music_only_research_cognition",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_polyphonic_entrainment": {
+        "role": "independent_voice_phase_alignment_and_crescendo_listener",
+        "mode": "descriptive_music_only_research_cognition",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

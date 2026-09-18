@@ -502,7 +502,191 @@ Possible current outputs:
 - REFUSE;
 - NEEDS_YOU.
 
-## 20. Settlement and learning
+
+
+## 20. Edge Chorus
+
+Edge Chorus governs the integrity of a specific research transition.
+
+It is not a forecast choir and not a substitute for Polyphonic Resonance.
+
+Adapted from Metatron's `ChorusEngine`, Phoenix Edge Chorus verifies that a bounded research edge contains the right companions, sequence, timing, closure and settlement evidence.
+
+A Phoenix research edge may define:
+
+- required participants;
+- optional participants;
+- expected sequence;
+- timing tolerances;
+- required state events;
+- required audit events;
+- required companions;
+- settlement timeout.
+
+Example research edge:
+
+```text
+prospective_hypothesis_settlement
+
+required participants:
+  world_state_bind
+  triune_verdict
+  outbound_gate
+  settlement_engine
+  nurse
+  audit_closure
+
+expected sequence:
+  edge_opened
+  world_state_bound
+  triune_resolved
+  research_release
+  settlement_started
+  settlement_completed
+  nurse_recorded
+  audit_closed
+  edge_settled
+```
+
+Edge Chorus scores:
+
+- companion presence;
+- sequence resolution;
+- mesh entrainment / timing;
+- audit closure;
+- settlement completeness.
+
+Resolution classes:
+
+- CONSONANT;
+- STRAINED;
+- DISSONANT;
+- FRACTURED.
+
+A fractured or materially dissonant research edge cannot be treated as settled evidence.
+
+Edge Chorus therefore answers:
+
+> Did this research transition occur correctly?
+
+It does not answer:
+
+> Was the market hypothesis true?
+
+## 21. Notation Tokens
+
+Notation Tokens are narrow, world-state-bound permissions to perform one specific governed research transition.
+
+They are adapted from Metatron's notation-token lifecycle while preserving Phoenix's research-only authority.
+
+A Phoenix Research Notation Token should bind at minimum:
+
+- token_id;
+- governance_epoch_id;
+- score / programme id;
+- voice role;
+- capability class;
+- world_state_id / world_state_hash;
+- issued_to;
+- entry window;
+- sequence slot;
+- required companions;
+- response class;
+- action digest;
+- target digest;
+- authority-request digest;
+- consequence class;
+- audience;
+- maximum uses;
+- issued_at;
+- expires_at;
+- status;
+- signature / receipt reference.
+
+Default behaviour should be:
+
+- short-lived;
+- single use;
+- invalid after material world-state drift;
+- invalid outside its entry window;
+- invalid for a different target or research transition;
+- invalid if required companions are absent;
+- invalid if revoked by pulse, harmonic, Triune, or authority state.
+
+Notation does not create new authority.
+
+It narrows already-granted research authority into a concrete, bounded transition.
+
+Examples:
+
+```text
+ALLOW:
+  settle forecast F against horizon H
+  open prospective observation window W
+  publish research receipt R
+  invoke Mystique challenge M
+  run approved challenger model C
+
+NOT ALLOW:
+  submit real order
+  change Phase 6/7 authority
+  promote model from same-window evidence
+```
+
+## 22. Governance epoch and score
+
+Notation is most useful when issued inside a frozen research governance epoch.
+
+A governance epoch binds:
+
+- active experiment definition;
+- world-state hash;
+- model / lineage registry;
+- harmonic thresholds;
+- hunt rules;
+- pulse rules;
+- cost model;
+- settlement schema;
+- authority boundary.
+
+The score defines the expected research sequence.
+
+The token is therefore not merely permission.
+
+It is permission to play one specific note in one specific score, inside one specific world state.
+
+## 23. Revised constitutional seam
+
+The final cognition-to-transition path is:
+
+```text
+TRIUNE VERDICT
+    ↓
+GOVERNANCE EPOCH / SCORE
+    ↓
+RESEARCH NOTATION TOKEN
+    ↓
+OUTBOUND GATE
+    ↓
+EDGE CHORUS OPENS
+    ↓
+bounded research transition
+    ↓
+settlement / audit / Nurse
+    ↓
+EDGE CHORUS RESOLUTION
+    ↓
+WORLD-STATE FEEDBACK
+```
+
+This separates three distinct questions:
+
+1. **Triune:** should this research transition be supported?
+2. **Notation + Outbound Gate:** is this exact transition permitted now?
+3. **Edge Chorus:** did the transition actually complete correctly?
+
+
+## 24. Settlement and learning
 
 All hypotheses must eventually settle against future public observations where labels become available.
 
@@ -517,7 +701,7 @@ Settlement flows back into:
 
 Execution evidence must never directly mutate production authority.
 
-## 21. Implementation programme
+## 25. Implementation programme
 
 ### Phase 4A — Microstructure exhaustion voice
 
@@ -571,19 +755,25 @@ Single bounded reality for every cognitive organ.
 
 Synthesis, validation and adversarial dissent.
 
-### Phase 4N — Research Outbound Gate
+### Phase 4N — Research Notation + Outbound Gate
+
+World-state-bound, single-use research transition tokens and deterministic gate enforcement.
+
+### Phase 4O — Edge Chorus
+
+Companion, sequence, timing, audit and settlement verification for research transitions.
+
+### Phase 4P — Freeze
 
 Evidence- and authority-bound research release.
 
-### Phase 4O — Freeze
-
-Freeze schemas, thresholds, lineage registry, models and gates.
+Freeze schemas, thresholds, lineage registry, models, score, notation rules and gates.
 
 ### Phase 5 — Fresh prospective validation
 
 Only Phase 5 may evaluate the frozen organism against genuinely unseen public-market evidence.
 
-## 22. Success condition
+## 26. Success condition
 
 The system succeeds only if fresh prospective evidence shows that the full cognition fabric improves one or more of:
 

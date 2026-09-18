@@ -131,6 +131,7 @@ def main() -> int:
             """
             SELECT mutation_id,from_symbol,to_symbol,cheapness_z,persistence,
                    gross_edge_bps,net_edge_bps,total_route_cost_bps,route_label,
+                   break_even_fee_bps_side,maker_cost_bps_side,maker_net_edge_bps,
                    batch_confirmations
             FROM inventory_trades
             WHERE run_id=?
@@ -149,6 +150,8 @@ def main() -> int:
                     f"persist={float(row['persistence'] or 0):.2f} "
                     f"edge={float(row['net_edge_bps'] or 0):+7.2f}bps "
                     f"cost={float(row['total_route_cost_bps'] or 0):5.2f}bps "
+                    f"break_even_fee={float(row['break_even_fee_bps_side'] or 0):5.2f}/side "
+                    f"maker_net={'n/a' if row['maker_net_edge_bps'] is None else f'{float(row["maker_net_edge_bps"]):+.2f}bps'} "
                     f"{row['route_label']} batch={int(row['batch_confirmations'] or 0)}"
                 )
 

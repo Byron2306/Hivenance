@@ -1,0 +1,88 @@
+baselines:
+- baseline_no_trade_v1
+- baseline_simple_momentum_v1
+- baseline_simple_mean_reversion_v1
+- baseline_deterministic_random_v1
+cost_model:
+  latency_buffer_bps: 2.0
+  max_total_cost_bps: 150.0
+  reference_notional_usd: 5.0
+  safety_buffer_bps: 3.0
+  taker_fee_bps_per_side: 10.0
+dry_run: true
+enabled: true
+execution_wired: false
+forbidden:
+- order_submission
+- balance_mutation
+- position_creation
+- automatic_promotion
+- leverage
+- dex_execution
+horizons_seconds:
+- 300
+- 900
+- 3600
+hummingbot_v2_leverage: 1
+live_eligible: false
+live_mode: false
+mode: hypothesis_research_only
+onchain_enabled: false
+orders_submitted: 0
+phase: 2
+phase0_quarantine: true
+phase3_base_latency_ms: 180.0
+phase3_execution_lab_enabled: true
+phase3_interval_sec: 120
+phase3_maker_fee_bps: 10.0
+phase3_max_depth_participation: 0.01
+phase3_max_entry_spread_bps: 60.0
+phase3_max_forecasts_per_cycle: 50
+phase3_max_notional_usd: 25.0
+phase3_max_slippage_bps: 75.0
+phase3_min_data_quality: 0.99
+phase3_min_notional_usd: 5.0
+phase3_readiness_max_mean_2x_loss_bps: 50.0
+phase3_readiness_min_completed: 100
+phase3_risk_fraction: 0.0005
+phase3_simulated_equity_usd: 1000.0
+phase3_sleeve_fraction: 0.02
+phase3_taker_fee_bps: 20.0
+phase5_human_approval_required: true
+phase5_interval_sec: 120
+phase5_parameter_freeze_required: true
+phase5_readiness_max_cost_mae_bps: 20.0
+phase5_readiness_min_distinct_days: 30
+phase5_readiness_min_fill_ratio: 0.5
+phase5_readiness_min_settled: 100
+phase5_readiness_require_positive_mean: true
+phase5_shadow_chase_timeout_sec: 30
+phase5_shadow_enabled: true
+phase5_shadow_entry_latency_ms: 250.0
+phase5_shadow_max_intents_per_cycle: 25
+phase5_shadow_max_spread_bps: 60.0
+phase5_shadow_min_data_quality: 0.99
+phase5_shadow_reference_notional_usd: 10.0
+phase5_shadow_settlement_tolerance_sec: 900
+phase5_shadow_stop_distance_bps: 250.0
+phoenix_phase: 3
+primary_hypotheses:
+- breakout_continuation_v1
+- exhaustion_mean_reversion_v1
+public_bot_metrics_auto_promote: false
+research_gates:
+  human_review_required: true
+  min_data_quality: 0.99
+  min_distinct_days: 14
+  min_forecasts: 300
+  min_settled_non_abstain: 100
+  minimum_edge_multiple: 2.0
+  requires_primary_to_beat_baselines: true
+federation:
+  enabled: true
+  min_data_quality: 0.99
+  minimum_edge_multiple: 1.1
+  score_scale: 1.15
+  freqai_confidence_floor: 0.28
+strategy_id: hivenance_ember_phase2_hypothesis_competition
+swarmguard_small_trade_bypass: false

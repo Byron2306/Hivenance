@@ -1,0 +1,750 @@
+{
+  "activation_limit": 20000,
+  "database": "data/swarm_data.db",
+  "generated_ts": 1785957102.8917646,
+  "interpretation": {
+    "best_current_edge_candidate": {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "freqtrade_style_multifactor_breakout",
+      "mean_net_bps": 101.081657,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 3,
+      "total_net_bps": 303.244971,
+      "win_rate": 0.666667,
+      "wins": 2
+    },
+    "legacy_workers_direct_phase2_authority": false,
+    "legacy_workers_note": "WORKER-SMA/RSI/BREAKOUT/MOMENTUM/BOLLINGER/SUPERTREND are council-era signal workers; Phase-2 gates mostly consume native/federated research models."
+  },
+  "mapped_workers": [
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 0,
+      "mean_net_bps": 27.260404,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled_recent": 9,
+      "total_net_bps": 245.343633,
+      "win_rate": 0.555556,
+      "worker_roles": [
+        "WORKER-BREAKOUT",
+        "WORKER-MOMENTUM",
+        "WORKER-VOL-EXPANSION"
+      ]
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 285,
+      "mean_net_bps": -57.646892,
+      "model_id": "adapter_jesse_trend_pullback_v1",
+      "settled_recent": 8,
+      "total_net_bps": -461.175138,
+      "win_rate": 0.25,
+      "worker_roles": [
+        "WORKER-SUPERTREND",
+        "WORKER-SMA"
+      ]
+    },
+    {
+      "activation_rate": 0.989962,
+      "active_recent": 2071,
+      "forecasts_recent": 2092,
+      "mean_net_bps": -30.673275,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled_recent": 4160,
+      "total_net_bps": -127600.822905,
+      "win_rate": 0.122596,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 2092,
+      "mean_net_bps": null,
+      "model_id": "baseline_no_trade_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 0.325526,
+      "active_recent": 681,
+      "forecasts_recent": 2092,
+      "mean_net_bps": -32.959926,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled_recent": 1282,
+      "total_net_bps": -42254.624878,
+      "win_rate": 0.125585,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 0.835086,
+      "active_recent": 1747,
+      "forecasts_recent": 2092,
+      "mean_net_bps": -30.973948,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled_recent": 3420,
+      "total_net_bps": -105930.903059,
+      "win_rate": 0.12807,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 2416,
+      "mean_net_bps": null,
+      "model_id": "beast_crystal_governed_ensemble_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 1.0,
+      "active_recent": 54,
+      "forecasts_recent": 54,
+      "mean_net_bps": null,
+      "model_id": "beast_crystal_selected::candidate_finrl_conservative_policy_proxy_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 1.0,
+      "active_recent": 5,
+      "forecasts_recent": 5,
+      "mean_net_bps": null,
+      "model_id": "beast_crystal_selected::candidate_freqai_transparent_linear_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": []
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 1807,
+      "mean_net_bps": null,
+      "model_id": "breakout_continuation_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": [
+        "WORKER-BREAKOUT",
+        "WORKER-VOL-EXPANSION"
+      ]
+    },
+    {
+      "activation_rate": 0.002222,
+      "active_recent": 2,
+      "forecasts_recent": 900,
+      "mean_net_bps": null,
+      "model_id": "candidate_cex_multi_horizon_oracle_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": [
+        "WORKER-DEX-MARGIN-ORACLE",
+        "WORKER-CEX-HORIZON-ORACLE"
+      ]
+    },
+    {
+      "activation_rate": 0.134864,
+      "active_recent": 282,
+      "forecasts_recent": 2091,
+      "mean_net_bps": -31.31511,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled_recent": 678,
+      "total_net_bps": -21231.644733,
+      "win_rate": 0.272861,
+      "worker_roles": [
+        "WORKER-FINRL-RISK-POLICY"
+      ]
+    },
+    {
+      "activation_rate": 0.17192,
+      "active_recent": 180,
+      "forecasts_recent": 1047,
+      "mean_net_bps": -31.827899,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled_recent": 824,
+      "total_net_bps": -26226.188702,
+      "win_rate": 0.252427,
+      "worker_roles": [
+        "WORKER-META-LABEL",
+        "WORKER-FREQAI"
+      ]
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 936,
+      "mean_net_bps": null,
+      "model_id": "candidate_triune_polyphonic_synthesis_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": [
+        "WORKER-TRIUNE",
+        "WORKER-SERAPH",
+        "WORKER-SOPHIA",
+        "WORKER-CCE"
+      ]
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 0,
+      "mean_net_bps": -37.936011,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled_recent": 48,
+      "total_net_bps": -1820.928514,
+      "win_rate": 0.270833,
+      "worker_roles": [
+        "WORKER-WEBCRYPTO-CONTEXT"
+      ]
+    },
+    {
+      "activation_rate": 0.0,
+      "active_recent": 0,
+      "forecasts_recent": 2091,
+      "mean_net_bps": null,
+      "model_id": "exhaustion_mean_reversion_v1",
+      "settled_recent": 0,
+      "total_net_bps": null,
+      "win_rate": null,
+      "worker_roles": [
+        "WORKER-RSI",
+        "WORKER-RSI2",
+        "WORKER-BOLLINGER"
+      ]
+    }
+  ],
+  "model_scorecard": [
+    {
+      "mean_net_bps": 27.260404,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 9,
+      "total_net_bps": 245.343633,
+      "win_rate": 0.555556,
+      "wins": 5
+    },
+    {
+      "mean_net_bps": -30.673275,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 4160,
+      "total_net_bps": -127600.822905,
+      "win_rate": 0.122596,
+      "wins": 510
+    },
+    {
+      "mean_net_bps": -30.973948,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 3420,
+      "total_net_bps": -105930.903059,
+      "win_rate": 0.12807,
+      "wins": 438
+    },
+    {
+      "mean_net_bps": -31.31511,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 678,
+      "total_net_bps": -21231.644733,
+      "win_rate": 0.272861,
+      "wins": 185
+    },
+    {
+      "mean_net_bps": -31.827899,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 824,
+      "total_net_bps": -26226.188702,
+      "win_rate": 0.252427,
+      "wins": 208
+    },
+    {
+      "mean_net_bps": -32.959926,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 1282,
+      "total_net_bps": -42254.624878,
+      "win_rate": 0.125585,
+      "wins": 161
+    },
+    {
+      "mean_net_bps": -37.936011,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 48,
+      "total_net_bps": -1820.928514,
+      "win_rate": 0.270833,
+      "wins": 13
+    },
+    {
+      "mean_net_bps": -57.646892,
+      "model_id": "adapter_jesse_trend_pullback_v1",
+      "settled": 8,
+      "total_net_bps": -461.175138,
+      "win_rate": 0.25,
+      "wins": 2
+    }
+  ],
+  "positive_slices": [
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "freqtrade_style_multifactor_breakout",
+      "mean_net_bps": 101.081657,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 3,
+      "total_net_bps": 303.244971,
+      "win_rate": 0.666667,
+      "wins": 2
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "webcryptoagent_style_market_context_proxy",
+      "mean_net_bps": 84.916107,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 8,
+      "total_net_bps": 679.328856,
+      "win_rate": 0.625,
+      "wins": 5
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "freqtrade_style_multifactor_breakout",
+      "mean_net_bps": 67.278262,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 3,
+      "total_net_bps": 201.834785,
+      "win_rate": 0.666667,
+      "wins": 2
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "webcryptoagent_style_market_context_proxy",
+      "mean_net_bps": 11.497637,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 7,
+      "total_net_bps": 80.483459,
+      "win_rate": 0.285714,
+      "wins": 2
+    }
+  ],
+  "recent_outcome_limit": 50000,
+  "schema": "hivenance_strategy_worker_audit_v1",
+  "top_slices": [
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "freqtrade_style_multifactor_breakout",
+      "mean_net_bps": 101.081657,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 3,
+      "total_net_bps": 303.244971,
+      "win_rate": 0.666667,
+      "wins": 2
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "webcryptoagent_style_market_context_proxy",
+      "mean_net_bps": 84.916107,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 8,
+      "total_net_bps": 679.328856,
+      "win_rate": 0.625,
+      "wins": 5
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "freqtrade_style_multifactor_breakout",
+      "mean_net_bps": 67.278262,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 3,
+      "total_net_bps": 201.834785,
+      "win_rate": 0.666667,
+      "wins": 2
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "webcryptoagent_style_market_context_proxy",
+      "mean_net_bps": 11.497637,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 7,
+      "total_net_bps": 80.483459,
+      "win_rate": 0.285714,
+      "wins": 2
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "finrl_style_risk_adjusted_policy_proxy",
+      "mean_net_bps": -23.558534,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 132,
+      "total_net_bps": -3109.726513,
+      "win_rate": 0.318182,
+      "wins": 42
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 300,
+      "hypothesis": "finrl_style_risk_adjusted_policy_proxy",
+      "mean_net_bps": -24.747885,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 54,
+      "total_net_bps": -1336.385793,
+      "win_rate": 0.222222,
+      "wins": 12
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "freqai_style_transparent_supervised_proxy",
+      "mean_net_bps": -25.007958,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 152,
+      "total_net_bps": -3801.209658,
+      "win_rate": 0.282895,
+      "wins": 43
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 300,
+      "hypothesis": "freqai_style_transparent_supervised_proxy",
+      "mean_net_bps": -25.118365,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 69,
+      "total_net_bps": -1733.167177,
+      "win_rate": 0.231884,
+      "wins": 16
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "finrl_style_risk_adjusted_policy_proxy",
+      "mean_net_bps": -25.48786,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 118,
+      "total_net_bps": -3007.567441,
+      "win_rate": 0.313559,
+      "wins": 37
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "freqai_style_transparent_supervised_proxy",
+      "mean_net_bps": -25.917503,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 142,
+      "total_net_bps": -3680.285419,
+      "win_rate": 0.28169,
+      "wins": 40
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "baseline_random",
+      "mean_net_bps": -26.290351,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 686,
+      "total_net_bps": -18035.1806,
+      "win_rate": 0.239067,
+      "wins": 164
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "baseline_simple_momentum",
+      "mean_net_bps": -28.413526,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 594,
+      "total_net_bps": -16877.634633,
+      "win_rate": 0.249158,
+      "wins": 148
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "baseline_simple_mean_reversion",
+      "mean_net_bps": -28.810538,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 217,
+      "total_net_bps": -6251.886727,
+      "win_rate": 0.230415,
+      "wins": 50
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "baseline_random",
+      "mean_net_bps": -29.194607,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 727,
+      "total_net_bps": -21224.479605,
+      "win_rate": 0.07978,
+      "wins": 58
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "baseline_simple_momentum",
+      "mean_net_bps": -30.078292,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 557,
+      "total_net_bps": -16753.608675,
+      "win_rate": 0.084381,
+      "wins": 47
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "baseline_simple_momentum",
+      "mean_net_bps": -30.164363,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 562,
+      "total_net_bps": -16952.371743,
+      "win_rate": 0.149466,
+      "wins": 84
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "baseline_simple_mean_reversion",
+      "mean_net_bps": -30.830625,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 221,
+      "total_net_bps": -6813.568082,
+      "win_rate": 0.090498,
+      "wins": 20
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "baseline_random",
+      "mean_net_bps": -31.112963,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 713,
+      "total_net_bps": -22183.54257,
+      "win_rate": 0.14446,
+      "wins": 103
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "baseline_simple_momentum",
+      "mean_net_bps": -31.320697,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 568,
+      "total_net_bps": -17790.156134,
+      "win_rate": 0.096831,
+      "wins": 55
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 300,
+      "hypothesis": "baseline_simple_momentum",
+      "mean_net_bps": -31.477192,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 584,
+      "total_net_bps": -18382.680307,
+      "win_rate": 0.061644,
+      "wins": 36
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 300,
+      "hypothesis": "baseline_random",
+      "mean_net_bps": -31.617934,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 670,
+      "total_net_bps": -21184.015493,
+      "win_rate": 0.056716,
+      "wins": 38
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "baseline_random",
+      "mean_net_bps": -32.775653,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 671,
+      "total_net_bps": -21992.463495,
+      "win_rate": 0.084948,
+      "wins": 57
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "baseline_simple_mean_reversion",
+      "mean_net_bps": -32.954517,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 220,
+      "total_net_bps": -7249.993643,
+      "win_rate": 0.118182,
+      "wins": 26
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 300,
+      "hypothesis": "baseline_simple_mean_reversion",
+      "mean_net_bps": -33.03555,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 205,
+      "total_net_bps": -6772.287726,
+      "win_rate": 0.073171,
+      "wins": 15
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "baseline_random",
+      "mean_net_bps": -33.16182,
+      "model_id": "baseline_deterministic_random_v1",
+      "settled": 693,
+      "total_net_bps": -22981.141142,
+      "win_rate": 0.12987,
+      "wins": 90
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 900,
+      "hypothesis": "baseline_simple_mean_reversion",
+      "mean_net_bps": -33.884712,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 207,
+      "total_net_bps": -7014.135347,
+      "win_rate": 0.111111,
+      "wins": 23
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "baseline_simple_momentum",
+      "mean_net_bps": -34.548561,
+      "model_id": "baseline_simple_momentum_v1",
+      "settled": 555,
+      "total_net_bps": -19174.451567,
+      "win_rate": 0.122523,
+      "wins": 68
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "freqai_style_transparent_supervised_proxy",
+      "mean_net_bps": -34.67142,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 196,
+      "total_net_bps": -6795.598306,
+      "win_rate": 0.346939,
+      "wins": 68
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "finrl_style_risk_adjusted_policy_proxy",
+      "mean_net_bps": -35.292779,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 65,
+      "total_net_bps": -2294.030643,
+      "win_rate": 0.123077,
+      "wins": 8
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "finrl_style_risk_adjusted_policy_proxy",
+      "mean_net_bps": -36.029926,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 166,
+      "total_net_bps": -5980.967734,
+      "win_rate": 0.361446,
+      "wins": 60
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 300,
+      "hypothesis": "freqai_style_transparent_supervised_proxy",
+      "mean_net_bps": -38.192008,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 101,
+      "total_net_bps": -3857.392807,
+      "win_rate": 0.108911,
+      "wins": 11
+    },
+    {
+      "direction": "DOWN",
+      "horizon_seconds": 3600,
+      "hypothesis": "baseline_simple_mean_reversion",
+      "mean_net_bps": -38.456384,
+      "model_id": "baseline_simple_mean_reversion_v1",
+      "settled": 212,
+      "total_net_bps": -8152.753354,
+      "win_rate": 0.127358,
+      "wins": 27
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "finrl_style_risk_adjusted_policy_proxy",
+      "mean_net_bps": -38.482284,
+      "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+      "settled": 143,
+      "total_net_bps": -5502.966609,
+      "win_rate": 0.181818,
+      "wins": 26
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "freqai_style_transparent_supervised_proxy",
+      "mean_net_bps": -38.771557,
+      "model_id": "candidate_freqai_transparent_linear_v1",
+      "settled": 164,
+      "total_net_bps": -6358.535336,
+      "win_rate": 0.182927,
+      "wins": 30
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "webcryptoagent_style_market_context_proxy",
+      "mean_net_bps": -84.722413,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 23,
+      "total_net_bps": -1948.615503,
+      "win_rate": 0.173913,
+      "wins": 4
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 3600,
+      "hypothesis": "freqtrade_style_multifactor_breakout",
+      "mean_net_bps": -86.578708,
+      "model_id": "adapter_freqtrade_breakout_v1",
+      "settled": 3,
+      "total_net_bps": -259.736124,
+      "win_rate": 0.333333,
+      "wins": 1
+    },
+    {
+      "direction": "UP",
+      "horizon_seconds": 900,
+      "hypothesis": "webcryptoagent_style_market_context_proxy",
+      "mean_net_bps": -122.300679,
+      "model_id": "candidate_webcrypto_market_context_proxy_v1",
+      "settled": 6,
+      "total_net_bps": -733.804077,
+      "win_rate": 0.0,
+      "wins": 0
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+python-binance
+web3
+requests
+fastapi
+uvicorn
+pydantic
+python-dotenv
+pyyaml
+flask
+redis
+psutil
+cryptography
+ccxt
+pytest

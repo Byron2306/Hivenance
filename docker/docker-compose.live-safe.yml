@@ -1,0 +1,7 @@
+# Phase-0 compatibility overlay. Despite the historical filename, this profile
+# is quarantined and remains dry-run only. It cannot enable live execution while
+# `phase0_quarantine: true`.
+services:
+  swarm-agent:
+    environment:
+      - HIVENANCE_PROFILE_PATH=config/live_safe_1h.yaml

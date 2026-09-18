@@ -1,0 +1,87 @@
+{
+  "risk_agent_control_map": [
+    {
+      "risk_id": "R-LIQ-01",
+      "agents": [
+        "MarketDataAgent",
+        "ExecutionAgent"
+      ],
+      "controls": [
+        "SG-LIQ-GATE-01",
+        "SG-DEPTH-CAP-02"
+      ]
+    },
+    {
+      "risk_id": "R-FEE-02",
+      "agents": [
+        "StrategyAgent",
+        "ExecutionAgent"
+      ],
+      "controls": [
+        "SG-FEE-FILTER-01"
+      ]
+    },
+    {
+      "risk_id": "R-VOL-03",
+      "agents": [
+        "OracleAgent",
+        "WorkerAgents"
+      ],
+      "controls": [
+        "SG-REGIME-GATE-01",
+        "SG-WORKER-WEIGHT-DECAY-01"
+      ]
+    },
+    {
+      "risk_id": "R-CORR-04",
+      "agents": [
+        "CouncilAgent"
+      ],
+      "controls": [
+        "SG-DIVERSITY-CAP-01"
+      ]
+    },
+    {
+      "risk_id": "R-OVER-05",
+      "agents": [
+        "SwarmGuard",
+        "UIAgent"
+      ],
+      "controls": [
+        "SG-COOLDOWN-01"
+      ]
+    },
+    {
+      "risk_id": "R-LEARN-06",
+      "agents": [
+        "NurseAgent",
+        "PerformanceAgent"
+      ],
+      "controls": [
+        "SG-LEARNING-DECAY-01"
+      ]
+    },
+    {
+      "risk_id": "R-EXEC-07",
+      "agents": [
+        "ExecutionAgent",
+        "NetworkAgent"
+      ],
+      "controls": [
+        "SG-EXEC-CONFIRM-01",
+        "SG-KILL-API-01"
+      ]
+    },
+    {
+      "risk_id": "R-HUMAN-08",
+      "agents": [
+        "SecurityAgent",
+        "UIAgent"
+      ],
+      "controls": [
+        "SG-OVERRIDE-STAKE-01",
+        "SG-OVERRIDE-SLASH-01"
+      ]
+    }
+  ]
+}

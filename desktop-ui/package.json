@@ -1,0 +1,56 @@
+{
+  "name": "hivenance-desktop",
+  "version": "1.0.0",
+  "description": "Hivenance Trading Agent Desktop UI",
+  "main": "main.js",
+  "scripts": {
+    "start": "node ./node_modules/electron/cli.js .",
+    "build": "node ./node_modules/electron-builder/cli.js",
+    "build:win": "node ./node_modules/electron-builder/cli.js --win",
+    "build:mac": "node ./node_modules/electron-builder/cli.js --mac",
+    "build:linux": "node ./node_modules/electron-builder/cli.js --linux dir",
+    "build:linux:dir": "node ./node_modules/electron-builder/cli.js --linux dir",
+    "build:linux:appimage": "node ./node_modules/electron-builder/cli.js --linux AppImage"
+  },
+  "keywords": ["trading", "crypto", "hivenance"],
+  "author": "Hivenance",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.hivenance.desktop",
+    "productName": "Hivenance Trading Agent",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "assets/icon.png",
+      "category": "Utility"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "extraResources": [
+      {
+        "from": "../static",
+        "to": "static",
+        "filter": ["**/*"]
+      }
+    ]
+  }
+}

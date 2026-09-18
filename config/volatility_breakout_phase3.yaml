@@ -1,0 +1,55 @@
+strategy_id: hivenance_ember_phase3_execution_lab
+phase: 3
+mode: execution_simulation_only
+enabled: true
+execution_wired: false
+private_exchange_access: false
+live_eligible: false
+real_orders_submitted: 0
+spot_only: true
+synthetic_down_forecasts: research_only
+fidelity: observation_proxy
+order_policies:
+  - market
+  - marketable_limit
+  - passive_post_only
+  - passive_then_chase
+candidate_selection:
+  min_expected_net_bps: 10.0
+  min_probability_positive_net: 0.58
+  min_historical_realized_net_bps: 5.0
+  min_historical_samples: 3
+  prefer_research_candidates: true
+  max_simulations_per_forecast: 20
+stress_scenarios:
+  - normal
+  - cost_1_5x
+  - cost_2x
+  - liquidity_stress
+  - infrastructure_stress
+risk:
+  simulated_equity_usd: 1000.0
+  risk_fraction: 0.0005
+  sleeve_fraction: 0.02
+  max_notional_usd: 25.0
+  max_depth_participation: 0.01
+venue_profile:
+  venue: kraken
+  profile_version: kraken-research.v1
+  min_notional_usd: 5.0
+  maker_fee_bps: 10.0
+  taker_fee_bps: 20.0
+readiness:
+  min_completed_normal_simulations: 100
+  positive_at_normal_cost: true
+  positive_at_1_5x_cost: true
+  non_catastrophic_at_2x_cost: true
+  human_review_required: true
+forbidden:
+  - private_api_calls
+  - live_order_submission
+  - credential_use
+  - balance_mutation
+  - automatic_recovery
+  - leverage
+  - dex_execution

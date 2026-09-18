@@ -1,0 +1,12 @@
+{
+  "binance_api_key": "",
+  "binance_api_secret": "",
+  "kraken_api_key": "",
+  "kraken_api_secret": "",
+  "web3_rpc_url": "",
+  "watch_address": "",
+  "erc20_token_address": "",
+  "etherscan_api_key": "",
+  "walletconnect_project_id": "",
+  "oneinch_api_key": ""
+}

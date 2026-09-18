@@ -1,0 +1,139 @@
+{
+  "activated_stages": [
+    {
+      "allowed_symbols": [
+        "ETH/USD"
+      ],
+      "daily_loss_halt_usd": 1.5,
+      "max_notional_usd": 7.5,
+      "max_open_orders": 1,
+      "max_open_positions": 1,
+      "min_distinct_days": 14,
+      "min_new_round_trips": 50,
+      "name": "EMBER",
+      "stage_id": 1
+    },
+    {
+      "allowed_symbols": [
+        "ETH/USD",
+        "BTC/USD"
+      ],
+      "daily_loss_halt_usd": 2.0,
+      "max_notional_usd": 10.0,
+      "max_open_orders": 1,
+      "max_open_positions": 1,
+      "min_distinct_days": 14,
+      "min_new_round_trips": 50,
+      "name": "FLAME",
+      "stage_id": 2
+    },
+    {
+      "allowed_symbols": [
+        "ETH/USD",
+        "BTC/USD"
+      ],
+      "daily_loss_halt_usd": 3.0,
+      "max_notional_usd": 15.0,
+      "max_open_orders": 1,
+      "max_open_positions": 1,
+      "min_distinct_days": 14,
+      "min_new_round_trips": 50,
+      "name": "WING",
+      "stage_id": 3
+    },
+    {
+      "allowed_symbols": [
+        "ETH/USD",
+        "BTC/USD",
+        "SOL/USD"
+      ],
+      "daily_loss_halt_usd": 4.0,
+      "max_notional_usd": 20.0,
+      "max_open_orders": 1,
+      "max_open_positions": 1,
+      "min_distinct_days": 14,
+      "min_new_round_trips": 50,
+      "name": "CROWN",
+      "stage_id": 4
+    }
+  ],
+  "approvals": 4,
+  "audit_rows": 9,
+  "automatic_promotion": false,
+  "credentials_loaded": false,
+  "demotion": {
+    "demoted": true,
+    "evidence": {
+      "completed_round_trips": 224,
+      "current_stage": 4,
+      "distinct_days": 0,
+      "evidence_hash": "248f66dc41a4ce34d87e89897d92ff885aa603cf1c67f87d4a2dcb832022165e",
+      "live_order_rows": 1,
+      "loss_rate": 0.0,
+      "losses": 0,
+      "max_drawdown_bps": 0.0,
+      "mean_abs_slippage_bps": 0.0,
+      "mean_return_bps": 0.0,
+      "median_return_bps": 0.0,
+      "new_round_trips": 0,
+      "open_phase6_incidents": 0,
+      "open_phase7_incidents": 0,
+      "open_positions": 0,
+      "profit_factor": 0.0,
+      "rejected_orders": 0,
+      "rejection_rate": 0.0,
+      "slippage_observations": 0,
+      "stage_start_round_trips": 224,
+      "stage_started_ts": 1905184011.0,
+      "stage_state": "ACTIVE",
+      "total_realized_pnl_quote": 0,
+      "unknown_order_states": 1,
+      "unknown_orders": 1,
+      "wins": 0
+    },
+    "from_stage": 4,
+    "to_stage": 3,
+    "triggers": [
+      "unknown_order_state"
+    ]
+  },
+  "human_activations": 4,
+  "kind": "deterministic_controlled_growth_governor_control",
+  "legacy_fill_rows": 0,
+  "legacy_order_rows": 0,
+  "market_profitability_evidence": false,
+  "network_calls": 0,
+  "open_growth_incidents": 1,
+  "passed": true,
+  "proposals": 4,
+  "stage_after_sabotage": {
+    "allowed_symbols": [
+      "ETH/USD",
+      "BTC/USD"
+    ],
+    "daily_loss_halt_usd": 3.0,
+    "max_notional_usd": 15.0,
+    "max_open_orders": 1,
+    "max_open_positions": 1,
+    "min_distinct_days": 14,
+    "min_new_round_trips": 50,
+    "name": "WING",
+    "stage_id": 3
+  },
+  "stage_before_sabotage": {
+    "allowed_symbols": [
+      "ETH/USD",
+      "BTC/USD",
+      "SOL/USD"
+    ],
+    "daily_loss_halt_usd": 4.0,
+    "max_notional_usd": 20.0,
+    "max_open_orders": 1,
+    "max_open_positions": 1,
+    "min_distinct_days": 14,
+    "min_new_round_trips": 50,
+    "name": "CROWN",
+    "stage_id": 4
+  },
+  "windows": 4
+}

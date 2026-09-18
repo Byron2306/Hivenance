@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Signal Marketplace">
+  <defs>
+    <linearGradient id="sig-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#231609"/>
+      <stop offset="100%" stop-color="#120a04"/>
+    </linearGradient>
+    <linearGradient id="sig-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffda73"/>
+      <stop offset="100%" stop-color="#cf8110"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#sig-bg)"/>
+  <path d="M62 82h132v92H62z" fill="#241607" stroke="url(#sig-gold)" stroke-width="8"/>
+  <path d="M88 114h80M88 142h48" stroke="url(#sig-gold)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M162 154l20-20" stroke="url(#sig-gold)" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="184" cy="132" r="24" fill="none" stroke="url(#sig-gold)" stroke-width="8"/>
+</svg>

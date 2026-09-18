@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Event Spine">
+  <defs>
+    <linearGradient id="evt-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#1b1206"/>
+      <stop offset="100%" stop-color="#0f0a03"/>
+    </linearGradient>
+    <linearGradient id="evt-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffd36a"/>
+      <stop offset="100%" stop-color="#cc8416"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#evt-bg)"/>
+  <path d="M128 44v168" stroke="url(#evt-gold)" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="128" cy="64" r="18" fill="#281806" stroke="url(#evt-gold)" stroke-width="8"/>
+  <circle cx="72" cy="108" r="16" fill="#281806" stroke="url(#evt-gold)" stroke-width="8"/>
+  <circle cx="184" cy="108" r="16" fill="#281806" stroke="url(#evt-gold)" stroke-width="8"/>
+  <circle cx="96" cy="168" r="16" fill="#281806" stroke="url(#evt-gold)" stroke-width="8"/>
+  <circle cx="160" cy="168" r="16" fill="#281806" stroke="url(#evt-gold)" stroke-width="8"/>
+  <path d="M128 80L84 98M128 80l44 18M128 144l-24 12M128 144l24 12" stroke="url(#evt-gold)" stroke-width="8" stroke-linecap="round"/>
+</svg>

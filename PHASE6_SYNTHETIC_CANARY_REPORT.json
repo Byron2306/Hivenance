@@ -1,0 +1,70 @@
+{
+  "ambiguity_sabotage": {
+    "add_calls_after_two_cycles": 1,
+    "expected": "HALT on ambiguity; no retry; one add attempt",
+    "first_status": "HALTED",
+    "legacy_orders_rows": 0,
+    "open_incidents": 2,
+    "second_status": "HALTED",
+    "state": {
+      "category": "UNKNOWN_ORDER_STATE",
+      "client_order_id": null,
+      "human_review_required": true,
+      "incident_id": "f84aa9a41d83defe6b02682fed500cb22f9541f0568c162cfead1e7a8aa2ac60",
+      "message": "one or more canary orders could not be reconciled",
+      "payload": {},
+      "reason": "UNKNOWN_ORDER_STATE:one or more canary orders could not be reconciled",
+      "requires_human_review": true,
+      "severity": "CRITICAL",
+      "singleton": 1,
+      "state": "HALTED",
+      "symbol": null,
+      "ts": 1910000000.0,
+      "updated_ts": 1785539529.6561472
+    },
+    "unknown_orders": 1
+  },
+  "campaign": {
+    "approvals": 60,
+    "automatic_scaling": false,
+    "completed_round_trips": 60,
+    "credentials_loaded": false,
+    "deadman_refreshes": 120,
+    "fake_add_calls": 120,
+    "kind": "deterministic_fake_exchange_safety_control",
+    "legacy_fills_rows": 0,
+    "legacy_orders_rows": 0,
+    "leverage": 1,
+    "market_profitability_evidence": false,
+    "network_calls": 0,
+    "open_incidents": 0,
+    "open_positions": 0,
+    "phase6_orders": 120,
+    "phase7_review_gate": {
+      "automatic_scaling": false,
+      "completed_round_trips": 60,
+      "daily_realized_pnl_quote": 0.0,
+      "execution_scale_authorized": false,
+      "human_review_required": true,
+      "live_orders_submitted": 120,
+      "mean_realized_pnl_quote": 0.20683253083333294,
+      "mode": "tiny_live_canary",
+      "open_incidents": 0,
+      "open_positions": 0,
+      "phase": 6,
+      "ready_for_phase7_review": true,
+      "reasons": [],
+      "total_realized_pnl_quote": 12.409951849999977,
+      "unknown_orders": 0
+    },
+    "reconciliations": 180,
+    "requested_round_trips": 60,
+    "status_counts": {
+      "DISARMED": 60,
+      "EXIT_PENDING": 60,
+      "ORDER_PENDING": 60
+    },
+    "unknown_orders": 0,
+    "validate_only_calls": 120
+  }
+}

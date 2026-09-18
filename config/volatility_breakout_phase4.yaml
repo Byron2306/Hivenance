@@ -1,0 +1,49 @@
+strategy_id: hivenance_ember_phase4_adversarial_validation
+phase: 4
+mode: adversarial_validation_only
+enabled: true
+execution_wired: false
+private_exchange_access: false
+live_eligible: false
+real_orders_submitted: 0
+human_review_required: true
+methods:
+  purged_walk_forward:
+    folds: 5
+    purge_seconds: 3600
+    embargo_seconds: 3600
+  block_bootstrap:
+    samples: 400
+    block_size: 5
+    confidence: 0.95
+  multiple_testing:
+    deflated_sharpe: true
+    cscv_style_pbo: true
+  holdouts:
+    - symbol
+    - volatility_regime
+  perturbation:
+    probability_shifts: [-0.05, 0.0, 0.05]
+    expected_net_bps_shifts: [-10.0, 0.0, 10.0]
+readiness:
+  min_normal_completed_trades: 100
+  min_distinct_days: 14
+  bootstrap_lower_95_positive: true
+  min_walk_forward_positive_ratio: 0.60
+  min_parameter_positive_ratio: 0.70
+  max_symbol_profit_concentration: 0.25
+  max_month_profit_concentration: 0.35
+  min_dsr_probability: 0.95
+  max_pbo: 0.20
+  positive_at_1_5x_cost: true
+  max_mean_loss_at_2x_cost_bps: 50.0
+  human_review_required: true
+forbidden:
+  - private_api_calls
+  - live_order_submission
+  - credential_use
+  - automatic_strategy_promotion
+  - balance_mutation
+  - automatic_recovery
+  - leverage
+  - dex_execution

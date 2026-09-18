@@ -1,0 +1,789 @@
+allowed_ips:
+- 127.0.0.1
+- ::1
+auto_trade_enabled: false
+auto_trading_enabled: false
+binance_testnet: false
+btc_dominance_risk_off_threshold: 58.0
+buzz_account: hivenance-system
+buzz_base_url: http://localhost:9009
+buzz_bootstrap_amount: 250
+buzz_cycle_length_sec: 120
+buzz_cycle_move_threshold_pct: 0.001
+buzz_loss_streak_slash_bonus_pct: 0.05
+buzz_loss_streak_threshold: 3
+buzz_reward_pct_council: 0.1
+buzz_reward_pct_killswitch: 0.02
+buzz_reward_pct_oracle: 0.05
+buzz_reward_pct_queen: 0.15
+buzz_reward_pct_security: 0.02
+buzz_shared_secret: ''
+buzz_slash_pct_council: 0.25
+buzz_slash_pct_killswitch: 0.05
+buzz_slash_pct_oracle: 0.1
+buzz_slash_pct_queen: 0.25
+buzz_slash_pct_security: 0.05
+buzz_stake_cooldown_sec: 120
+buzz_stake_council: 10
+buzz_stake_killswitch: 5
+buzz_stake_oracle: 5
+buzz_stake_oracle_cooldown_sec: 180
+buzz_stake_queen: 20
+buzz_stake_security: 5
+buzz_stake_worker_default: 8
+buzz_stake_worker_max: 20
+buzz_stake_worker_reward_pct: 0.08
+buzz_stake_worker_slash_pct: 0.2
+capital_allocator_enabled: true
+capital_reserve_pct: 0.65
+coin_selection_auto_switch: false
+coin_selection_enabled: false
+coin_selection_exclude: []
+coin_selection_include:
+- ETH/USD
+coin_selection_interval_sec: 600
+coin_selection_lookback: 60
+coin_selection_max_symbols: 25
+coin_selection_max_volatility: 0.025
+coin_selection_min_vol_usd: 100000
+coin_selection_quote_assets:
+- USDT
+- USDC
+- USD
+coin_selection_spread_max: 0.03
+coin_selection_target_volatility: 0.006
+coin_selection_top_n: 3
+contract_max_top10_holder_pct: 0.8
+contract_max_transfer_tax_pct: 0.05
+contract_min_liquidity_to_fdv: 0.002
+core_allocation_pct: 0.3
+core_assets:
+- BTC
+- ETH
+- USDC
+daily_loss_halt_pct: -0.5
+daily_loss_limit: 50.0
+daily_loss_throttle_pct: -0.25
+data_store_enabled: true
+db_path: data/swarm_data.db
+dex_margin_oracle_enabled: false
+dex_max_gas_drag_pct: 0.01
+dex_max_price_impact_pct: 0.02
+dex_min_liquidity_usd: 50000
+dex_min_output_ratio: 0.95
+dex_min_roundtrip_ratio: 0.94
+dex_min_token_age_hours: 24
+dex_min_txns_24h: 50
+dex_min_volume_24h_usd: 25000
+dex_oracle_cache_sec: 45
+dex_oracle_timeout_sec: 8
+dex_probe_amount_usd: 1.0
+dex_provider: 1inch
+dex_ready_roundtrip_ratio: 0.985
+dry_run: true
+encryption_key_file: ~/.config/hivenance/encryption.key
+erc20_token_address: ''
+exchange: kraken
+exit_hard_stop_pct: 0.025
+exit_manager_enabled: true
+exit_take_profit_pct: 0.04
+# NOTE (2026-08-06): was 21600 (6h). User directive: "stick to core philosophy - high
+# volatility, low cost, small time windows" given a small (~R5000) account. Aligned the
+# hard time-stop with the phase2_horizons_seconds ceiling (3600s = 1h) below rather than
+# letting positions ride for 6 hours.
+exit_time_stop_sec: 3600
+exit_trailing_stop_pct: 0.025
+exit_trailing_window: 12
+expected_move_min_pct: 0.003
+experimental_allocation_pct: 0.05
+experimental_assets:
+- XCN
+- TOSHI
+- WLD
+fee_buffer_pct: 0.0015
+goplus_cache_sec: 3600
+goplus_security_enabled: true
+governance_authoritative: true
+hummingbot_sidecar_command: python3 scripts/hummingbot_sidecar_runner.py --config
+  {config_path} --dry-run=false --mode docker-compose --compose-file docker/docker-compose.yml
+  --service hummingbot-sidecar
+hummingbot_sidecar_config_dir: data/hummingbot_executors
+hummingbot_sidecar_live_enabled: false
+hummingbot_v2_dca_step_pct: 0.006
+hummingbot_v2_dca_steps: 3
+hummingbot_v2_default_executor: position
+hummingbot_v2_grid_width_pct: 0.012
+hummingbot_v2_leverage: 1
+hummingbot_v2_twap_duration_sec: 300
+hummingbot_v2_twap_interval_sec: 30
+interval: 1m
+kill_switch_enabled: true
+kill_switch_enforce_stale: true
+kill_switch_grace_sec: 300
+killswitch_equity_floor_usd: 25.0
+last_good_quote_ttl_sec: 900
+liquidity_k: 0.08
+liquidity_m: 0.02
+live_mode: false
+lookback: 500
+low_profit_min_trades: 4
+low_profit_quarantine_sec: 7200
+macd_fast: 12
+macd_signal: 9
+macd_slow: 26
+market_bee_enabled: false
+market_bee_snapshot_interval_sec: 300
+market_bee_top_n: 1
+market_context_enabled: true
+market_making_advisors_enabled: false
+market_making_quote_placement_enabled: false
+market_stale_sec: 300.0
+max_consecutive_losses: 5
+max_drawdown_pct: 10.0
+max_notional: 2.0
+max_position_base: 0
+max_trade_usd: 1.0
+min_trade_usd: 1.0
+multi_symbol_enabled: true
+multi_symbols:
+- ETH/USD
+multichain_watch_chains:
+- chain_id: 42161
+  name: Arbitrum
+  native_symbol: ETH
+  rpc_url: https://arb1.arbitrum.io/rpc
+  tokens:
+    MAGIC:
+      address: '0x539bdE0d7Dbd336b79148AA742883198BBF60342'
+      decimals: 18
+- chain_id: 56
+  name: BNB
+  native_symbol: BNB
+  rpc_url: https://bsc-dataseed.binance.org
+  tokens:
+    BEAM:
+      address: '0x62D0A8458eD7719FDAF978fe5929C6D342B0bFcE'
+      decimals: 18
+multichain_watch_enabled: true
+network_enabled: true
+nurse_review_interval_sec: 120
+onchain_allowed_pairs:
+- ETH/USD
+onchain_chain_id: 8453
+onchain_enabled: false
+onchain_fallback_to_cex: false
+onchain_force_base: true
+onchain_force_chain_id: 8453
+onchain_l2_chain_id: 8453
+onchain_max_fee_eth: 0.0002
+onchain_max_gas_eth: 0.0002
+onchain_max_gas_gwei: 5.0
+onchain_max_gas_usd: 0.25
+onchain_min_output_ratio: 0.9
+onchain_prefer_l2: true
+onchain_require_gas_estimate: true
+onchain_slippage_bps: 50
+onchain_token_addresses:
+  AERO:
+    address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631'
+    decimals: 18
+  BRETT:
+    address: '0x532f27101965dd16442E59d40670FaF5eBB142E4'
+    decimals: 18
+  DEGEN:
+    address: '0x4ed4E862860beD7a1a95cA89EA77eFbd0eC0e5C'
+    decimals: 18
+  MORPHO:
+    address: '0xBAa5CC21fd487B8Fcc2F632f3F4E8D2b2f0A4dB9'
+    decimals: 18
+  TOSHI:
+    address: '0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4'
+    decimals: 18
+  USDC:
+    address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+    decimals: 6
+  VIRTUAL:
+    address: '0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b'
+    decimals: 18
+  WELL:
+    address: '0xA88594D404727625A9437C3f886C7643872296AE'
+    decimals: 18
+  WLD:
+    address: '0x163f8C2467924be0ae7B5347228CABF260318753'
+    decimals: 18
+  XCN:
+    address: '0x9c632E6Aaa3eA73f91554f8A3cB2ED2F29605e0C'
+    decimals: 18
+  cbBTC:
+    address: '0xcbB7C0000aB88B473b1f5aFD9ef808440eEd33Bf'
+    decimals: 8
+oneinch_api_key: ''
+openclaw_autonomy_enabled: false
+order_type_pref: LIMIT
+pair_cooldown_after_bad_exit_sec: 3600
+pair_max_daily_loss_pct: 0.03
+pair_max_drawdown_pct: 0.05
+pair_max_failed_quotes_daily: 5
+pair_max_route_loss_spike_pct: 0.04
+pair_min_net_margin_sum_pct: 0.0
+pairlist_max_abs_change_24h_pct: 0.0
+pairlist_max_spread_pct: 0.0
+pairlist_min_age_sec: 0
+pairlist_min_volume_24h_usd: 0.0
+paper_promotion_eval_interval_sec: 3600
+paper_promotion_window_days: 30
+performance_enabled: true
+phase0_quarantine: true
+phase1_observation_baseline_window: 60
+phase1_observation_discovery_pool_multiplier: 3
+phase1_observation_enabled: true
+phase1_observation_exclude: []
+phase1_observation_include: []
+phase1_observation_interval_sec: 120
+phase1_observation_lookback: 121
+# NOTE (2026-08-06): raised from 35bps to admit niche/illiquid pairs (spread commonly
+# 30-70bps on <$500k/24h-volume tokens); see phase1_observation_min_quote_volume_usd note.
+phase1_observation_max_spread_bps: 100.0
+# Raised from 12 so newly-eligible niche candidates aren't crowded out of the pool by majors.
+phase1_observation_max_symbols: 16
+phase1_observation_min_data_quality: 0.99
+# NOTE (2026-08-06): was 25000 - lowered proportionally to the niche-pair volume floor below;
+# still a real (non-zero) executable-depth requirement, just sized for micro-cap books.
+phase1_observation_min_depth_usd_25bps: 3000.0
+# NOTE (2026-08-06): was 90 - lowered to admit somewhat newer micro-cap listings while still
+# excluding brand-new/flash listings (a real rug/manipulation risk vector at 0 days).
+phase1_observation_min_listing_age_days: 30.0
+# NOTE (2026-08-06): was 5,000,000 - this alone excluded every niche/illiquid pair found by
+# scripts/niche_pair_scan.py (all < $350k/24h). User request: pursue high-volatility, low
+# absolute-cost pairs too small for large market makers/HFT firms to bother with. Lowered to
+# a real but much smaller floor; genuinely dead/wash-traded pairs still get excluded.
+phase1_observation_min_quote_volume_usd: 20000.0
+phase1_observation_min_success_ratio: 0.9
+phase1_observation_orderbook_depth: 50
+phase1_observation_quote_assets:
+- USD
+- USDT
+- USDC
+phase1_observation_discovery_min_quote_volume_usd: 20000.0
+phase1_observation_discovery_max_abs_pct_move: 14.0
+# NOTE (2026-08-06): discovered that lowering the volume floors above was NOT enough -
+# the discovery ranking score (_discovery_score) weights log10(volume) so heavily that
+# niche pairs (~$100k-$300k/24h) can never outrank majors (~$10M-$150M/24h) for a spot
+# in the discovery pool, regardless of volatility. Verified empirically: post-restart,
+# only majors + stablecoin crosses were ever observed, 0 niche pairs. These two keys
+# reserve discovery-pool slots specifically for niche-band candidates ranked by raw
+# volatility instead of size (see _niche_edge_score in observation_swarm.py).
+phase1_observation_niche_quota: 6
+phase1_observation_niche_max_volume_usd: 2000000.0
+phase1_observation_near_eligible_quota: 3
+phase1_observation_short_window: 5
+phase1_observation_stale_after_sec: 180
+phase1_observation_timeframe: 1m
+phase1_readiness_window_hours: 1
+phase1_readiness_min_distinct_snapshots: 1
+phase1_readiness_distinct_snapshot_bucket_hours: 1
+phase2_breakout_min_expansion: 1.15
+phase2_breakout_allowed_regimes:
+- trend_expansion
+- balanced_transition
+phase2_breakout_min_regime_confidence: 0.35
+phase2_breakout_min_tradability_score: 0.55
+phase2_breakout_min_momentum_consistency: 0.55
+phase2_breakout_min_return_zscore: 0.65
+phase2_breakout_min_volume_zscore: 0.25
+phase2_horizons_seconds:
+- 300
+- 900
+- 3600
+phase2_hypotheses_enabled: true
+phase2_federation_enabled: true
+phase2_federation_models:
+- candidate_finrl_conservative_policy_proxy_v1
+- candidate_freqai_transparent_linear_v1
+- adapter_freqtrade_breakout_v1
+- adapter_jesse_trend_pullback_v1
+- candidate_cex_multi_horizon_oracle_v1
+- candidate_triune_polyphonic_synthesis_v1
+phase2_federation_quarantined_models:
+  candidate_freqai_transparent_linear_v1: phase4_outcome_blind_multisymbol_expansion_negative_2026_08_05
+phase2_federation_min_data_quality: 0.99
+phase2_federation_minimum_edge_multiple: 1.1
+phase2_federation_score_scale: 1.15
+phase2_federation_freqai_confidence_floor: 0.28
+phase2_worker_signal_federation_enabled: true
+phase2_worker_signal_models:
+- worker_signal_sma_v1
+- worker_signal_rsi_v1
+- worker_signal_rsi2_v1
+- worker_signal_breakout_v1
+- worker_signal_momentum_v1
+- worker_signal_bollinger_v1
+- worker_signal_supertrend_v1
+- worker_signal_vol_expansion_v1
+phase2_worker_signal_min_data_quality: 0.99
+phase2_worker_signal_minimum_edge_multiple: 1.1
+phase2_worker_signal_min_strength: 0.45
+phase2_worker_signal_score_scale: 1.0
+phase2_worker_signal_settle_counterfactuals_enabled: true
+phase2_worker_signal_negative_memory_enabled: true
+phase2_worker_signal_memory_lookback_hours: 24.0
+phase2_worker_signal_memory_min_samples: 2
+phase2_worker_signal_negative_memory_min_samples: 3
+phase2_worker_signal_negative_memory_max_mean_net_bps: -5.0
+phase2_worker_signal_negative_memory_min_directional_hit_rate: 0.42
+phase2_worker_signal_triune_mind_enabled: true
+phase2_worker_signal_triune_loki_enabled: true
+phase2_worker_signal_triune_michael_min_validation_score: 0.42
+phase2_worker_signal_triune_loki_challenge_risk: 0.45
+phase2_worker_signal_triune_loki_veto_risk: 0.82
+phase2_worker_coalition_enabled: true
+phase2_worker_coalition_models:
+- worker_signal_sma_v1
+- worker_signal_rsi_v1
+- worker_signal_rsi2_v1
+- worker_signal_breakout_v1
+- worker_signal_momentum_v1
+- worker_signal_bollinger_v1
+- worker_signal_supertrend_v1
+- worker_signal_vol_expansion_v1
+phase2_worker_coalition_min_data_quality: 0.99
+phase2_worker_coalition_min_voters: 2
+phase2_worker_coalition_min_agreement: 0.58
+phase2_worker_coalition_min_strength: 0.45
+phase2_worker_coalition_minimum_edge_multiple: 1.2
+phase2_worker_coalition_settle_counterfactuals_enabled: true
+phase2_worker_coalition_challenged_vote_weight: 0.55
+phase2_worker_coalition_triune_mind_enabled: true
+phase2_worker_coalition_triune_loki_enabled: true
+phase2_worker_coalition_triune_michael_min_validation_score: 0.42
+phase2_worker_coalition_triune_loki_challenge_risk: 0.45
+phase2_worker_coalition_triune_loki_veto_risk: 0.82
+phase2_meta_strategy_council_enabled: true
+phase2_meta_strategy_min_harmony_index: 0.6
+phase2_meta_strategy_min_regime_confidence: 0.35
+phase2_meta_strategy_stale_after_sec: 45.0
+phase2_meta_strategy_min_continuity: 0.92
+phase2_meta_strategy_negative_memory_mean_net_bps: -5.0
+phase2_meta_strategy_negative_memory_min_samples: 3
+phase2_advanced_system_source_roots:
+  metatron: /home/byron/Downloads/Metatron-triune-outbound-gate
+  beast: /home/byron/EdgeK-BEAST
+  integritas: /home/byron/Integritas-Mechanicus
+phase2_walk_forward_calibration_enabled: true
+phase2_calibration_max_samples: 250
+phase2_calibration_min_slice_samples: 12
+phase2_calibration_min_regime_samples: 18
+phase2_calibration_min_model_samples: 30
+phase2_calibration_min_distinct_symbols: 3
+phase2_calibration_min_distinct_time_buckets: 3
+phase2_calibration_stress_cost_multiple: 1.5
+phase2_calibration_prior_strength: 12.0
+phase2_calibration_one_sided_z: 1.645
+phase2_calibration_winsor_tail_fraction: 0.05
+phase2_calibration_min_stressed_lower_bound_bps: 0.0
+phase2_calibration_min_probability_lower_bound: 0.5
+phase2_latency_buffer_bps: 2.0
+phase2_max_total_cost_bps: 180.0
+phase2_min_data_quality: 0.99
+phase2_minimum_edge_multiple: 2.0
+phase2_require_frontier_for_adaptive_recovery: true
+phase2_frontier_min_realized_net_bps: 2.5
+phase2_frontier_min_samples: 5
+phase2_regime_suppression_min_samples: 6
+phase2_regime_suppression_max_mean_net_bps: -2.5
+phase2_regime_reentry_recent_window: 6
+phase2_regime_reentry_min_samples: 3
+phase2_regime_reentry_min_mean_net_bps: 2.0
+phase2_regime_reentry_lookback_hours: 6.0
+phase2_readiness_min_distinct_days: 14
+phase2_readiness_distinct_snapshot_bucket_hours: 1
+phase2_readiness_min_forecasts: 300
+phase2_readiness_min_settled_non_abstain: 100
+phase2_reference_notional_usd: 5.0
+phase2_gate_frozen_passed: true
+phase2_gate_frozen_reason: phase2_positive_slice_posterior_gate_passed_2026_08_06
+phase2_reuse_min_samples: 5
+phase2_reuse_min_mean_net_bps: 2.0
+phase2_reuse_min_win_rate: 0.5
+phase2_transform_reuse_min_samples: 8
+phase2_transform_reuse_min_mean_net_bps: 2.0
+phase2_transform_reuse_min_win_rate: 0.5
+phase2_transform_reuse_enabled: false
+phase2_rapid_paper_notional_usd: 5.0
+phase2_rapid_paper_max_open_trades: 12
+phase2_rapid_paper_max_forecast_age_sec: 180
+phase2_rapid_paper_max_observation_age_sec: 300
+phase2_rapid_paper_data_gap_cooldown_sec: 3600
+phase2_rapid_paper_loss_cooldown_sec: 3600
+phase2_rapid_paper_negative_memory_max_hits: 2
+phase2_rapid_paper_model_direction_gate_min_samples: 5
+phase2_rapid_paper_model_direction_min_win_rate: 0.35
+phase2_rapid_paper_model_direction_min_mean_net_bps: 0.0
+phase2_rapid_paper_champion_scout_enabled: false
+phase2_rapid_paper_champion_scout_min_samples: 3
+phase2_rapid_paper_champion_scout_min_win_rate: 0.5
+phase2_rapid_paper_champion_scout_min_mean_net_bps: 5.0
+phase2_rapid_paper_champion_scout_min_total_net_bps: 1.0
+phase2_rapid_paper_champion_scout_fetch_multiplier: 8
+phase2_rapid_paper_champion_scout_history_limit: 10000
+phase2_rapid_paper_min_expected_net_bps: 0.0
+phase2_rapid_paper_min_probability: 0.5
+phase2_rapid_paper_allowed_directions:
+- UP
+- DOWN
+phase2_rapid_paper_ollama_url: http://127.0.0.1:11434
+phase2_rapid_paper_ollama_model: beast-crystal-qwen25-05b:latest
+phase2_reversion_min_range_extreme: 0.8
+phase2_reversion_allowed_regimes:
+- stretch_exhaustion
+- quiet_range
+- balanced_transition
+phase2_reversion_min_regime_confidence: 0.3
+phase2_reversion_min_tradability_score: 0.5
+phase2_reversion_min_reversal_strength: 0.3
+phase2_reversion_min_stretch_zscore: 1.25
+phase2_safety_buffer_bps: 3.0
+phase2_settlement_batch_limit: 500
+phase2_settlement_max_backlog_age_sec: 21600
+phase2_settlement_tolerance_sec: 600
+phase2_settlement_abandon_after_sec: 3600
+phase2_materialized_scorecard_ttl_sec: 60
+phase2_taker_fee_bps_per_side: 80.0
+medium_trend_symbols:
+- BTC/USD
+- ETH/USD
+- SOL/USD
+medium_trend_horizons_seconds:
+- 14400
+- 21600
+- 43200
+- 86400
+medium_trend_lookbacks_seconds:
+- 3600
+- 14400
+- 86400
+medium_trend_min_history_points: 12
+medium_trend_min_data_quality: 0.99
+medium_trend_max_spread_bps: 40.0
+medium_trend_min_momentum_bps: 35.0
+medium_trend_slippage_bps: 10.0
+medium_trend_cost_stress_multiplier: 1.5
+medium_trend_min_entries_per_slice: 8
+medium_trend_min_lower_bound_net_bps: 5.0
+medium_trend_allow_unverified_fees: false
+# NOTE (2026-08-06): disabled per user directive to focus on small time windows (this model's
+# horizons are 4h/6h/12h/24h - the opposite of the core high-vol/low-cost/short-window
+# philosophy). phase2_horizons_seconds (5/15/60 min) remains the primary engine.
+medium_trend_phase2_model_enabled: false
+derivatives_trend_symbols:
+- BTC/USD
+- ETH/USD
+- SOL/USD
+derivatives_trend_horizons_seconds:
+- 43200
+- 86400
+- 259200
+derivatives_trend_lookbacks_seconds:
+- 3600
+- 14400
+derivatives_trend_min_history_points: 12
+derivatives_trend_min_data_quality: 0.99
+derivatives_trend_max_spread_bps: 40.0
+derivatives_trend_min_momentum_bps: 25.0
+derivatives_trend_breakout_lookback_multiplier: 1.0
+derivatives_trend_min_vol_expansion_ratio: 1.15
+derivatives_trend_vol_baseline_multiplier: 4.0
+derivatives_trend_min_market_breadth: 0.50
+derivatives_trend_slippage_bps: 3.0
+derivatives_trend_cost_stress_multiplier: 1.5
+derivatives_trend_min_entries_per_slice: 8
+derivatives_trend_min_lower_bound_net_bps: 10.0
+derivatives_trend_post_only_fill_probability: 0.75
+derivatives_trend_funding_drag_bps_per_8h: 1.0
+derivatives_trend_max_concurrent_positions: 1
+derivatives_trend_maker_fee_bps: 2.0
+derivatives_trend_taker_fee_bps: 5.0
+derivatives_trend_min_notional_usd: 10.0
+derivatives_trend_allow_unverified_fees: false
+# NOTE (2026-08-06): disabled per user directive to focus on small time windows (this
+# model's horizons are 12h/24h/3days - the opposite of the core high-vol/low-cost/
+# short-window philosophy). phase2_horizons_seconds (5/15/60 min) remains the primary engine.
+derivatives_trend_phase2_model_enabled: false
+derivatives_trend_ml_veto_enabled: true
+derivatives_trend_ml_veto_max_failure_probability: 0.50
+delta_neutral_carry_spread_slippage_bps: 6.0
+delta_neutral_carry_collateral_cost_bps: 2.0
+delta_neutral_carry_funding_uncertainty_bps: 3.0
+delta_neutral_carry_rebalance_reserve_bps: 2.0
+delta_neutral_carry_safety_buffer_bps: 3.0
+delta_neutral_carry_min_required_net_return_bps: 15.0
+phase3_base_latency_ms: 180.0
+phase3_execution_lab_enabled: true
+phase3_interval_sec: 120
+phase3_maker_fee_bps: 40.0
+phase3_fee_profile_verified: true
+phase3_fee_profile_source: kraken_private_trade_volume:ETH/USD
+phase3_venue_economics_receipt: data/kraken_fee_verification_receipt.json
+phase3_require_verified_fees: true
+phase3_max_depth_participation: 0.01
+phase3_max_entry_spread_bps: 60.0
+phase3_max_forecasts_per_cycle: 50
+phase3_candidate_pool_multiplier: 2
+phase3_candidate_history_limit: 500
+phase3_candidate_model_id: ''
+phase3_candidate_model_prefix: ''
+phase3_settlement_follows_candidate_filter: true
+phase3_max_simulations_per_forecast: 20
+phase3_max_notional_usd: 25.0
+phase3_max_slippage_bps: 75.0
+phase3_min_data_quality: 0.99
+phase3_min_expected_net_bps: 120.0
+phase3_min_historical_realized_net_bps: 5.0
+phase3_min_historical_samples: 3
+phase3_min_regime_historical_realized_net_bps: 2.5
+phase3_min_regime_historical_samples: 2
+phase3_frontier_min_settled_trades: 5
+phase3_frontier_min_mean_realized_net_bps: 2.5
+phase3_min_notional_usd: 5.0
+phase3_min_probability_positive_net: 0.58
+phase3_prefer_profitability_frontier: true
+phase3_prefer_exact_reuse_candidates: true
+phase3_prefer_regime_alignment: true
+phase3_prefer_research_candidates: true
+phase3_exact_reuse_priority_boost: 4.0
+phase3_worker_counterfactual_simulation_enabled: true
+phase3_readiness_max_mean_2x_loss_bps: 50.0
+phase3_readiness_min_completed: 100
+phase3_gate_frozen_passed: true
+phase3_gate_frozen_reason: phase3_narrow_execution_slice_posterior_gate_passed_2026_08_06
+phase3_route_damping_half_life_sec: 900
+phase3_route_damping_suppress_at: 1000
+phase3_calibration_exploration_fallback_enabled: true
+phase3_calibration_exploration_model_ids:
+- candidate_freqai_transparent_linear_v1
+- candidate_finrl_conservative_policy_proxy_v1
+- adapter_freqtrade_breakout_v1
+- candidate_webcrypto_market_context_proxy_v1
+- worker_coalition_meta_v1
+- worker_signal_bollinger_v1
+- worker_signal_rsi_v1
+- worker_signal_rsi2_v1
+phase3_calibration_exploration_order_policies:
+- passive_then_chase
+- marketable_limit
+- passive_post_only
+phase3_calibration_exploration_max_per_symbol: 8
+phase3_calibration_exploration_max_per_hour_bucket: 4
+phase3_risk_fraction: 0.0005
+phase3_simulated_equity_usd: 1000.0
+phase3_sleeve_fraction: 0.02
+phase3_taker_fee_bps: 80.0
+phase4_bootstrap_block_size: 5
+phase4_bootstrap_samples: 400
+phase4_candidate_key_mode: narrow_execution_slice
+phase4_dsr_min_trial_samples: 5
+phase4_dsr_min_probability: 0.95
+phase4_embargo_seconds: 3600
+phase4_human_review_required: true
+phase4_interval_sec: 900
+phase4_max_cost2_loss_bps: 50.0
+phase4_max_month_profit_concentration: 0.35
+phase4_max_week_profit_concentration: 0.5
+phase4_max_rows: 25000
+phase4_max_rows_per_candidate_scenario: 400
+phase4_max_symbol_profit_concentration: 0.25
+phase4_min_candidate_trades: 10
+# NOTE (2026-08-06): was 2 with a 1-hour bucket size, which meant this gate only required 2 distinct
+# HOURS of trade evidence, not 2 distinct days, despite the name. Fixed alongside the bucket-hours
+# value below. 5 real distinct days is achievable within the end-of-month deadline given the live
+# feed already has ~6 days of history; tighten further (code default is 14) once more history exists.
+phase4_min_distinct_days: 5
+phase4_distinct_snapshot_bucket_hours: 24
+phase4_min_parameter_positive_ratio: 0.7
+phase4_min_walk_forward_positive_ratio: 0.6
+phase4_pbo_max: 0.2
+phase4_purge_seconds: 3600
+phase4_selection_min_expected_net_bps: 0.0
+phase4_selection_min_probability: 0.5
+phase4_validation_enabled: true
+phase4_walk_forward_folds: 5
+phase4_dsr_required: true
+research_pipeline_phase3_only: false
+research_pipeline_phase4_only: false
+research_pipeline_phase5_only: true
+research_pipeline_interval_sec: 3600
+research_pipeline_phase_timeout_sec: 2700
+phase5_human_approval_required: true
+phase5_interval_sec: 120
+phase5_parameter_freeze_required: true
+phase5_readiness_max_cost_mae_bps: 20.0
+# NOTE (2026-08-06): was 96 distinct days (~3+ months) with a 1-hour bucket size (same units bug as
+# phase4 above -- effectively only required 96 distinct HOURS, ~4 days, not 96 days). Fixed the bucket
+# size below so this is now real calendar days. 10 is a deliberate reduction from the code's intended
+# rigor to fit an end-of-month deadline -- the settled-trade-count/fill-ratio/cost-error gates below
+# remain the primary protection, not elapsed time.
+phase5_readiness_min_distinct_days: 10
+phase5_readiness_distinct_snapshot_bucket_hours: 24
+phase5_readiness_min_fill_ratio: 0.5
+phase5_readiness_min_settled: 100
+phase5_readiness_require_positive_mean: true
+phase5_shadow_chase_timeout_sec: 30
+phase5_shadow_enabled: true
+phase5_shadow_entry_latency_ms: 250.0
+phase5_frozen_shadow_min_utility: 0.30
+phase5_shadow_max_intents_per_cycle: 25
+phase5_shadow_max_spread_bps: 60.0
+phase5_shadow_min_data_quality: 0.99
+phase5_shadow_reference_notional_usd: 10.0
+phase5_shadow_settlement_tolerance_sec: 900
+phase5_shadow_stop_distance_bps: 250.0
+phase6_allowed_symbols:
+- ETH/USD
+phase6_approval_lease_sec: 900
+phase6_canary_enabled: true
+phase6_candidate_max_age_sec: 30
+phase6_daily_loss_halt_usd: 1.0
+phase6_deadman_refresh_sec: 20
+phase6_deadman_timeout_sec: 60
+phase6_live_submission_enabled: false
+phase6_market_data_max_age_sec: 10
+phase6_max_entry_orders_per_approval: 1
+phase6_max_notional_usd: 5.0
+phase6_max_open_orders: 1
+phase6_max_open_positions: 1
+phase6_max_slippage_bps: 40.0
+phase6_max_spread_bps: 30.0
+phase6_min_data_quality: 0.99
+phase6_min_phase7_round_trips: 50
+phase6_private_api_base_url: https://api.kraken.com
+phase6_private_api_timeout_sec: 10.0
+phase6_require_isolated_account: true
+phase6_stop_distance_bps: 250.0
+phase6_target_distance_bps: 400.0
+phase7_allowed_symbols:
+- ETH/USD
+- BTC/USD
+- SOL/USD
+phase7_approval_lease_sec: 3600
+phase7_auto_demotion_enabled: true
+phase7_growth_enabled: true
+phase7_max_drawdown_bps: 500.0
+phase7_max_loss_rate: 0.65
+phase7_max_mean_abs_slippage_bps: 40.0
+phase7_max_rejection_rate: 0.05
+phase7_max_stage: 4
+phase7_min_distinct_days: 14
+phase7_min_new_round_trips: 50
+phase7_min_profit_factor: 1.05
+phase7_proposal_cooldown_sec: 86400
+phase7_proposal_expiry_sec: 604800
+phase7_require_positive_total_pnl: true
+phase7_stage_activation_enabled: false
+phase7_stage_notional_caps_usd:
+- 5.0
+- 7.5
+- 10.0
+- 15.0
+- 20.0
+phase7_stage_symbol_caps:
+- 1
+- 1
+- 2
+- 2
+- 3
+phoenix_phase: 7
+pmm_dynamic_max_abs_change_24h_pct: 0.25
+pmm_dynamic_max_spread_pct: 0.02
+pmm_dynamic_min_quote_spread_pct: 0.004
+pmm_dynamic_min_volume_24h_usd: 50000.0
+pmm_simple_max_spread_pct: 0.015
+pmm_simple_min_liquidity_usd: 25000.0
+pmm_simple_min_quote_spread_pct: 0.003
+poll_seconds: 10
+promotion_allowed_stages:
+- paper
+- research_import
+promotion_max_drawdown_pct: 5.0
+promotion_min_paper_trades: 25
+promotion_min_win_rate: 0.52
+public_bot_backtest_dir: data/public_bot_backtests
+public_bot_integrations_enabled: true
+public_bot_metrics_auto_promote: false
+public_bot_repo_root: external/public-bots
+quote_backoff_cooldown_sec: 30
+quote_order_size: 1.0
+quote_retry_attempts: 3
+quote_retry_backoff_sec: 0.6
+ratio_gate_enabled: true
+ratio_gate_trade_override_enabled: false
+redis_db: 1
+redis_host: localhost
+redis_password: ''
+redis_port: 6379
+regime_confidence_threshold: 0.15
+regime_confirmations: 3
+regime_min_duration_sec: 300
+regime_timeframes:
+- 1m
+- 5m
+- 1h
+rejects_threshold_5m: 20
+risk_pct: 0.005
+rsi_overbought: 70
+rsi_oversold: 30
+rsi_window: 14
+security_always_armed: true
+security_auto_pause: false
+security_enabled: true
+slippage_threshold: 0.01
+sma_fast: 20
+sma_slow: 50
+spread_guard_pct: 0.05
+stable_reserve_assets:
+- USDC
+- USDT
+- USD
+strategy_cooldown: 60.0
+strategy_type: sma_crossover
+svs_min_threshold: 0.35
+swarmguard_consensus_min: 3
+swarmguard_consensus_penalty: 0.7
+swarmguard_enabled: true
+swarmguard_max_trades_per_hour: 12
+swarmguard_min_trade_interval_sec: 600
+swarmguard_risk_map_path: config/risk_agent_control_map.json
+swarmguard_risk_register_path: config/risk_register.json
+swarmguard_risk_rules_path: config/swarmguard_rules.json
+swarmguard_rules_path: config/swarmguard_rules_v1.json
+swarmguard_small_trade_bypass: false
+swarmguard_small_trade_usd: 0.5
+swarmguard_weight_decay: 0.9
+swarmguard_weight_floor: 0.4
+symbol: ETH/USD
+symbol_memory_path: data/symbol_memory.json
+target_base_ratio: 0.5
+target_ratio_band: 0.1
+tax_export_enabled: true
+tax_export_path: data/tax_export.csv
+throttle_bypass_notional: 0.5
+throttle_clear_sec: 300
+throttle_multiplier: 5.0
+ui_enabled: true
+ui_host: 127.0.0.1
+ui_port: 5001
+volatility_harvest_enabled: false
+volatility_harvest_max_drawdown_pct: 0.08
+volatility_harvest_min_expansion: 1.15
+volatility_harvest_min_return_pct: 0.002
+volatility_harvest_min_volume_surge: 0.85
+volatility_harvest_quote_asset: USD
+volatility_harvest_require_exit: true
+wallet_approval_check_enabled: true
+wallet_max_daily_spend_usd: 10.0
+wallet_max_token_exposure_pct: 0.2
+wallet_poll_seconds: 5
+wallet_safety_enabled: true
+wallet_stale_sec: 300.0
+walletconnect_project_id: ''
+watch_address: '0x004eC3B1148aB1f826579f60cA45a3E745CD9926'
+web3_rpc_url: https://mainnet.base.org

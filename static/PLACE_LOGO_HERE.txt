@@ -1,0 +1,9 @@
+Place the provided Hivenance logo image in this folder with the filename `hivenance_logo.png`.
+
+After copying, the dashboard will display the logo at: /static/hivenance_logo.png
+
+Recommended sizes:
+- Width: up to 320px (will scale responsively)
+- Use PNG or WebP with transparent background for best appearance
+
+If you want to use a different filename, update the <img> src in agents/ui_agent.py (search for /static/hivenance_logo.png).

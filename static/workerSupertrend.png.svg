@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Worker Supertrend">
+  <defs>
+    <linearGradient id="sup-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#201306"/>
+      <stop offset="100%" stop-color="#0f0803"/>
+    </linearGradient>
+    <linearGradient id="sup-gold" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="#ffdb73"/>
+      <stop offset="100%" stop-color="#d08314"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#sup-bg)"/>
+  <path d="M60 170l42-42 26 18 52-60" fill="none" stroke="url(#sup-gold)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M168 86h24v24" fill="none" stroke="url(#sup-gold)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M62 196h132" stroke="url(#sup-gold)" stroke-opacity=".4" stroke-width="8" stroke-linecap="round"/>
+</svg>

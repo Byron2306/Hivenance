@@ -1,0 +1,43 @@
+auto_trade_enabled: false
+auto_trading_enabled: false
+automatic_scaling: false
+coin_selection_auto_switch: false
+desktop_arming_enabled: false
+dry_run: true
+exchange: kraken
+hummingbot_v2_leverage: 1
+leverage: 1
+live_mode: false
+mode: controlled_growth_governor_locked
+onchain_enabled: false
+operator_process_only: true
+phase0_quarantine: true
+phase5_shadow_enabled: true
+phase6_canary_enabled: true
+phase6_live_submission_enabled: false
+phase6_max_notional_usd: 20.0
+phase7_growth_enabled: true
+phase7_stage_activation_enabled: false
+phase7_max_stage: 4
+phase7_allowed_symbols:
+  - ETH/USD
+  - BTC/USD
+  - SOL/USD
+phase7_stage_notional_caps_usd: [5.0, 7.5, 10.0, 15.0, 20.0]
+phase7_stage_symbol_caps: [1, 1, 2, 2, 3]
+phase7_proposal_cooldown_sec: 86400
+phase7_proposal_expiry_sec: 604800
+phase7_approval_lease_sec: 3600
+phase7_min_new_round_trips: 50
+phase7_min_distinct_days: 14
+phase7_require_positive_total_pnl: true
+phase7_min_profit_factor: 1.05
+phase7_max_drawdown_bps: 500.0
+phase7_max_loss_rate: 0.65
+phase7_max_rejection_rate: 0.05
+phase7_max_mean_abs_slippage_bps: 40.0
+phase7_auto_demotion_enabled: true
+phoenix_phase: 7
+private_credentials_source: environment_only
+public_bot_metrics_auto_promote: false
+swarmguard_small_trade_bypass: false

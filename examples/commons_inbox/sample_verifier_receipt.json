@@ -1,0 +1,27 @@
+{
+  "schema": "hivenance_commons_verifier_receipt_v1",
+  "receipt_type": "verifier",
+  "receipt_id": "verifier_receipt_sample_phase4_20260805",
+  "ticket_id": "poolwork_sample_phase4_validation",
+  "lease_id": "lease_sample_phase4_worker_b",
+  "worker_id": "node_remote_b",
+  "created_ts": 1785931200,
+  "pool_type": "verifier_pool",
+  "task_class": "phase4_walk_forward_reproduction",
+  "phase_scope": 4,
+  "signature": "demo-signature",
+  "nonce": "demo-nonce-phase4",
+  "input_root": "demo-input-root-phase4",
+  "expires_ts": 1785934800,
+  "verification_verdict": "PASS",
+  "payload": {
+    "candidate_key": "candidate_freqai_xbt_breakout::maker_pullback",
+    "walk_forward_positive_ratio": 0.57,
+    "bootstrap_lower_95_bps": 3.4,
+    "authority_ceiling": "proposal_only",
+    "notes": [
+      "Demo verifier receipt for adapter path testing.",
+      "Useful for archive and UI verification."
+    ]
+  }
+}

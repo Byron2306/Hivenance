@@ -1,0 +1,113 @@
+{
+  "swarmguard_rules": [
+    {
+      "rule_id": "SG-LIQ-GATE-01",
+      "type": "HARD_BLOCK",
+      "trigger": {
+        "top_of_book_depth_usd": "< required_position_usd * 10"
+      },
+      "action": "REJECT_TRADE",
+      "enforced_by": "ExecutionAgent"
+    },
+    {
+      "rule_id": "SG-DEPTH-CAP-02",
+      "type": "LIMIT",
+      "trigger": {
+        "order_size_pct_of_depth": "> 0.05"
+      },
+      "action": "REDUCE_POSITION",
+      "enforced_by": "ExecutionAgent"
+    },
+    {
+      "rule_id": "SG-FEE-FILTER-01",
+      "type": "FILTER",
+      "trigger": {
+        "expected_net_return": "<= 0"
+      },
+      "action": "REJECT_SIGNAL",
+      "enforced_by": "StrategyAgent"
+    },
+    {
+      "rule_id": "SG-REGIME-GATE-01",
+      "type": "MODE_SWITCH",
+      "trigger": {
+        "oracle_regime": "CHAOTIC"
+      },
+      "action": "DISABLE_BREAKOUT_WORKERS",
+      "enforced_by": "OracleAgent"
+    },
+    {
+      "rule_id": "SG-WORKER-WEIGHT-DECAY-01",
+      "type": "ADAPTIVE",
+      "trigger": {
+        "worker_loss_streak": ">= 3"
+      },
+      "action": "DECAY_WORKER_WEIGHT",
+      "enforced_by": "NurseAgent"
+    },
+    {
+      "rule_id": "SG-DIVERSITY-CAP-01",
+      "type": "CONSENSUS_LIMIT",
+      "trigger": {
+        "same_direction_workers": "> 2"
+      },
+      "action": "CAP_EXPOSURE",
+      "enforced_by": "CouncilAgent"
+    },
+    {
+      "rule_id": "SG-COOLDOWN-01",
+      "type": "TIME_LOCK",
+      "trigger": {
+        "trades_per_hour": "> max_allowed"
+      },
+      "action": "PAUSE_TRADING",
+      "enforced_by": "SwarmGuard"
+    },
+    {
+      "rule_id": "SG-LEARNING-DECAY-01",
+      "type": "LEARNING",
+      "trigger": {
+        "alpha_age_hours": "> 72"
+      },
+      "action": "DECAY_LEARNED_WEIGHTS",
+      "enforced_by": "NurseAgent"
+    },
+    {
+      "rule_id": "SG-EXEC-CONFIRM-01",
+      "type": "SAFETY",
+      "trigger": {
+        "order_unconfirmed_ms": "> 5000"
+      },
+      "action": "RETRY_OR_ABORT",
+      "enforced_by": "ExecutionAgent"
+    },
+    {
+      "rule_id": "SG-KILL-API-01",
+      "type": "KILL_SWITCH",
+      "trigger": {
+        "api_failures": ">= 3"
+      },
+      "action": "GLOBAL_PAUSE",
+      "enforced_by": "KillSwitchAgent"
+    },
+    {
+      "rule_id": "SG-OVERRIDE-STAKE-01",
+      "type": "GOVERNANCE",
+      "trigger": {
+        "override_request": true
+      },
+      "action": "REQUIRE_BUZZ_STAKE",
+      "stake_required": 200,
+      "enforced_by": "SwarmGuard"
+    },
+    {
+      "rule_id": "SG-OVERRIDE-SLASH-01",
+      "type": "PENALTY",
+      "trigger": {
+        "override_used_in_live_mode": true
+      },
+      "action": "SLASH_100_PERCENT",
+      "enforced_by": "SwarmGuard"
+    }
+  ]
+}

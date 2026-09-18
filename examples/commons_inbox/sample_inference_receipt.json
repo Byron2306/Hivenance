@@ -1,0 +1,29 @@
+{
+  "schema": "hivenance_commons_inference_receipt_v1",
+  "receipt_type": "inference",
+  "receipt_id": "inference_receipt_sample_phase3_20260805",
+  "ticket_id": "poolwork_sample_phase3_execution_policy",
+  "lease_id": "lease_sample_phase3_worker_a",
+  "worker_id": "node_remote_a",
+  "created_ts": 1785931200,
+  "pool_type": "inference_pool",
+  "task_class": "phase3_execution_policy_candidate",
+  "phase_scope": 3,
+  "signature": "demo-signature",
+  "nonce": "demo-nonce-phase3",
+  "input_root": "demo-input-root-phase3",
+  "expires_ts": 1785934800,
+  "payload": {
+    "symbol": "XBT/USD",
+    "model_id": "adapter_freqtrade_breakout_alpha",
+    "order_policy": "maker_pullback",
+    "scenario": "normal",
+    "expected_net_bps": 14.2,
+    "probability_positive_net": 0.58,
+    "authority_ceiling": "proposal_only",
+    "notes": [
+      "Demo inference receipt for adapter path testing.",
+      "Should never create live authority."
+    ]
+  }
+}

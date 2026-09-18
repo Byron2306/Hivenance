@@ -1,0 +1,130 @@
+{
+  "risk_register": [
+    {
+      "risk_id": "R-LIQ-01",
+      "category": "Liquidity",
+      "description": "Thin order books prevent clean exits or cause excessive slippage.",
+      "impact": "HIGH",
+      "likelihood": "HIGH",
+      "owner": "ExecutionAgent",
+      "metrics": [
+        "top_of_book_depth",
+        "spread_pct",
+        "slippage_realized"
+      ],
+      "controls": [
+        "SG-LIQ-GATE-01",
+        "SG-DEPTH-CAP-02"
+      ]
+    },
+    {
+      "risk_id": "R-FEE-02",
+      "category": "Fees",
+      "description": "Fees and spread erase micro-gains in high-frequency trading.",
+      "impact": "MEDIUM",
+      "likelihood": "HIGH",
+      "owner": "StrategyAgent",
+      "metrics": [
+        "net_pnl_after_fees",
+        "fee_to_gross_ratio"
+      ],
+      "controls": [
+        "SG-FEE-FILTER-01"
+      ]
+    },
+    {
+      "risk_id": "R-VOL-03",
+      "category": "Volatility Trap",
+      "description": "False breakouts and noise-driven price moves cause churn losses.",
+      "impact": "HIGH",
+      "likelihood": "VERY_HIGH",
+      "owner": "OracleAgent",
+      "metrics": [
+        "win_rate_by_regime",
+        "avg_trade_duration"
+      ],
+      "controls": [
+        "SG-REGIME-GATE-01",
+        "SG-WORKER-WEIGHT-DECAY-01"
+      ]
+    },
+    {
+      "risk_id": "R-CORR-04",
+      "category": "Correlation",
+      "description": "Multiple workers trigger similar losing trades simultaneously.",
+      "impact": "HIGH",
+      "likelihood": "MEDIUM",
+      "owner": "CouncilAgent",
+      "metrics": [
+        "loss_correlation_index",
+        "simultaneous_trade_count"
+      ],
+      "controls": [
+        "SG-DIVERSITY-CAP-01"
+      ]
+    },
+    {
+      "risk_id": "R-OVER-05",
+      "category": "Overtrading",
+      "description": "Excessive trading frequency reduces net returns.",
+      "impact": "MEDIUM",
+      "likelihood": "HIGH",
+      "owner": "SwarmGuard",
+      "metrics": [
+        "trades_per_hour",
+        "pnl_per_trade"
+      ],
+      "controls": [
+        "SG-COOLDOWN-01",
+        "SG-TRADE-CAP-01"
+      ]
+    },
+    {
+      "risk_id": "R-LEARN-06",
+      "category": "Learning Bias",
+      "description": "System overfits luck or transient regimes as persistent alpha.",
+      "impact": "HIGH",
+      "likelihood": "MEDIUM",
+      "owner": "NurseAgent",
+      "metrics": [
+        "alpha_decay_rate",
+        "performance_half_life"
+      ],
+      "controls": [
+        "SG-LEARNING-DECAY-01"
+      ]
+    },
+    {
+      "risk_id": "R-EXEC-07",
+      "category": "Execution",
+      "description": "Exchange outages, partial fills, or desynchronization.",
+      "impact": "HIGH",
+      "likelihood": "MEDIUM",
+      "owner": "ExecutionAgent",
+      "metrics": [
+        "order_fill_latency",
+        "balance_mismatch_events"
+      ],
+      "controls": [
+        "SG-EXEC-CONFIRM-01",
+        "SG-KILL-API-01"
+      ]
+    },
+    {
+      "risk_id": "R-HUMAN-08",
+      "category": "Human Override",
+      "description": "Manual overrides bypass safety systems.",
+      "impact": "HIGH",
+      "likelihood": "MEDIUM",
+      "owner": "SecurityAgent",
+      "metrics": [
+        "override_count",
+        "override_loss_events"
+      ],
+      "controls": [
+        "SG-OVERRIDE-STAKE-01",
+        "SG-OVERRIDE-SLASH-01"
+      ]
+    }
+  ]
+}

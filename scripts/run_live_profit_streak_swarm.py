@@ -244,6 +244,15 @@ class KrakenPublicFeed:
         pair_arg = ",".join(self.api_pairs[symbol] for symbol in self.symbols)
         return self._get("Ticker", {"pair": pair_arg})
 
+    def recent_trades(self, symbol: str, count: int = 80) -> list[dict[str, float]]:
+        result = self._get("PostTrade", {"symbol": symbol, "count": int(count)})
+        out: list[dict[str, float]] = []
+        for trade in result.get("trades") or []:
+            price = _finite(trade.get("price"))
+            qty = max(0.0, _finite(trade.get("quantity")))
+            if price > 0:
+                out.append({"price": price, "quantity": qty})
+        return out
     def seed_prices(self) -> dict[str, float]:
         result = self._ticker_result()
         self._consume_ticker(result, seed_only=True)
@@ -363,16 +372,27 @@ class LiveStreakLab:
         self.conn.commit()
 
     def warm_start(self) -> None:
-        print(f"[{self.run_id}] seeding public Kraken prices; no API key")
+        print(f"[{self.run_id}] warming actual Phoenix workers from public Kraken trades; no API key")
         seeded = self.feed.seed_prices()
         self.last_prices.update(seeded)
         for symbol in self.args.symbols:
-            price = seeded.get(symbol)
-            if price:
-                self.series[symbol].add(price, 0.0)
-                print(f"  {symbol}: {price}")
-            else:
-                print(f"  WARN {symbol}: no seed price; it will join if public trades appear")
+            warmed = 0
+            api_symbol = self.feed.api_pairs.get(symbol, symbol)
+            try:
+                trades = self.feed.recent_trades(api_symbol, count=80)
+            except Exception as exc:
+                print(f"  WARN {symbol}: trade warmup failed: {type(exc).__name__}: {exc}")
+                trades = []
+            state = self.series[symbol]
+            for trade in trades[-80:]:
+                state.add(trade["price"], trade["quantity"])
+                warmed += 1
+            if not warmed:
+                price = seeded.get(symbol)
+                if price:
+                    state.add(price, 0.0)
+            latest = seeded.get(symbol)
+            print(f"  {symbol}: warm_samples={warmed} latest={latest}")
 
     def _worker_votes(self, symbol: str, ts: float) -> dict[str, int]:
         state = self.series[symbol]

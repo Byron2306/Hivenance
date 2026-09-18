@@ -144,6 +144,8 @@ def main() -> int:
             print("Highest expected-edge rebalances")
             print("--------------------------------")
             for row in best:
+                maker_net=row["maker_net_edge_bps"]
+                maker_text="n/a" if maker_net is None else f"{float(maker_net):+.2f}bps"
                 print(
                     f"{str(row['mutation_id']):27s} {row['from_symbol']} -> {row['to_symbol']} "
                     f"cheap={float(row['cheapness_z'] or 0):+.2f}z "
@@ -151,7 +153,7 @@ def main() -> int:
                     f"edge={float(row['net_edge_bps'] or 0):+7.2f}bps "
                     f"cost={float(row['total_route_cost_bps'] or 0):5.2f}bps "
                     f"break_even_fee={float(row['break_even_fee_bps_side'] or 0):5.2f}/side "
-                    f"maker_net={'n/a' if row['maker_net_edge_bps'] is None else f'{float(row["maker_net_edge_bps"]):+.2f}bps'} "
+                    f"maker_net={maker_text} "
                     f"{row['route_label']} batch={int(row['batch_confirmations'] or 0)}"
                 )
 

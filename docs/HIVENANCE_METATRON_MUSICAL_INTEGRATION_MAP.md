@@ -758,3 +758,42 @@ prospective edge authority.
 
 The learned voice never receives execution, promotion, resume or scaling
 authority.
+
+### Canonical World Score — shared sheet music
+
+Polyphia now has an explicit common score page:
+
+`strategies/relative_value_lab/world_score.py`
+
+This closes a major integration gap inherited from earlier architecture where
+many organs carried `world_state_id/world_state_hash` but the binding target
+was not itself a canonical relative-value organ.
+
+The Canonical World Score separates three namespaces:
+
+- `observed_market` — immutable public observations;
+- `interpreted_research` — organ interpretations bound to the observed parent;
+- `synthetic_counterfactual` — Mystique / synthetic branches.
+
+The score page is deterministic and freshness-bounded. Future observations,
+conflicting same-source observations, stale pages, and cross-page claimants are
+refused or surfaced as binding violations.
+
+Harmony Law now validates directly against this page. Governance Epoch starts
+from it and can become invalid when the page itself becomes stale even if the
+epoch TTL has not yet elapsed.
+
+Musically:
+
+```text
+VNS / public observations
+        ↓
+canonical measure
+        ↓
+all instruments read the same bar
+        ↓
+polyphony without world-state ambiguity
+```
+
+The score page contains observation truth only. It never grants execution or
+promotion authority.

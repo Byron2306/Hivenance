@@ -66,17 +66,23 @@ def main() -> int:
         receipts.append(receipt)
         by_state[receipt.state] += 1
 
-        if receipt.state == "RESONANT" and receipt.direction != "ABSTAIN":
-            sign = 1.0 if receipt.direction == "LONG_A_SHORT_B" else -1.0
-            seen = set()
-            for row in rows:
-                key = (row.horizon_seconds, row.realized_signed_bps)
-                if key in seen:
-                    continue
-                seen.add(key)
-                gated_by_horizon[row.horizon_seconds].append(
-                    sign * float(row.realized_signed_bps)
-                )
+        state_by_horizon = {
+            state.horizon_seconds: state
+            for state in receipt.horizon_states
+        }
+        seen = set()
+        for row in rows:
+            state = state_by_horizon.get(row.horizon_seconds)
+            if state is None or state.state != "RESONANT" or state.direction == "ABSTAIN":
+                continue
+            key = (row.horizon_seconds, row.realized_signed_bps)
+            if key in seen:
+                continue
+            seen.add(key)
+            sign = 1.0 if state.direction == "LONG_A_SHORT_B" else -1.0
+            gated_by_horizon[row.horizon_seconds].append(
+                sign * float(row.realized_signed_bps)
+            )
 
     args.receipts_output.parent.mkdir(parents=True, exist_ok=True)
     with args.receipts_output.open("w", encoding="utf-8") as handle:
@@ -96,7 +102,7 @@ def main() -> int:
         }
 
     report = {
-        "schema": "hivenance_harmonic_forecast_governance_report_v1",
+        "schema": "hivenance_harmonic_forecast_governance_report_v2",
         "predictions": len(predictions),
         "choirs": len(receipts),
         "states": dict(sorted(by_state.items())),

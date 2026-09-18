@@ -189,6 +189,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "synthetic_counterfactual_research_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_cognitive_metabolism": {
+        "role": "context_tool_confidence_and_information_burn_listener",
+        "mode": "descriptive_research_metabolism_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

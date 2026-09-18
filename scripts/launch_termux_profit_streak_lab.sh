@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SESSION="${HIVENANCE_STREAK_SESSION:-hivenance-streak-live}"
-VENV="${HIVENANCE_STREAK_VENV:-$ROOT/.venv-streak-termux}"
+PY="${HIVENANCE_STREAK_PYTHON:-python}"
 DURATION="${HIVENANCE_STREAK_DURATION_SEC:-900}"
 INTERVAL="${HIVENANCE_STREAK_INTERVAL_SEC:-1.0}"
 DB="${HIVENANCE_STREAK_DB:-$ROOT/data/live_profit_streak_lab.db}"
@@ -14,7 +14,7 @@ SYMBOLS="${HIVENANCE_STREAK_SYMBOLS:-BTC/USD ETH/USD SOL/USD XRP/USD ADA/USD AVA
 
 cd "$ROOT"
 
-if ! command -v python >/dev/null 2>&1; then
+if ! command -v "$PY" >/dev/null 2>&1; then
   echo "Python missing. In Termux run: pkg install python -y" >&2
   exit 1
 fi
@@ -23,22 +23,13 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -x "$VENV/bin/python" ]]; then
-  echo "Creating lightweight Termux lab venv: $VENV"
-  python -m venv "$VENV"
-fi
-
-PY="$VENV/bin/python"
-PIP="$VENV/bin/pip"
-
-if ! "$PY" - <<'PY' >/dev/null 2>&1
-import ccxt, requests
+# This lab is deliberately stdlib-only on Termux. No CCXT, python-binance,
+# zlib-ng, compiled wheels, private exchange SDKs, or API keys are required.
+"$PY" - <<'PY'
+import sqlite3, urllib.request
+from agents.strategy_workers import MomentumWorker, VolatilityExpansionWorker
+print("TERMUX_STREAK_PREFLIGHT_OK")
 PY
-then
-  echo "Installing lightweight public-market dependencies..."
-  "$PIP" install --upgrade pip
-  "$PIP" install ccxt requests
-fi
 
 mkdir -p "$(dirname "$DB")"
 
@@ -59,13 +50,9 @@ echo "Phoenix live public-market streak lab started."
 echo "Session: $SESSION"
 echo "Duration: ${DURATION}s | cadence: ${INTERVAL}s | cost model: ${COST} bps/side"
 echo "Database: $DB"
-echo "Authority: PUBLIC MARKET + FAKE WALLETS ONLY"
+echo "Transport: Kraken PUBLIC REST via Python stdlib"
 echo "Private API keys loaded: NO"
 echo "Orders submitted: 0"
 echo
 echo "Attach:"
 echo "  tmux attach -t $SESSION"
-echo
-echo "Switch windows:"
-echo "  Ctrl-b 0   live lab"
-echo "  Ctrl-b 1   rolling report"

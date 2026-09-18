@@ -639,6 +639,173 @@ class NurseAgent:
         finally:
             conn.close()
 
+    def review_inventory_drizzle_lab(self, database: str, run_id: str | None = None) -> Dict[str, Any]:
+        """Read-only learning review for inventory-based relative drizzle harvesting."""
+        conn=sqlite3.connect(database)
+        conn.row_factory=sqlite3.Row
+        try:
+            if run_id is None:
+                run=conn.execute(
+                    "SELECT run_id,status,learning_authority,config_json "
+                    "FROM inventory_runs ORDER BY started_ts DESC LIMIT 1"
+                ).fetchone()
+            else:
+                run=conn.execute(
+                    "SELECT run_id,status,learning_authority,config_json "
+                    "FROM inventory_runs WHERE run_id=?",(run_id,)
+                ).fetchone()
+            if not run:
+                return {
+                    "schema":"hivenance_nurse_inventory_drizzle_review_v1",
+                    "status":"NO_INVENTORY_RUN",
+                    "authority":"read_only_learning_review",
+                }
+            rid=str(run["run_id"])
+            try:
+                start_usd=float(json.loads(run["config_json"] or "{}").get("start_usd",1000.0))
+            except Exception:
+                start_usd=1000.0
+
+            marks=conn.execute(
+                """
+                SELECT w.*
+                FROM inventory_wallet_marks w
+                JOIN (
+                  SELECT mutation_id,MAX(ts) AS max_ts
+                  FROM inventory_wallet_marks WHERE run_id=? GROUP BY mutation_id
+                ) x ON x.mutation_id=w.mutation_id AND x.max_ts=w.ts
+                WHERE w.run_id=?
+                """,(rid,rid)
+            ).fetchall()
+            final={}
+            for row in marks:
+                equity=float(row["total_equity_usd"] or 0.0)
+                final[str(row["mutation_id"])]={
+                    "mutation_id":str(row["mutation_id"]),
+                    "final_equity_usd":round(equity,6),
+                    "net_usd":round(equity-start_usd,6),
+                    "modeled_cost_usd":round(float(row["cumulative_cost_usd"] or 0.0),6),
+                    "rebalances":int(row["rebalances"] or 0),
+                    "charged_sides":int(row["charged_sides"] or 0),
+                }
+            hold_net=float((final.get("inventory_hold") or {}).get("net_usd") or 0.0)
+            for item in final.values():
+                item["excess_vs_hold_usd"]=round(float(item["net_usd"])-hold_net,6)
+
+            trades=conn.execute(
+                """
+                SELECT t.*,o.net_capture_10s_bps,o.net_capture_30s_bps,o.net_capture_60s_bps,
+                       o.settled_10s,o.settled_30s,o.settled_60s
+                FROM inventory_trades t
+                LEFT JOIN inventory_signal_outcomes o ON o.trade_id=t.trade_id
+                WHERE t.run_id=?
+                """,(rid,)
+            ).fetchall()
+
+            def bucket_add(target: Dict[str, Dict[str, Any]],key:str,value:float) -> None:
+                b=target.setdefault(key,{"samples":0,"wins":0,"net_sum":0.0})
+                b["samples"]+=1
+                b["wins"]+=1 if value>0 else 0
+                b["net_sum"]+=value
+
+            by_horizon={"10s":{},"30s":{},"60s":{}}
+            by_transition={}
+            by_route={}
+            by_cheapness={}
+            by_persistence={}
+            by_mutation={}
+            for trade in trades:
+                horizon_value=None
+                if int(trade["settled_30s"] or 0):
+                    horizon_value=float(trade["net_capture_30s_bps"] or 0.0)
+                elif int(trade["settled_10s"] or 0):
+                    horizon_value=float(trade["net_capture_10s_bps"] or 0.0)
+                if horizon_value is not None:
+                    bucket_add(by_mutation,str(trade["mutation_id"]),horizon_value)
+                    bucket_add(by_transition,f"{trade['from_symbol']}->{trade['to_symbol']}",horizon_value)
+                    bucket_add(by_route,"direct" if int(trade["route_sides"] or 0)==1 else "via_usd",horizon_value)
+                    cheap=float(trade["cheapness_z"] or 0.0)
+                    if cheap<=-1.5: ckey="<=-1.5z"
+                    elif cheap<=-1.0: ckey="-1.5..-1.0z"
+                    elif cheap<=-0.5: ckey="-1.0..-0.5z"
+                    else: ckey=">-0.5z"
+                    bucket_add(by_cheapness,ckey,horizon_value)
+                    persist=float(trade["persistence"] or 0.0)
+                    if persist>=1.0: pkey="1.00"
+                    elif persist>=0.75: pkey="0.75..0.99"
+                    elif persist>=0.50: pkey="0.50..0.74"
+                    else: pkey="<0.50"
+                    bucket_add(by_persistence,pkey,horizon_value)
+                for label,settled_col,value_col in (
+                    ("10s","settled_10s","net_capture_10s_bps"),
+                    ("30s","settled_30s","net_capture_30s_bps"),
+                    ("60s","settled_60s","net_capture_60s_bps"),
+                ):
+                    if int(trade[settled_col] or 0):
+                        bucket_add(by_horizon[label],str(trade["mutation_id"]),float(trade[value_col] or 0.0))
+
+            def finish(groups: Dict[str, Dict[str, Any]]) -> list[Dict[str, Any]]:
+                out=[]
+                for key,b in groups.items():
+                    n=max(1,int(b["samples"]))
+                    out.append({
+                        "key":key,
+                        "samples":int(b["samples"]),
+                        "wins":int(b["wins"]),
+                        "win_rate":round(float(b["wins"])/n,6),
+                        "mean_net_capture_bps":round(float(b["net_sum"])/n,6),
+                    })
+                return sorted(out,key=lambda x:(float(x["mean_net_capture_bps"]),int(x["samples"])),reverse=True)
+
+            crystals=conn.execute(
+                "SELECT * FROM inventory_learning_crystals WHERE run_id=?",(rid,)
+            ).fetchall()
+            positive=sum(1 for row in crystals if str(row["crystal_family"])=="positive_capability")
+            negative=sum(1 for row in crystals if str(row["crystal_family"])=="negative_capability")
+            strong=[
+                {
+                    "mutation_id":str(row["mutation_id"]),
+                    "transition":f"{row['from_symbol']}->{row['to_symbol']}",
+                    "family":str(row["crystal_family"]),
+                    "strength":round(float(row["evidence_strength"] or 0.0),6),
+                    "net_capture_bps":round(float(row["net_capture_bps"] or 0.0),6),
+                    "cheapness_z":round(float(row["cheapness_z"] or 0.0),6),
+                    "persistence":round(float(row["persistence"] or 0.0),6),
+                    "route_sides":int(row["route_sides"] or 0),
+                }
+                for row in crystals
+                if float(row["evidence_strength"] or 0.0)>=0.5
+            ]
+            strong.sort(key=lambda x:float(x["strength"]),reverse=True)
+
+            return {
+                "schema":"hivenance_nurse_inventory_drizzle_review_v1",
+                "authority":"read_only_learning_review",
+                "learning_authority":str(run["learning_authority"] or ""),
+                "run_id":rid,
+                "run_status":str(run["status"]),
+                "objective":"harvest_small_relative_oscillations_with_inventory_after_costs",
+                "final_scorecard":sorted(final.values(),key=lambda x:float(x["excess_vs_hold_usd"]),reverse=True),
+                "trades":len(trades),
+                "candidate_crystals":len(crystals),
+                "positive_candidate_crystals":positive,
+                "negative_candidate_crystals":negative,
+                "by_mutation":finish(by_mutation),
+                "by_transition":finish(by_transition),
+                "by_route":finish(by_route),
+                "by_relative_cheapness":finish(by_cheapness),
+                "by_streak_persistence":finish(by_persistence),
+                "by_horizon":{key:finish(value) for key,value in by_horizon.items()},
+                "strong_candidate_memories":strong[:20],
+                "promotion_state":"NOT_PROMOTED",
+                "notes":(
+                    "Learning is based on pair-relative capture after modeled route cost, "
+                    "not absolute asset P&L. Equal-weight hold remains the portfolio benchmark."
+                ),
+            }
+        finally:
+            conn.close()
+
     def _emit(self, payload: Dict[str, Any]):
         if not self.coordinator:
             return

@@ -29,6 +29,7 @@ COMPONENTS = (
     "relative_value_hive_pulse",
     "relative_value_polyphonic_resonance",
     "relative_value_mystique",
+    "relative_value_cognitive_metabolism",
     "relative_value_market_hunting",
     "relative_value_colony_correlation",
     "relative_value_ml_challenger",

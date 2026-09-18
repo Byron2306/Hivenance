@@ -95,11 +95,13 @@ class Sleeve:
     switches: int = 0
     actions: int = 0
 
-    def marked_value(self, prices: dict[str, float]) -> float:
+    def marked_value(self, prices: dict[str, float], side_cost_bps: float = 0.0) -> float:
         if self.holding is None:
             return self.reserve_cash
         price = prices.get(self.holding.symbol, self.holding.entry_price_usd)
-        return self.reserve_cash + self.holding.qty * price
+        gross = self.holding.qty * price
+        liquidation_value = gross - gross * side_cost_bps / 10000.0
+        return self.reserve_cash + liquidation_value
 
 
 class RelativeDrizzleLab:
@@ -513,39 +515,51 @@ class RelativeDrizzleLab:
         self,
         mutation_id: str,
         holding: Holding,
-        pair_score: dict[str, Any],
+        exit_context: dict[str, Any],
         net_bps: float,
         duration: float,
         ts: float,
     ) -> None:
+        # Attribute realized outcome to the pairwise signal that CAUSED this
+        # holding to be entered. The later exit signal is context, not the thesis
+        # being graded. Initial anchor legs are not relative-switch evidence.
+        if str(holding.entry_context.get("type") or "") != "relative_switch":
+            return
+        trigger = holding.entry_context.get("pair_score")
+        if not isinstance(trigger, dict):
+            return
         family = "positive_capability" if net_bps > 0 else "negative_capability"
         strength = min(
             1.0,
             abs(net_bps) / max(1.0, 2*self.args.cost_bps_side + self.args.min_net_relative_edge_bps),
         )
+        from_symbol = str(holding.entry_context.get("from_symbol") or trigger.get("incumbent") or "unknown")
+        to_symbol = str(holding.symbol)
         scope_key = (
-            f"{mutation_id}|{holding.symbol}|cheap={pair_score.get('cheapness_z',0):.2f}|"
-            f"persist={pair_score.get('persistence',0):.2f}"
+            f"{mutation_id}|{from_symbol}->{to_symbol}|cheap={trigger.get('cheapness_z',0):.2f}|"
+            f"persist={trigger.get('persistence',0):.2f}"
         )
         payload = {
             "schema": "hivenance_relative_drizzle_learning_crystal_v1",
             "candidate_only": True,
             "automatic_promotion": False,
-            "incumbent": holding.symbol,
-            "challenger": pair_score.get("challenger"),
-            "cheapness_z": pair_score.get("cheapness_z"),
-            "pair_drawdown_bps": pair_score.get("drawdown_bps"),
-            "relative_1s_bps": pair_score.get("r1"),
-            "relative_3s_bps": pair_score.get("r3"),
-            "relative_5s_bps": pair_score.get("r5"),
-            "relative_10s_bps": pair_score.get("r10"),
-            "streak_persistence": pair_score.get("persistence"),
-            "relative_acceleration_bps_sec": pair_score.get("acceleration"),
-            "gross_edge_bps": pair_score.get("gross_edge"),
-            "switch_cost_bps": pair_score.get("switch_cost_bps"),
-            "net_edge_bps": pair_score.get("net_edge"),
-            "worker_support_delta": pair_score.get("support_delta"),
-            "positive_family_delta": pair_score.get("family_delta"),
+            "from_symbol": from_symbol,
+            "to_symbol": to_symbol,
+            "entry_trigger": trigger,
+            "exit_context": exit_context,
+            "cheapness_z": trigger.get("cheapness_z"),
+            "pair_drawdown_bps": trigger.get("drawdown_bps"),
+            "relative_1s_bps": trigger.get("r1"),
+            "relative_3s_bps": trigger.get("r3"),
+            "relative_5s_bps": trigger.get("r5"),
+            "relative_10s_bps": trigger.get("r10"),
+            "streak_persistence": trigger.get("persistence"),
+            "relative_acceleration_bps_sec": trigger.get("acceleration"),
+            "gross_edge_bps": trigger.get("gross_edge"),
+            "switch_cost_bps": trigger.get("switch_cost_bps"),
+            "net_edge_bps": trigger.get("net_edge"),
+            "worker_support_delta": trigger.get("support_delta"),
+            "positive_family_delta": trigger.get("family_delta"),
             "leg_net_return_bps": net_bps,
             "duration_sec": duration,
         }
@@ -553,9 +567,9 @@ class RelativeDrizzleLab:
             "INSERT INTO relative_learning_crystals VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 f"relative-crystal-{uuid.uuid4().hex}",self.run_id,mutation_id,
-                holding.leg_id,family,scope_key,holding.symbol,strength,net_bps,
-                duration,float(pair_score.get("cheapness_z") or 0.0),
-                float(pair_score.get("persistence") or 0.0),LEARNING_AUTHORITY,
+                holding.leg_id,family,scope_key,to_symbol,strength,net_bps,
+                duration,float(trigger.get("cheapness_z") or 0.0),
+                float(trigger.get("persistence") or 0.0),LEARNING_AUTHORITY,
                 "candidate_learning_memory_not_promoted",js(payload),ts,
             ),
         )
@@ -752,9 +766,10 @@ class RelativeDrizzleLab:
             held = sleeve.holding.symbol if sleeve.holding else "UNINITIALIZED"
             sleeve_value = 0.0
             if sleeve.holding:
-                sleeve_value = sleeve.holding.qty * self.prices.get(
+                gross_value = sleeve.holding.qty * self.prices.get(
                     sleeve.holding.symbol, sleeve.holding.entry_price_usd
                 )
+                sleeve_value = gross_value - gross_value * self.args.cost_bps_side / 10000.0
             total_equity = sleeve.reserve_cash + sleeve_value
             self.conn.execute(
                 "INSERT OR REPLACE INTO relative_wallet_marks VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -774,7 +789,7 @@ class RelativeDrizzleLab:
             for mutation_id in MUTATIONS:
                 sleeve = self.sleeves[mutation_id]
                 held = sleeve.holding.symbol if sleeve.holding else "UNINITIALIZED"
-                equity = sleeve.marked_value(self.prices)
+                equity = sleeve.marked_value(self.prices,self.args.cost_bps_side)
                 print(
                     f"  {mutation_id:28s} equity={equity:10.4f} "
                     f"net={equity-self.args.start_usd:+8.4f} "
@@ -783,8 +798,9 @@ class RelativeDrizzleLab:
                 )
 
     def close(self, status: str) -> None:
-        # Final liquidation is for comparable USD scorekeeping only. It is explicitly
-        # marked lab_end_liquidation and not counted as a rotation switch.
+        # Final liquidation exists only for comparable USD scorekeeping. If the
+        # terminal holding came from a relative switch, its realized outcome still
+        # grades that entry thesis so the last leg is not silently dropped.
         ts = time.time()
         for mutation_id in MUTATIONS:
             sleeve = self.sleeves[mutation_id]
@@ -795,8 +811,19 @@ class RelativeDrizzleLab:
             proceeds, net_bps, duration = self._close_leg(
                 mutation_id,ts,"lab_end_liquidation",exit_context,charge_exit_cost=True
             )
+            self._learn_leg(
+                mutation_id,holding,exit_context,net_bps,duration,ts
+            )
             sleeve.reserve_cash += proceeds
             sleeve.holding = None
+            self.conn.execute(
+                "INSERT OR REPLACE INTO relative_wallet_marks VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    self.run_id,mutation_id,ts,"LIQUIDATED",sleeve.reserve_cash,0.0,
+                    sleeve.reserve_cash,sleeve.cumulative_cost_usd,sleeve.switches,
+                    sleeve.actions,0.0,
+                ),
+            )
         self.conn.execute(
             "UPDATE relative_runs SET ended_ts=?,status=? WHERE run_id=?",
             (time.time(),status,self.run_id),

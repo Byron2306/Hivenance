@@ -164,6 +164,12 @@ __all__ = [
     "LearnedChallengerForecast",
     "LearnedCalibration",
     "LearnedModelProvenance",
+    "CanonicalWorldScore",
+    "ScoreBindingAudit",
+    "ScoreBindingClaim",
+    "CanonicalScoreFrame",
+    "ScoreInterpretation",
+    "ScoreObservation",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -219,4 +225,12 @@ from .ml_challenger import (
     LearnedChallengerReceipt,
     LearnedChallengerConfig,
     LearnedChallenger,
+)
+from .world_score import (
+    ScoreObservation,
+    ScoreInterpretation,
+    CanonicalScoreFrame,
+    ScoreBindingClaim,
+    ScoreBindingAudit,
+    CanonicalWorldScore,
 )

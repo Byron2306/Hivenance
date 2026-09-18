@@ -24,6 +24,7 @@ COMPONENTS = (
     "relative_value_polyphonic_entrainment",
     "relative_value_governance_epoch",
     "relative_value_conducting_queen",
+    "relative_value_temporal_texture",
     "relative_value_market_hunting",
     "relative_value_colony_correlation",
     "relative_value_ml_challenger",

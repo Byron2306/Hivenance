@@ -158,6 +158,12 @@ __all__ = [
     "CognitiveMetabolismConfig",
     "CognitiveMetabolismReceipt",
     "MetabolicObservation",
+    "LearnedChallenger",
+    "LearnedChallengerConfig",
+    "LearnedChallengerReceipt",
+    "LearnedChallengerForecast",
+    "LearnedCalibration",
+    "LearnedModelProvenance",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -205,4 +211,12 @@ from .cognitive_metabolism import (
     CognitiveMetabolismReceipt,
     CognitiveMetabolismConfig,
     CognitiveMetabolism,
+)
+from .ml_challenger import (
+    LearnedModelProvenance,
+    LearnedCalibration,
+    LearnedChallengerForecast,
+    LearnedChallengerReceipt,
+    LearnedChallengerConfig,
+    LearnedChallenger,
 )

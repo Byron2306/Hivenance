@@ -164,6 +164,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "continuous_polyphonic_research_conductor",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_temporal_texture": {
+        "role": "jitter_burstiness_entropy_and_cadence_texture_listener",
+        "mode": "descriptive_temporal_research_cognition",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

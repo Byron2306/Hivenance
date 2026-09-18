@@ -714,6 +714,9 @@ class NurseAgent:
             by_cheapness={}
             by_persistence={}
             by_mutation={}
+            by_target_alignment={}
+            by_macro_relation={}
+            by_meso_relation={}
             for trade in trades:
                 horizon_value=None
                 if int(trade["settled_30s"] or 0):
@@ -736,6 +739,20 @@ class NurseAgent:
                     elif persist>=0.50: pkey="0.50..0.74"
                     else: pkey="<0.50"
                     bucket_add(by_persistence,pkey,horizon_value)
+                    try:
+                        trade_context=json.loads(trade["context_json"] or "{}")
+                    except Exception:
+                        trade_context={}
+                    from_h=trade_context.get("from_horizon") if isinstance(trade_context.get("from_horizon"),dict) else {}
+                    to_h=trade_context.get("to_horizon") if isinstance(trade_context.get("to_horizon"),dict) else {}
+                    if to_h:
+                        bucket_add(by_target_alignment,str(to_h.get("alignment") or "UNKNOWN"),horizon_value)
+                        from_macro=str(((from_h.get("macro") or {}).get("bias")) or "UNKNOWN")
+                        to_macro=str(((to_h.get("macro") or {}).get("bias")) or "UNKNOWN")
+                        from_meso=str(((from_h.get("meso") or {}).get("bias")) or "UNKNOWN")
+                        to_meso=str(((to_h.get("meso") or {}).get("bias")) or "UNKNOWN")
+                        bucket_add(by_macro_relation,f"{from_macro}->{to_macro}",horizon_value)
+                        bucket_add(by_meso_relation,f"{from_meso}->{to_meso}",horizon_value)
                 for label,settled_col,value_col in (
                     ("10s","settled_10s","net_capture_10s_bps"),
                     ("30s","settled_30s","net_capture_30s_bps"),
@@ -795,6 +812,9 @@ class NurseAgent:
                 "by_route":finish(by_route),
                 "by_relative_cheapness":finish(by_cheapness),
                 "by_streak_persistence":finish(by_persistence),
+                "by_target_alignment":finish(by_target_alignment),
+                "by_macro_relation":finish(by_macro_relation),
+                "by_meso_relation":finish(by_meso_relation),
                 "by_horizon":{key:finish(value) for key,value in by_horizon.items()},
                 "strong_candidate_memories":strong[:20],
                 "promotion_state":"NOT_PROMOTED",

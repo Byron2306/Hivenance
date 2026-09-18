@@ -2,20 +2,21 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import random
 import sqlite3
 import statistics
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-
-import ccxt
 
 from agents.strategy_workers import (
     BollingerWorker,
@@ -28,8 +29,9 @@ from agents.strategy_workers import (
     VolatilityExpansionWorker,
 )
 
-SCHEMA = "hivenance_live_profit_streak_swarm_lab_v1"
+SCHEMA = "hivenance_live_profit_streak_swarm_lab_v2"
 AUTHORITY = "PUBLIC_MARKET_PAPER_ONLY_NO_PRIVATE_KEYS_NO_ORDERS"
+KRAKEN_PUBLIC_BASE = "https://api.kraken.com/0/public"
 
 WORKERS = (
     ("sma", "trend", SMAWorker()),
@@ -43,47 +45,24 @@ WORKERS = (
 )
 
 MUTATIONS = (
-    {
-        "id": "raw_streak",
-        "description": "No worker gate. Cost-aware price persistence alone.",
-        "kind": "control",
-    },
-    {
-        "id": "majority5",
-        "description": "Require five of eight Phoenix workers to support the direction.",
-        "kind": "swarm",
-    },
-    {
-        "id": "vol_breakout_pair",
-        "description": "Require VolatilityExpansion and Breakout support together.",
-        "kind": "ablation_pair",
-    },
-    {
-        "id": "inferred_regime",
-        "description": "Dynamic worker threshold from online regime inference; never oracle-labelled.",
-        "kind": "regime_swarm",
-    },
-    {
-        "id": "entropy_gate",
-        "description": "Require directional majority plus low vote entropy.",
-        "kind": "diversity",
-    },
-    {
-        "id": "no_vol_worker",
-        "description": "Five-vote coalition with VolatilityExpansion removed.",
-        "kind": "worker_ablation",
-    },
-    {
-        "id": "no_reversion_workers",
-        "description": "Trend/breakout/momentum families only; require four of five.",
-        "kind": "family_ablation",
-    },
-    {
-        "id": "random30",
-        "description": "Randomly admit 30 percent of otherwise-valid streak candidates.",
-        "kind": "matched_random_control",
-    },
+    {"id": "raw_streak", "kind": "control", "description": "Cost-aware persistence only."},
+    {"id": "majority5", "kind": "swarm", "description": "Five of eight Phoenix workers support."},
+    {"id": "vol_breakout_pair", "kind": "ablation_pair", "description": "VolatilityExpansion + Breakout."},
+    {"id": "inferred_regime", "kind": "regime_swarm", "description": "Online inferred-regime threshold."},
+    {"id": "entropy_gate", "kind": "diversity", "description": "Majority with low vote entropy."},
+    {"id": "no_vol_worker", "kind": "worker_ablation", "description": "Coalition with VolatilityExpansion removed."},
+    {"id": "no_reversion_workers", "kind": "family_ablation", "description": "Trend/breakout/momentum families only."},
+    {"id": "random30", "kind": "matched_random_control", "description": "Randomly admit 30% of valid candidates."},
 )
+
+API_SYMBOL_CANDIDATES = {
+    "BTC/USD": ("BTC/USD", "XBT/USD"),
+    "DOGE/USD": ("DOGE/USD", "XDG/USD"),
+}
+API_SYMBOL_ALIASES = {
+    "XBT/USD": "BTC/USD",
+    "XDG/USD": "DOGE/USD",
+}
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -101,10 +80,8 @@ def _std(values: list[float]) -> float:
 def _lag1_autocorr(values: list[float]) -> float:
     if len(values) < 4:
         return 0.0
-    x = values[:-1]
-    y = values[1:]
-    mx = statistics.mean(x)
-    my = statistics.mean(y)
+    x, y = values[:-1], values[1:]
+    mx, my = statistics.mean(x), statistics.mean(y)
     sx = math.sqrt(sum((v - mx) ** 2 for v in x))
     sy = math.sqrt(sum((v - my) ** 2 for v in y))
     if sx <= 0 or sy <= 0:
@@ -124,41 +101,38 @@ def _entropy(pos: int, neg: int) -> float:
     return out
 
 
+def _iso_now_minus(seconds: float) -> str:
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
+
+
 @dataclass
 class SeriesState:
     prices: deque[float] = field(default_factory=lambda: deque(maxlen=180))
     volumes: deque[float] = field(default_factory=lambda: deque(maxlen=180))
-    last_total_volume: float | None = None
 
-    def add(self, price: float, total_volume: float | None = None) -> None:
-        incremental = 0.0
-        if total_volume is not None and self.last_total_volume is not None:
-            incremental = max(0.0, total_volume - self.last_total_volume)
-        self.last_total_volume = total_volume if total_volume is not None else self.last_total_volume
-        self.prices.append(price)
-        self.volumes.append(incremental)
+    def add(self, price: float, volume: float = 0.0) -> None:
+        self.prices.append(float(price))
+        self.volumes.append(max(0.0, float(volume)))
 
     def ret(self, seconds: int) -> float:
         if len(self.prices) <= seconds:
             return 0.0
-        start = list(self.prices)[-(seconds + 1)]
-        end = self.prices[-1]
+        p = list(self.prices)
+        start, end = p[-(seconds + 1)], p[-1]
         return (end / start - 1.0) if start > 0 else 0.0
 
     def regime(self) -> dict[str, Any]:
         p = list(self.prices)
         if len(p) < 12:
             return {"label": "warming", "confidence": 0.0}
-        rets = [(p[i] / p[i - 1] - 1.0) for i in range(1, len(p)) if p[i - 1] > 0]
+        rets = [p[i] / p[i - 1] - 1.0 for i in range(1, len(p)) if p[i - 1] > 0]
         short = rets[-5:]
         base = rets[-30:] if len(rets) >= 30 else rets
-        short_vol = _std(short)
-        base_vol = _std(base)
+        short_vol, base_vol = _std(short), _std(base)
         vol_ratio = short_vol / max(base_vol, 1e-12)
         signs = [1 if r > 0 else -1 if r < 0 else 0 for r in short]
         persistence = abs(sum(signs)) / max(1, len(signs))
         autocorr = _lag1_autocorr(base)
-        move5_bps = self.ret(5) * 10000.0
         if vol_ratio >= 1.25 and persistence >= 0.60:
             label = "bursty"
             confidence = min(1.0, 0.45 + 0.25 * (vol_ratio - 1.0) + 0.30 * persistence)
@@ -169,15 +143,14 @@ class SeriesState:
             label = "noise"
             confidence = min(1.0, 0.50 + (0.25 - persistence))
         else:
-            label = "mixed"
-            confidence = 0.50
+            label, confidence = "mixed", 0.50
         return {
             "label": label,
             "confidence": round(confidence, 6),
             "vol_ratio": round(vol_ratio, 6),
             "persistence": round(persistence, 6),
             "lag1_autocorr": round(autocorr, 6),
-            "move5_bps": round(move5_bps, 6),
+            "move5_bps": round(self.ret(5) * 10000.0, 6),
         }
 
 
@@ -204,9 +177,80 @@ class PaperWallet:
             if price is None:
                 continue
             gross = pos.qty * price
-            hypothetical_exit_cost = gross * exit_cost_bps_side / 10000.0
-            value += gross - hypothetical_exit_cost
+            value += gross - gross * exit_cost_bps_side / 10000.0
         return value
+
+
+class KrakenPublicFeed:
+    """Stdlib-only Kraken public trade feed. No auth headers, keys, or private endpoints."""
+
+    def __init__(self, symbols: list[str], timeout_sec: float = 8.0) -> None:
+        self.symbols = symbols
+        self.symbol_set = set(symbols)
+        self.timeout_sec = timeout_sec
+        self.from_ts = _iso_now_minus(2.0)
+        self.last_prices: dict[str, float] = {}
+
+    def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
+        query = urllib.parse.urlencode(params)
+        url = f"{KRAKEN_PUBLIC_BASE}/{endpoint}"
+        if query:
+            url += "?" + query
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "Hivenance-Phoenix-Public-Research/1.0",
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=self.timeout_sec) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        errors = payload.get("error") or []
+        if errors:
+            raise RuntimeError(";".join(str(item) for item in errors))
+        result = payload.get("result")
+        return result if isinstance(result, dict) else {}
+
+    def seed_prices(self) -> dict[str, float]:
+        for canonical in self.symbols:
+            candidates = API_SYMBOL_CANDIDATES.get(canonical, (canonical,))
+            for api_symbol in candidates:
+                try:
+                    result = self._get("PostTrade", {"symbol": api_symbol, "count": 1})
+                    trades = result.get("trades") or []
+                    if trades:
+                        self.last_prices[canonical] = _finite(trades[-1].get("price"))
+                        break
+                except Exception:
+                    continue
+        return dict(self.last_prices)
+
+    def poll(self) -> tuple[dict[str, float], dict[str, float], dict[str, Any]]:
+        result = self._get("PostTrade", {"from_ts": self.from_ts, "count": 1000})
+        trades = result.get("trades") or []
+        volume_by_symbol: dict[str, float] = defaultdict(float)
+        seen = 0
+        for trade in trades:
+            raw_symbol = str(trade.get("symbol") or "")
+            symbol = API_SYMBOL_ALIASES.get(raw_symbol, raw_symbol)
+            if symbol not in self.symbol_set:
+                continue
+            price = _finite(trade.get("price"))
+            if price <= 0:
+                continue
+            self.last_prices[symbol] = price
+            volume_by_symbol[symbol] += max(0.0, _finite(trade.get("quantity")))
+            seen += 1
+        last_ts = str(result.get("last_ts") or "").strip()
+        if last_ts:
+            self.from_ts = last_ts
+        return dict(self.last_prices), dict(volume_by_symbol), {
+            "returned_trades": int(result.get("count") or len(trades)),
+            "tracked_trades": seen,
+            "backlog_warning": int(result.get("count") or len(trades)) >= 1000,
+            "last_ts": last_ts,
+        }
 
 
 class LiveStreakLab:
@@ -214,17 +258,11 @@ class LiveStreakLab:
         self.args = args
         self.run_id = f"streak-live-{uuid.uuid4().hex[:12]}"
         self.rng = random.Random(args.seed)
-        self.exchange = ccxt.kraken({"enableRateLimit": True, "timeout": 8000})
-        # Deliberately do not read API keys from environment.
-        self.exchange.apiKey = ""
-        self.exchange.secret = ""
+        self.feed = KrakenPublicFeed(args.symbols)
         self.series = {symbol: SeriesState() for symbol in args.symbols}
         self.wallets = {
-            mutation["id"]: PaperWallet(cash=float(args.start_usd), peak_equity_usd=float(args.start_usd))
-            for mutation in MUTATIONS
-        }
-        self.vote_history: dict[str, deque[dict[str, int]]] = {
-            symbol: deque(maxlen=20) for symbol in args.symbols
+            item["id"]: PaperWallet(float(args.start_usd), peak_equity_usd=float(args.start_usd))
+            for item in MUTATIONS
         }
         self.last_prices: dict[str, float] = {}
         self.conn = self._open_database(Path(args.database))
@@ -237,85 +275,32 @@ class LiveStreakLab:
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.executescript(
             """
-            CREATE TABLE IF NOT EXISTS live_streak_runs (
-                run_id TEXT PRIMARY KEY,
-                started_ts REAL,
-                ended_ts REAL,
-                schema TEXT,
-                authority TEXT,
-                exchange TEXT,
-                symbols_json TEXT,
-                config_json TEXT,
-                status TEXT
-            );
-            CREATE TABLE IF NOT EXISTS mutation_registry (
-                run_id TEXT,
-                mutation_id TEXT,
-                kind TEXT,
-                description TEXT,
-                PRIMARY KEY(run_id, mutation_id)
-            );
-            CREATE TABLE IF NOT EXISTS live_market_ticks (
-                run_id TEXT,
-                ts REAL,
-                symbol TEXT,
-                price REAL,
-                total_volume REAL,
-                inferred_regime TEXT,
-                regime_confidence REAL,
-                fetch_latency_ms REAL,
-                PRIMARY KEY(run_id, ts, symbol)
-            );
-            CREATE TABLE IF NOT EXISTS live_worker_votes (
-                run_id TEXT,
-                ts REAL,
-                symbol TEXT,
-                worker_id TEXT,
-                family TEXT,
-                action TEXT,
-                vote INTEGER,
-                strength REAL,
-                note TEXT,
-                worker_ready INTEGER,
-                PRIMARY KEY(run_id, ts, symbol, worker_id)
-            );
-            CREATE TABLE IF NOT EXISTS live_wallet_marks (
-                run_id TEXT,
-                mutation_id TEXT,
-                ts REAL,
-                equity_usd REAL,
-                cash_usd REAL,
-                open_positions INTEGER,
-                cumulative_cost_usd REAL,
-                cycle_latency_ms REAL,
-                PRIMARY KEY(run_id, mutation_id, ts)
-            );
-            CREATE TABLE IF NOT EXISTS live_paper_actions (
-                run_id TEXT,
-                mutation_id TEXT,
-                ts REAL,
-                symbol TEXT,
-                action TEXT,
-                price REAL,
-                notional_usd REAL,
-                cost_usd REAL,
-                reason TEXT,
-                votes_json TEXT,
-                regime_json TEXT
-            );
-            CREATE TABLE IF NOT EXISTS live_streak_events (
-                run_id TEXT,
-                mutation_id TEXT,
-                ts REAL,
-                event TEXT,
-                equity_usd REAL,
-                delta_1s_usd REAL,
-                delta_3s_usd REAL,
-                delta_5s_usd REAL,
-                delta_10s_usd REAL,
-                detector_latency_ms REAL,
-                context_json TEXT
-            );
+            CREATE TABLE IF NOT EXISTS live_streak_runs(
+              run_id TEXT PRIMARY KEY, started_ts REAL, ended_ts REAL, schema TEXT,
+              authority TEXT, exchange TEXT, symbols_json TEXT, config_json TEXT, status TEXT);
+            CREATE TABLE IF NOT EXISTS mutation_registry(
+              run_id TEXT, mutation_id TEXT, kind TEXT, description TEXT,
+              PRIMARY KEY(run_id, mutation_id));
+            CREATE TABLE IF NOT EXISTS live_market_ticks(
+              run_id TEXT, ts REAL, symbol TEXT, price REAL, total_volume REAL,
+              inferred_regime TEXT, regime_confidence REAL, fetch_latency_ms REAL,
+              PRIMARY KEY(run_id, ts, symbol));
+            CREATE TABLE IF NOT EXISTS live_worker_votes(
+              run_id TEXT, ts REAL, symbol TEXT, worker_id TEXT, family TEXT,
+              action TEXT, vote INTEGER, strength REAL, note TEXT, worker_ready INTEGER,
+              PRIMARY KEY(run_id, ts, symbol, worker_id));
+            CREATE TABLE IF NOT EXISTS live_wallet_marks(
+              run_id TEXT, mutation_id TEXT, ts REAL, equity_usd REAL, cash_usd REAL,
+              open_positions INTEGER, cumulative_cost_usd REAL, cycle_latency_ms REAL,
+              PRIMARY KEY(run_id, mutation_id, ts));
+            CREATE TABLE IF NOT EXISTS live_paper_actions(
+              run_id TEXT, mutation_id TEXT, ts REAL, symbol TEXT, action TEXT,
+              price REAL, notional_usd REAL, cost_usd REAL, reason TEXT,
+              votes_json TEXT, regime_json TEXT);
+            CREATE TABLE IF NOT EXISTS live_streak_events(
+              run_id TEXT, mutation_id TEXT, ts REAL, event TEXT, equity_usd REAL,
+              delta_1s_usd REAL, delta_3s_usd REAL, delta_5s_usd REAL, delta_10s_usd REAL,
+              detector_latency_ms REAL, context_json TEXT);
             CREATE INDEX IF NOT EXISTS idx_live_ticks_run_ts ON live_market_ticks(run_id, ts);
             CREATE INDEX IF NOT EXISTS idx_live_votes_run_symbol ON live_worker_votes(run_id, symbol, ts);
             CREATE INDEX IF NOT EXISTS idx_live_actions_run_mutation ON live_paper_actions(run_id, mutation_id, ts);
@@ -323,77 +308,55 @@ class LiveStreakLab:
         )
         conn.execute(
             "INSERT OR REPLACE INTO live_streak_runs VALUES (?,?,?,?,?,?,?,?,?)",
-            (
-                self.run_id,
-                time.time(),
-                None,
-                SCHEMA,
-                AUTHORITY,
-                "kraken_public",
-                json.dumps(self.args.symbols),
-                json.dumps(vars(self.args), sort_keys=True, default=str),
-                "RUNNING",
-            ),
+            (self.run_id, time.time(), None, SCHEMA, AUTHORITY, "kraken_public_posttrade",
+             json.dumps(self.args.symbols), json.dumps(vars(self.args), sort_keys=True), "RUNNING"),
         )
         conn.commit()
         return conn
 
     def _write_registry(self) -> None:
-        for mutation in MUTATIONS:
+        for item in MUTATIONS:
             self.conn.execute(
                 "INSERT OR REPLACE INTO mutation_registry VALUES (?,?,?,?)",
-                (self.run_id, mutation["id"], mutation["kind"], mutation["description"]),
+                (self.run_id, item["id"], item["kind"], item["description"]),
             )
         self.conn.commit()
 
     def warm_start(self) -> None:
-        print(f"[{self.run_id}] public-only warm start for {len(self.args.symbols)} symbols")
+        print(f"[{self.run_id}] seeding public Kraken prices; no API key")
+        seeded = self.feed.seed_prices()
+        self.last_prices.update(seeded)
         for symbol in self.args.symbols:
-            try:
-                trades = self.exchange.fetch_trades(symbol, limit=80)
-            except Exception as exc:
-                print(f"WARN warm-start {symbol}: {type(exc).__name__}: {exc}")
-                continue
-            state = self.series[symbol]
-            for trade in trades[-80:]:
-                price = _finite(trade.get("price"))
-                amount = _finite(trade.get("amount"))
-                if price > 0:
-                    state.prices.append(price)
-                    state.volumes.append(max(0.0, amount))
-            print(f"  {symbol}: {len(state.prices)} public trade samples")
+            price = seeded.get(symbol)
+            if price:
+                self.series[symbol].add(price, 0.0)
+                print(f"  {symbol}: {price}")
+            else:
+                print(f"  WARN {symbol}: no seed price; it will join if public trades appear")
 
     def _worker_votes(self, symbol: str, ts: float) -> dict[str, int]:
         state = self.series[symbol]
-        closes = list(state.prices)
-        volumes = list(state.volumes)
+        closes, volumes = list(state.prices), list(state.volumes)
         latest = closes[-1] if closes else 0.0
         votes: dict[str, int] = {}
         for worker_id, family, worker in WORKERS:
-            ready = True
-            action = "HOLD"
-            strength = 0.0
-            note = ""
+            ready, action, strength, note = True, "HOLD", 0.0, ""
             try:
                 proposal = worker.propose(closes, volumes=volumes, latest_price=latest)
                 action = str(proposal.get("action") or "HOLD").upper()
                 strength = _finite(proposal.get("signal_strength"))
                 note = str(proposal.get("notes") or "")[:240]
-                if "Not enough" in note or "No " in note and "data" in note.lower():
+                low = note.lower()
+                if "not enough" in low or "no rsi data" in low or "unavailable" in low:
                     ready = False
             except Exception as exc:
-                ready = False
-                note = f"{type(exc).__name__}:{exc}"[:240]
+                ready, note = False, f"{type(exc).__name__}:{exc}"[:240]
             vote = 1 if action == "BUY" else -1 if action == "SELL" else 0
             votes[worker_id] = vote
             self.conn.execute(
                 "INSERT OR REPLACE INTO live_worker_votes VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (
-                    self.run_id, ts, symbol, worker_id, family, action, vote,
-                    strength, note, 1 if ready else 0,
-                ),
+                (self.run_id, ts, symbol, worker_id, family, action, vote, strength, note, int(ready)),
             )
-        self.vote_history[symbol].append(dict(votes))
         return votes
 
     def _admit(self, mutation_id: str, votes: dict[str, int], regime: dict[str, Any]) -> tuple[bool, float, str]:
@@ -418,92 +381,66 @@ class LiveStreakLab:
             reduced = {k: v for k, v in votes.items() if k != "vol_expansion"}
             rpos = sum(v > 0 for v in reduced.values())
             rneg = sum(v < 0 for v in reduced.values())
-            rscore = (rpos - rneg) / max(1, len(reduced))
-            return rpos >= 5, rscore, f"vol_ablation;positive={rpos}"
+            return rpos >= 5, (rpos - rneg) / max(1, len(reduced)), f"vol_ablation;positive={rpos}"
         if mutation_id == "no_reversion_workers":
             keep = ("sma", "breakout", "momentum", "supertrend", "vol_expansion")
             rpos = sum(votes.get(k, 0) > 0 for k in keep)
             rneg = sum(votes.get(k, 0) < 0 for k in keep)
-            rscore = (rpos - rneg) / len(keep)
-            return rpos >= 4, rscore, f"no_reversion;positive={rpos}"
+            return rpos >= 4, (rpos - rneg) / len(keep), f"no_reversion;positive={rpos}"
         if mutation_id == "random30":
             return self.rng.random() < 0.30, 0.0, "matched_random_30pct"
-        return False, score, "unknown_mutation"
+        return False, score, "unknown"
 
     def _candidate(self, state: SeriesState) -> tuple[bool, dict[str, float]]:
-        r1 = state.ret(1) * 10000.0
-        r3 = state.ret(3) * 10000.0
-        r5 = state.ret(5) * 10000.0
-        # Detection is intentionally fast, but admission remains cost-aware.
-        min1 = float(self.args.spark_1s_bps)
+        r1, r3, r5 = state.ret(1) * 10000.0, state.ret(3) * 10000.0, state.ret(5) * 10000.0
         min3 = max(float(self.args.confirm_3s_bps), float(self.args.cost_bps_side) * 0.50)
         min5 = max(float(self.args.persist_5s_bps), float(self.args.cost_bps_side))
-        candidate = r1 > min1 and r3 > min3 and r5 > min5
-        return candidate, {"r1_bps": r1, "r3_bps": r3, "r5_bps": r5}
-
-    def _paper_buy(
-        self,
-        mutation_id: str,
-        symbol: str,
-        price: float,
-        ts: float,
-        votes: dict[str, int],
-        regime: dict[str, Any],
-        reason: str,
-    ) -> None:
-        wallet = self.wallets[mutation_id]
-        if symbol in wallet.positions or len(wallet.positions) >= self.args.max_positions:
-            return
-        notional = min(float(self.args.notional_usd), wallet.cash)
-        cost = notional * float(self.args.cost_bps_side) / 10000.0
-        if notional <= cost or notional < 0.01:
-            return
-        qty = (notional - cost) / price
-        wallet.cash -= notional
-        wallet.cumulative_cost_usd += cost
-        wallet.positions[symbol] = Position(qty=qty, entry_price=price, peak_price=price, entry_ts=ts)
-        wallet.actions += 1
-        self.conn.execute(
-            "INSERT INTO live_paper_actions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (
-                self.run_id, mutation_id, ts, symbol, "BUY", price, notional, cost,
-                reason, json.dumps(votes, sort_keys=True), json.dumps(regime, sort_keys=True),
-            ),
+        return (
+            r1 > self.args.spark_1s_bps and r3 > min3 and r5 > min5,
+            {"r1_bps": r1, "r3_bps": r3, "r5_bps": r5},
         )
 
-    def _paper_sell(
-        self,
-        mutation_id: str,
-        symbol: str,
-        price: float,
-        ts: float,
-        votes: dict[str, int],
-        regime: dict[str, Any],
-        reason: str,
-    ) -> None:
-        wallet = self.wallets[mutation_id]
-        pos = wallet.positions.get(symbol)
+    def _buy(self, mid: str, symbol: str, price: float, ts: float, votes: dict[str, int], regime: dict[str, Any], reason: str) -> None:
+        w = self.wallets[mid]
+        if symbol in w.positions or len(w.positions) >= self.args.max_positions:
+            return
+        notional = min(self.args.notional_usd, w.cash)
+        cost = notional * self.args.cost_bps_side / 10000.0
+        if notional <= cost or notional < 0.01:
+            return
+        w.positions[symbol] = Position((notional - cost) / price, price, price, ts)
+        w.cash -= notional
+        w.cumulative_cost_usd += cost
+        w.actions += 1
+        self.conn.execute(
+            "INSERT INTO live_paper_actions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (self.run_id, mid, ts, symbol, "BUY", price, notional, cost, reason,
+             json.dumps(votes, sort_keys=True), json.dumps(regime, sort_keys=True)),
+        )
+
+    def _sell(self, mid: str, symbol: str, price: float, ts: float, votes: dict[str, int], regime: dict[str, Any], reason: str) -> None:
+        w = self.wallets[mid]
+        pos = w.positions.get(symbol)
         if pos is None:
             return
         gross = pos.qty * price
-        cost = gross * float(self.args.cost_bps_side) / 10000.0
-        wallet.cash += gross - cost
-        wallet.cumulative_cost_usd += cost
-        wallet.actions += 1
-        del wallet.positions[symbol]
+        cost = gross * self.args.cost_bps_side / 10000.0
+        w.cash += gross - cost
+        w.cumulative_cost_usd += cost
+        w.actions += 1
+        del w.positions[symbol]
         self.conn.execute(
             "INSERT INTO live_paper_actions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (
-                self.run_id, mutation_id, ts, symbol, "SELL", price, gross, cost,
-                reason, json.dumps(votes, sort_keys=True), json.dumps(regime, sort_keys=True),
-            ),
+            (self.run_id, mid, ts, symbol, "SELL", price, gross, cost, reason,
+             json.dumps(votes, sort_keys=True), json.dumps(regime, sort_keys=True)),
         )
 
     def cycle(self) -> None:
         cycle_started = time.perf_counter()
         fetch_started = time.perf_counter()
-        tickers = self.exchange.fetch_tickers(self.args.symbols)
-        fetch_latency_ms = (time.perf_counter() - fetch_started) * 1000.0
+        prices, volumes, feed_meta = self.feed.poll()
+        fetch_ms = (time.perf_counter() - fetch_started) * 1000.0
+        self.last_prices.update(prices)
         ts = time.time()
 
         votes_by_symbol: dict[str, dict[str, int]] = {}
@@ -511,227 +448,157 @@ class LiveStreakLab:
         candidates: dict[str, tuple[bool, dict[str, float]]] = {}
 
         for symbol in self.args.symbols:
-            ticker = tickers.get(symbol) or {}
-            price = _finite(ticker.get("last") or ticker.get("close"))
-            if price <= 0:
+            price = self.last_prices.get(symbol)
+            if not price:
                 continue
-            total_volume = _finite(ticker.get("baseVolume"), default=0.0)
-            state = self.series[symbol]
-            state.add(price, total_volume)
-            self.last_prices[symbol] = price
-            regime = state.regime()
+            self.series[symbol].add(price, volumes.get(symbol, 0.0))
+            regime = self.series[symbol].regime()
             regimes[symbol] = regime
-            candidate = self._candidate(state)
-            candidates[symbol] = candidate
-            votes = self._worker_votes(symbol, ts)
-            votes_by_symbol[symbol] = votes
+            candidates[symbol] = self._candidate(self.series[symbol])
+            votes_by_symbol[symbol] = self._worker_votes(symbol, ts)
             self.conn.execute(
                 "INSERT OR REPLACE INTO live_market_ticks VALUES (?,?,?,?,?,?,?,?)",
-                (
-                    self.run_id, ts, symbol, price, total_volume,
-                    regime.get("label"), regime.get("confidence"), fetch_latency_ms,
-                ),
+                (self.run_id, ts, symbol, price, volumes.get(symbol, 0.0),
+                 regime.get("label"), regime.get("confidence"), fetch_ms),
             )
 
-        for mutation in MUTATIONS:
-            mid = mutation["id"]
-            wallet = self.wallets[mid]
-
-            # First update/exit existing positions. Workers inform exhaustion;
-            # the wallet remains the accounting authority.
-            for symbol, pos in list(wallet.positions.items()):
+        for item in MUTATIONS:
+            mid, w = item["id"], self.wallets[item["id"]]
+            for symbol, pos in list(w.positions.items()):
                 price = self.last_prices.get(symbol)
-                if price is None:
+                if not price:
                     continue
                 pos.peak_price = max(pos.peak_price, price)
                 state = self.series[symbol]
-                r1 = state.ret(1) * 10000.0
-                r3 = state.ret(3) * 10000.0
-                r5 = state.ret(5) * 10000.0
-                retracement_bps = (price / pos.peak_price - 1.0) * 10000.0 if pos.peak_price > 0 else 0.0
+                r1, r3 = state.ret(1) * 10000.0, state.ret(3) * 10000.0
+                retrace = (price / pos.peak_price - 1.0) * 10000.0 if pos.peak_price > 0 else 0.0
                 votes = votes_by_symbol.get(symbol, {})
                 neg = sum(v < 0 for v in votes.values())
                 exhaustion = r1 < -self.args.exit_1s_bps and r3 < 0 and neg >= 3
-                hard_retrace = retracement_bps <= -float(self.args.max_retracement_bps)
-                stale = (ts - pos.entry_ts) >= float(self.args.max_hold_sec)
+                hard_retrace = retrace <= -self.args.max_retracement_bps
+                stale = ts - pos.entry_ts >= self.args.max_hold_sec
                 if exhaustion or hard_retrace or stale:
-                    why = (
-                        "worker_exhaustion" if exhaustion
-                        else "peak_retracement" if hard_retrace
-                        else "max_hold"
-                    )
-                    self._paper_sell(
-                        mid, symbol, price, ts, votes,
-                        regimes.get(symbol, {}), why,
-                    )
+                    reason = "worker_exhaustion" if exhaustion else "peak_retracement" if hard_retrace else "max_hold"
+                    self._sell(mid, symbol, price, ts, votes, regimes.get(symbol, {}), reason)
 
-            # Admit new candidates after exits.
-            for symbol, (is_candidate, movement) in candidates.items():
-                if not is_candidate or symbol in wallet.positions:
+            for symbol, (candidate, movement) in candidates.items():
+                if not candidate or symbol in w.positions:
                     continue
-                votes = votes_by_symbol.get(symbol, {})
-                regime = regimes.get(symbol, {})
-                admit, score, why = self._admit(mid, votes, regime)
+                votes, regime = votes_by_symbol.get(symbol, {}), regimes.get(symbol, {})
+                admit, _, why = self._admit(mid, votes, regime)
                 if admit:
-                    self._paper_buy(
-                        mid, symbol, self.last_prices[symbol], ts,
-                        votes, regime,
+                    self._buy(
+                        mid, symbol, self.last_prices[symbol], ts, votes, regime,
                         f"streak_candidate;{why};movement={json.dumps(movement, sort_keys=True)}",
                     )
 
-        cycle_latency_ms = (time.perf_counter() - cycle_started) * 1000.0
-
-        # Wallet marks and portfolio-level streak evidence.
-        for mutation in MUTATIONS:
-            mid = mutation["id"]
-            wallet = self.wallets[mid]
-            equity = wallet.equity(self.last_prices, float(self.args.cost_bps_side))
-            wallet.peak_equity_usd = max(wallet.peak_equity_usd, equity)
+        cycle_ms = (time.perf_counter() - cycle_started) * 1000.0
+        for item in MUTATIONS:
+            mid, w = item["id"], self.wallets[item["id"]]
+            equity = w.equity(self.last_prices, self.args.cost_bps_side)
+            w.peak_equity_usd = max(w.peak_equity_usd, equity)
             self.conn.execute(
                 "INSERT OR REPLACE INTO live_wallet_marks VALUES (?,?,?,?,?,?,?,?)",
-                (
-                    self.run_id, mid, ts, equity, wallet.cash, len(wallet.positions),
-                    wallet.cumulative_cost_usd, cycle_latency_ms,
-                ),
+                (self.run_id, mid, ts, equity, w.cash, len(w.positions), w.cumulative_cost_usd, cycle_ms),
             )
             rows = self.conn.execute(
-                """
-                SELECT ts, equity_usd FROM live_wallet_marks
-                WHERE run_id=? AND mutation_id=? AND ts>=?
-                ORDER BY ts ASC
-                """,
+                "SELECT ts,equity_usd FROM live_wallet_marks WHERE run_id=? AND mutation_id=? AND ts>=? ORDER BY ts",
                 (self.run_id, mid, ts - 12.0),
             ).fetchall()
-            if len(rows) >= 2:
-                def prior(delta: float) -> float | None:
-                    target = ts - delta
-                    eligible = [row for row in rows if float(row[0]) <= target]
-                    return float(eligible[-1][1]) if eligible else None
-                deltas = {}
-                for horizon in (1, 3, 5, 10):
-                    before = prior(float(horizon))
-                    deltas[horizon] = (equity - before) if before is not None else 0.0
-                if deltas[1] > 0 and deltas[3] > 0:
-                    self.conn.execute(
-                        "INSERT INTO live_streak_events VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                        (
-                            self.run_id, mid, ts, "STREAK_SPARK", equity,
-                            deltas[1], deltas[3], deltas[5], deltas[10],
-                            cycle_latency_ms,
-                            json.dumps({
-                                "open_positions": list(wallet.positions),
-                                "authority": AUTHORITY,
-                                "cycle_latency_ms": cycle_latency_ms,
-                            }, sort_keys=True),
-                        ),
-                    )
+            def prior(delta: float) -> float | None:
+                eligible = [row for row in rows if float(row[0]) <= ts - delta]
+                return float(eligible[-1][1]) if eligible else None
+            deltas = {}
+            for h in (1, 3, 5, 10):
+                before = prior(h)
+                deltas[h] = equity - before if before is not None else 0.0
+            if deltas[1] > 0 and deltas[3] > 0:
+                self.conn.execute(
+                    "INSERT INTO live_streak_events VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (self.run_id, mid, ts, "STREAK_SPARK", equity, deltas[1], deltas[3], deltas[5], deltas[10],
+                     cycle_ms, json.dumps({"open_positions": list(w.positions), "feed": feed_meta, "authority": AUTHORITY}, sort_keys=True)),
+                )
 
         self.conn.commit()
-        if self.args.verbose or int(ts) % max(1, int(self.args.report_every_sec)) == 0:
-            self.print_status(ts, fetch_latency_ms, cycle_latency_ms)
+        if feed_meta.get("backlog_warning"):
+            print("WARN Kraken PostTrade returned 1000 trades; public feed may be lagging.")
+        if self.args.verbose or int(ts) % max(1, self.args.report_every_sec) == 0:
+            self.print_status(fetch_ms, cycle_ms, feed_meta)
 
-    def print_status(self, ts: float, fetch_ms: float, cycle_ms: float) -> None:
+    def print_status(self, fetch_ms: float, cycle_ms: float, feed_meta: dict[str, Any]) -> None:
         print(
             f"\n[{time.strftime('%H:%M:%S')}] fetch={fetch_ms:.0f}ms cycle={cycle_ms:.0f}ms "
-            f"authority={AUTHORITY}"
+            f"tracked_trades={feed_meta.get('tracked_trades', 0)} authority={AUTHORITY}"
         )
-        for mutation in MUTATIONS:
-            mid = mutation["id"]
-            wallet = self.wallets[mid]
-            equity = wallet.equity(self.last_prices, float(self.args.cost_bps_side))
+        for item in MUTATIONS:
+            mid, w = item["id"], self.wallets[item["id"]]
+            equity = w.equity(self.last_prices, self.args.cost_bps_side)
             print(
-                f"  {mid:22s} equity={equity:10.4f} "
-                f"net={equity-self.args.start_usd:+8.4f} "
-                f"cost={wallet.cumulative_cost_usd:7.4f} "
-                f"actions={wallet.actions:4d} open={len(wallet.positions)}"
+                f"  {mid:22s} equity={equity:10.4f} net={equity-self.args.start_usd:+8.4f} "
+                f"cost={w.cumulative_cost_usd:7.4f} actions={w.actions:4d} open={len(w.positions)}"
             )
 
-    def close(self, status: str = "COMPLETE") -> None:
+    def close(self, status: str) -> None:
         ts = time.time()
-        for mutation in MUTATIONS:
-            mid = mutation["id"]
-            wallet = self.wallets[mid]
-            for symbol in list(wallet.positions):
+        for item in MUTATIONS:
+            mid, w = item["id"], self.wallets[item["id"]]
+            for symbol in list(w.positions):
                 price = self.last_prices.get(symbol)
                 if price:
-                    self._paper_sell(
-                        mid, symbol, price, ts,
-                        {}, self.series[symbol].regime(), "lab_end_liquidation",
-                    )
-        self.conn.execute(
-            "UPDATE live_streak_runs SET ended_ts=?, status=? WHERE run_id=?",
-            (time.time(), status, self.run_id),
-        )
+                    self._sell(mid, symbol, price, ts, {}, self.series[symbol].regime(), "lab_end_liquidation")
+        self.conn.execute("UPDATE live_streak_runs SET ended_ts=?,status=? WHERE run_id=?", (time.time(), status, self.run_id))
         self.conn.commit()
-        self.print_final()
+        self.print_status(0.0, 0.0, {"tracked_trades": 0})
+        print(f"SQLite: {self.args.database}\nrun_id: {self.run_id}\nPRIVATE ORDERS: 0")
         self.conn.close()
-
-    def print_final(self) -> None:
-        print("\n=== FINAL PAPER SCORECARD ===")
-        for mutation in MUTATIONS:
-            mid = mutation["id"]
-            wallet = self.wallets[mid]
-            equity = wallet.equity(self.last_prices, float(self.args.cost_bps_side))
-            print(
-                f"{mid:22s} end={equity:.6f} net={equity-self.args.start_usd:+.6f} "
-                f"cost={wallet.cumulative_cost_usd:.6f} actions={wallet.actions}"
-            )
-        print(f"SQLite: {self.args.database}")
-        print(f"run_id: {self.run_id}")
-        print("PRIVATE ORDERS: 0")
 
     def run(self) -> int:
         self.warm_start()
-        deadline = time.monotonic() + float(self.args.duration_sec)
         print(
-            f"Starting {self.args.duration_sec}s live PUBLIC Kraken lab at "
-            f"{self.args.interval_sec:.2f}s cadence. No API keys. No orders."
+            f"Starting {self.args.duration_sec}s Kraken PUBLIC trade-stream lab at ~{self.args.interval_sec:.2f}s cadence. "
+            "No CCXT. No API keys. No orders."
         )
+        deadline = time.monotonic() + self.args.duration_sec
         status = "COMPLETE"
         try:
             while time.monotonic() < deadline:
                 started = time.monotonic()
                 try:
                     self.cycle()
-                except (ccxt.NetworkError, ccxt.ExchangeError) as exc:
-                    print(f"WARN cycle: {type(exc).__name__}: {exc}")
-                elapsed = time.monotonic() - started
-                time.sleep(max(0.0, float(self.args.interval_sec) - elapsed))
+                except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
+                    print(f"WARN public feed cycle: {type(exc).__name__}: {exc}")
+                time.sleep(max(0.0, self.args.interval_sec - (time.monotonic() - started)))
         except KeyboardInterrupt:
             status = "INTERRUPTED"
-            print("\nInterrupted by operator.")
         finally:
             self.close(status)
         return 0
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Live public-market Phoenix profit-streak swarm lab")
-    parser.add_argument(
-        "--symbols", nargs="+",
-        default=["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "ADA/USD", "AVAX/USD", "DOGE/USD", "HYPE/USD"],
-    )
-    parser.add_argument("--database", default="data/live_profit_streak_lab.db")
-    parser.add_argument("--duration-sec", type=int, default=900)
-    parser.add_argument("--interval-sec", type=float, default=1.0)
-    parser.add_argument("--start-usd", type=float, default=1000.0)
-    parser.add_argument("--notional-usd", type=float, default=25.0)
-    parser.add_argument("--cost-bps-side", type=float, default=4.0)
-    parser.add_argument("--max-positions", type=int, default=3)
-    parser.add_argument("--spark-1s-bps", type=float, default=0.5)
-    parser.add_argument("--confirm-3s-bps", type=float, default=2.0)
-    parser.add_argument("--persist-5s-bps", type=float, default=4.0)
-    parser.add_argument("--exit-1s-bps", type=float, default=1.0)
-    parser.add_argument("--max-retracement-bps", type=float, default=12.0)
-    parser.add_argument("--max-hold-sec", type=float, default=90.0)
-    parser.add_argument("--report-every-sec", type=int, default=10)
-    parser.add_argument("--seed", type=int, default=20260918)
-    parser.add_argument("--verbose", action="store_true")
-    args = parser.parse_args()
+    p = argparse.ArgumentParser(description="Stdlib-only live public Kraken Phoenix profit-streak swarm lab")
+    p.add_argument("--symbols", nargs="+", default=["BTC/USD","ETH/USD","SOL/USD","XRP/USD","ADA/USD","AVAX/USD","DOGE/USD","HYPE/USD"])
+    p.add_argument("--database", default="data/live_profit_streak_lab.db")
+    p.add_argument("--duration-sec", type=int, default=900)
+    p.add_argument("--interval-sec", type=float, default=1.0)
+    p.add_argument("--start-usd", type=float, default=1000.0)
+    p.add_argument("--notional-usd", type=float, default=25.0)
+    p.add_argument("--cost-bps-side", type=float, default=4.0)
+    p.add_argument("--max-positions", type=int, default=3)
+    p.add_argument("--spark-1s-bps", type=float, default=0.5)
+    p.add_argument("--confirm-3s-bps", type=float, default=2.0)
+    p.add_argument("--persist-5s-bps", type=float, default=4.0)
+    p.add_argument("--exit-1s-bps", type=float, default=1.0)
+    p.add_argument("--max-retracement-bps", type=float, default=12.0)
+    p.add_argument("--max-hold-sec", type=float, default=90.0)
+    p.add_argument("--report-every-sec", type=int, default=10)
+    p.add_argument("--seed", type=int, default=20260918)
+    p.add_argument("--verbose", action="store_true")
+    args = p.parse_args()
     if args.interval_sec < 0.8:
-        parser.error("--interval-sec must be >= 0.8s to avoid abusing the public API")
+        p.error("--interval-sec must be >= 0.8")
     if args.duration_sec < 30:
-        parser.error("--duration-sec must be >= 30")
+        p.error("--duration-sec must be >= 30")
     return args
 
 

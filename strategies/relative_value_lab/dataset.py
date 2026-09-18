@@ -47,6 +47,9 @@ class RelativeValueExample:
     hedge_ratio: float
     relationship_stability: float
     half_life_seconds: Optional[float]
+    mean_reversion_speed_per_sec: Optional[float]
+    ou_equilibrium: Optional[float]
+    spread_std: Optional[float]
     structural_break_state: str
     spread: float
     spread_zscore: Optional[float]
@@ -366,6 +369,9 @@ class RelativeValueDatasetBuilder:
                     hedge_ratio=beta,
                     relationship_stability=diagnostics.stability_score,
                     half_life_seconds=diagnostics.half_life_seconds,
+                    mean_reversion_speed_per_sec=diagnostics.ou_mean_reversion_speed_per_sec,
+                    ou_equilibrium=diagnostics.ou_equilibrium,
+                    spread_std=diagnostics.spread_std,
                     structural_break_state=diagnostics.structural_break_state,
                     spread=current_spread,
                     spread_zscore=diagnostics.spread_zscore,

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 try:
     import requests
@@ -11,7 +12,7 @@ import logging
 try:
     from binance.client import Client
 except ImportError:  # Optional on Termux/public-Kraken-only research paths.
-    Client = Any
+    Client = object
 from typing import Tuple, List, Optional, Dict, Any
 
 

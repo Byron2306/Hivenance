@@ -194,6 +194,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "descriptive_research_metabolism_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_world_score": {
+        "role": "canonical_observed_market_score_page_and_binding_root",
+        "mode": "immutable_observed_research_context",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

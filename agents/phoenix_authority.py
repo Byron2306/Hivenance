@@ -104,6 +104,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "advisory_only",
         "phoenix_entry_phase": 2,
     },
+    "relative_value_harmonic_governance": {
+        "role": "forecast_coherence_and_dissent_governor",
+        "mode": "research_filter_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

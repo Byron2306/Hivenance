@@ -11,6 +11,8 @@ from .contracts import RELATIVE_VALUE_AUTHORITY
 from .governance_epoch import ResearchGovernanceEpoch, ResearchGovernanceEpochService
 from .musical_cognition import MotifNote, MotifScore
 from .polyphonic_entrainment import EntrainmentReceipt
+from .temporal_texture import TemporalTextureReceipt
+from .edge_chorus_harmony import EdgeChorusHarmony
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -135,6 +137,14 @@ class QueenPolyphonicReceipt:
     world_state_tension: float
     vns_pulse_energy: float
     vns_syncopation: float
+    temporal_jitter: float
+    temporal_drift: float
+    temporal_burstiness: float
+    temporal_entropy: float
+    temporal_cadence_coherence: float
+    edge_chorus_quality: float
+    edge_mesh_entrainment: float
+    edge_settlement: float
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -186,6 +196,8 @@ class ConductingQueen:
         epoch: ResearchGovernanceEpoch,
         vns_pulses: Sequence[VNSSensoryPulse] = (),
         harmonic_context: Mapping[str, float] | None = None,
+        temporal_texture: TemporalTextureReceipt | None = None,
+        edge_chorus: EdgeChorusHarmony | None = None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -207,21 +219,36 @@ class ConductingQueen:
         subtle_shift = self._subtle_shift_score(notes)
 
         pulse_energy, pulse_syncopation = self._vns_music(vns_pulses)
+
+        temporal_jitter = float(temporal_texture.jitter_norm) if temporal_texture else 0.0
+        temporal_drift = float(temporal_texture.drift_norm) if temporal_texture else 0.0
+        temporal_burstiness = float(temporal_texture.burstiness) if temporal_texture else 0.0
+        temporal_entropy = float(temporal_texture.entropy_signature) if temporal_texture else 0.0
+        temporal_cadence = float(temporal_texture.cadence_coherence) if temporal_texture else motif.rhythmic_regularity
+
+        edge_quality = float(edge_chorus.chorus_quality) if edge_chorus else 0.0
+        edge_mesh = float(edge_chorus.mesh_entrainment) if edge_chorus else 0.0
+        edge_settlement = float(edge_chorus.settlement) if edge_chorus else 0.0
+
         harmonic_context = dict(harmonic_context or {})
         resonance = _clamp(float(harmonic_context.get("resonance", 0.0)))
         discord = _clamp(float(harmonic_context.get("discord", motif.dissonance)))
         harmonic_confidence = _clamp(float(harmonic_context.get("confidence", 0.0)))
 
         polyphonic_pressure = _clamp(
-            0.16 * motif.dynamic_intensity
-            + 0.14 * motif.crescendo
-            + 0.18 * entrainment.entrainment_strength
-            + 0.12 * pulse_energy
-            + 0.10 * tonal_coherence
-            + 0.10 * pitch_convergence
-            + 0.08 * resonance
-            + 0.06 * harmonic_confidence
-            + 0.06 * (1.0 - entrainment.false_unison_risk)
+            0.12 * motif.dynamic_intensity
+            + 0.10 * motif.crescendo
+            + 0.15 * entrainment.entrainment_strength
+            + 0.10 * pulse_energy
+            + 0.08 * tonal_coherence
+            + 0.08 * pitch_convergence
+            + 0.07 * resonance
+            + 0.05 * harmonic_confidence
+            + 0.05 * (1.0 - entrainment.false_unison_risk)
+            + 0.06 * temporal_cadence
+            + 0.04 * (1.0 - temporal_jitter)
+            + 0.04 * (1.0 - temporal_burstiness)
+            + 0.06 * edge_quality
         )
 
         triune_scores = self._write_triune_scores(
@@ -239,6 +266,8 @@ class ConductingQueen:
             subtle_shift=subtle_shift,
             resonance=resonance,
             discord=discord,
+            temporal_texture=temporal_texture,
+            edge_chorus=edge_chorus,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -254,6 +283,8 @@ class ConductingQueen:
             subtle_shift=subtle_shift,
             resonance=resonance,
             discord=discord,
+            temporal_texture=temporal_texture,
+            edge_chorus=edge_chorus,
         )
 
         notation = self._issue_notation(
@@ -266,6 +297,8 @@ class ConductingQueen:
             pulse_energy=pulse_energy,
             timbral_diversity=timbral_diversity,
             subtle_shift=subtle_shift,
+            temporal_texture=temporal_texture,
+            edge_chorus=edge_chorus,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -280,6 +313,14 @@ class ConductingQueen:
             reasons.append("counterfeit_unison_pressure")
         if motif.dissonance > 0.4:
             reasons.append("dissonance_remains_musically_relevant")
+        if temporal_jitter > 0.45:
+            reasons.append("temporal_jitter_audible")
+        if temporal_burstiness > 0.35:
+            reasons.append("temporal_burstiness_audible")
+        if temporal_drift > 0.45:
+            reasons.append("cadence_drift_audible")
+        if edge_chorus and edge_chorus.resolution_class != "consonant":
+            reasons.append("edge_chorus_" + edge_chorus.resolution_class)
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -305,6 +346,14 @@ class ConductingQueen:
             world_state_tension=round(world_state_tension, 6),
             vns_pulse_energy=round(pulse_energy, 6),
             vns_syncopation=round(pulse_syncopation, 6),
+            temporal_jitter=round(temporal_jitter, 6),
+            temporal_drift=round(temporal_drift, 6),
+            temporal_burstiness=round(temporal_burstiness, 6),
+            temporal_entropy=round(temporal_entropy, 6),
+            temporal_cadence_coherence=round(temporal_cadence, 6),
+            edge_chorus_quality=round(edge_quality, 6),
+            edge_mesh_entrainment=round(edge_mesh, 6),
+            edge_settlement=round(edge_settlement, 6),
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -498,6 +547,8 @@ class ConductingQueen:
         subtle_shift: float,
         resonance: float,
         discord: float,
+        temporal_texture: TemporalTextureReceipt | None,
+        edge_chorus: EdgeChorusHarmony | None,
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -508,6 +559,8 @@ class ConductingQueen:
             f"entrainment:{entrainment.entrainment_strength:.3f}",
             f"polyphonic_pressure:{polyphonic_pressure:.3f}",
             f"vns_energy:{pulse_energy:.3f}",
+            f"temporal_cadence:{(temporal_texture.cadence_coherence if temporal_texture else motif.rhythmic_regularity):.3f}",
+            f"edge_chorus:{(edge_chorus.chorus_quality if edge_chorus else 0.0):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -518,6 +571,12 @@ class ConductingQueen:
             metatron_dynamics.append("pitch_converging")
         if subtle_shift > 0.4:
             metatron_dynamics.append("modulation_emerging")
+        if temporal_texture and temporal_texture.burstiness > 0.35:
+            metatron_dynamics.append("burst_phrase")
+        if temporal_texture and temporal_texture.jitter_norm > 0.45:
+            metatron_dynamics.append("jittered_cadence")
+        if edge_chorus and edge_chorus.resolution_class != "consonant":
+            metatron_dynamics.append("edge_" + edge_chorus.resolution_class)
         scores.append(self._score_sheet(
             mind="METATRON",
             motifs=metatron_motifs,
@@ -533,12 +592,22 @@ class ConductingQueen:
             f"epoch_consonance:{epoch_consonance:.3f}",
             f"world_state_tension:{world_state_tension:.3f}",
             f"source_diversity:{entrainment.source_diversity:.3f}",
+            f"timing_jitter:{(temporal_texture.jitter_norm if temporal_texture else 0.0):.3f}",
+            f"timing_drift:{(temporal_texture.drift_norm if temporal_texture else 0.0):.3f}",
+            f"burstiness:{(temporal_texture.burstiness if temporal_texture else 0.0):.3f}",
+            f"entropy:{(temporal_texture.entropy_signature if temporal_texture else 0.0):.3f}",
+            f"edge_mesh:{(edge_chorus.mesh_entrainment if edge_chorus else 0.0):.3f}",
+            f"edge_settlement:{(edge_chorus.settlement if edge_chorus else 0.0):.3f}",
         ]
         michael_invites = ["retune_if_world_state_drifts"]
         if epoch_consonance < 0.7:
             michael_invites.append("narrow_notation")
         if timbral_diversity < 0.3:
             michael_invites.append("request_new_timbre")
+        if temporal_texture and temporal_texture.cadence_coherence < 0.55:
+            michael_invites.append("retune_cadence_baseline")
+        if edge_chorus and edge_chorus.chorus_quality < 0.78:
+            michael_invites.append("rehearse_edge_chorus")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -554,12 +623,21 @@ class ConductingQueen:
             f"false_unison:{entrainment.false_unison_risk:.3f}",
             f"discord:{discord:.3f}",
             f"subtle_shift:{subtle_shift:.3f}",
+            f"burstiness:{(temporal_texture.burstiness if temporal_texture else 0.0):.3f}",
+            f"jitter:{(temporal_texture.jitter_norm if temporal_texture else 0.0):.3f}",
+            f"edge_resolution:{(edge_chorus.resolution_class if edge_chorus else 'unheard')}",
         ]
         loki_invites = ["seek_countermelody", "challenge_apparent_resolution"]
         if pitch_convergence > 0.55:
             loki_invites.append("test_pitch_convergence_for_echo")
         if motif.dissonance > 0.35:
             loki_invites.append("preserve_productive_dissonance")
+        if temporal_texture and temporal_texture.burstiness > 0.35:
+            loki_invites.append("challenge_burst_for_artifact")
+        if temporal_texture and temporal_texture.jitter_norm > 0.45:
+            loki_invites.append("challenge_jitter_for_instability")
+        if edge_chorus and edge_chorus.resolution_class != "consonant":
+            loki_invites.append("challenge_edge_resolution")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -620,6 +698,8 @@ class ConductingQueen:
         subtle_shift: float,
         resonance: float,
         discord: float,
+        temporal_texture: TemporalTextureReceipt | None,
+        edge_chorus: EdgeChorusHarmony | None,
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
         if pulse_energy > 0.35:
@@ -636,6 +716,16 @@ class ConductingQueen:
             gestures.append("HEAR_MODULATION")
         if timbral_diversity < 0.3:
             gestures.append("INVITE_NEW_TIMBRE")
+        if temporal_texture and temporal_texture.jitter_norm > 0.45:
+            gestures.append("FOLLOW_JITTER")
+        if temporal_texture and temporal_texture.burstiness > 0.35:
+            gestures.append("SHAPE_BURST")
+        if temporal_texture and temporal_texture.entropy_signature > 0.75:
+            gestures.append("HEAR_ENTROPY")
+        if edge_chorus and edge_chorus.chorus_quality < 0.78:
+            gestures.append("REHEARSE_EDGE_CHORUS")
+        if edge_chorus and edge_chorus.settlement < 0.75:
+            gestures.append("HOLD_CODA_OPEN")
         if epoch_consonance < 0.8 or world_state_tension > 0.2:
             gestures.append("REKEY_PROGRESSIVELY")
         return list(dict.fromkeys(gestures))
@@ -652,6 +742,8 @@ class ConductingQueen:
         pulse_energy: float,
         timbral_diversity: float,
         subtle_shift: float,
+        temporal_texture: TemporalTextureReceipt | None,
+        edge_chorus: EdgeChorusHarmony | None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -706,6 +798,28 @@ class ConductingQueen:
                 _clamp(0.4 + 0.4 * max(motif.dissonance, entrainment.false_unison_risk)),
                 ("triune_loki", "harmony_law"),
                 "DISSENT_OR_SEARCH",
+            ))
+
+        if temporal_texture and (
+            temporal_texture.jitter_norm > 0.45
+            or temporal_texture.burstiness > 0.35
+            or temporal_texture.drift_norm > 0.45
+        ):
+            phrases.append((
+                "harmonic_listener",
+                "TRACE_TEMPORAL_TEXTURE",
+                _clamp(0.35 + 0.25 * temporal_texture.jitter_norm + 0.25 * temporal_texture.burstiness),
+                ("vns", "harmonic_governance"),
+                "SEARCH_OR_COUNTERPOINT",
+            ))
+
+        if edge_chorus and edge_chorus.chorus_quality < 0.78:
+            phrases.append((
+                "edge_chorus",
+                "REHEARSE_EDGE_RESOLUTION",
+                _clamp(0.45 + 0.45 * (1.0 - edge_chorus.chorus_quality)),
+                ("governance_epoch", "edge_chorus", "audit"),
+                "REPAIR_RESEARCH_PHRASE",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

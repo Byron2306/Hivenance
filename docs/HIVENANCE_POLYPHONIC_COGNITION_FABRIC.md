@@ -12,6 +12,10 @@ It is a distributed market-research cognition fabric in which independent eviden
 
 Phoenix is the first market-research organism running on this fabric.
 
+The complete Metatron-to-HiveNance inheritance is frozen in:
+
+`docs/HIVENANCE_METATRON_MUSICAL_INTEGRATION_MAP.md`
+
 ## 2. Constitutional separation
 
 The architecture preserves six hard separations:
@@ -36,7 +40,9 @@ INDEPENDENT EVIDENCE FAMILIES
     ↓
 WAGGLE PROTOCOL
     ↓
-HYPOTHESIS ACCUMULATION
+MUSICAL MOTIF COGNITION
+    ↓
+POLYPHONIC ENTRAINMENT
     ↓
 MARKET HUNTING
     ↓
@@ -276,6 +282,51 @@ authority.
 The Law of Harmony remains constitutional: it determines whether a voice may
 enter the score. Musical cognition determines how lawful voices relate through
 time.
+
+## 8A. Polyphonic entrainment
+
+Entrainment measures emergent synchronization among independent lawful voices.
+
+It is not majority voting.
+
+The question is:
+
+> Do voices that began independently become increasingly aligned in timing,
+> recurrence, phase and within-band direction as the motif develops?
+
+Current implementation:
+
+`strategies/relative_value_lab/polyphonic_entrainment.py`
+
+It measures:
+
+- beat interval;
+- phase alignment;
+- within-band directional alignment;
+- recurrence alignment;
+- recruitment cascade;
+- crescendo strength;
+- convergence gain;
+- source diversity;
+- false-unison risk.
+
+Cross-horizon directions remain separate melodic lines.
+
+### False unison
+
+A choir may sound coherent while carrying duplicated information.
+
+HiveNance therefore penalizes apparent unison when:
+
+- descendant / clone lineages echo one another;
+- independent-labelled voices reuse the same evidence root;
+- one lineage dominates the phrase.
+
+The desired signature is **entrained independence**: distinct evidence lineages
+and evidence roots gradually coalesce around the same motif.
+
+Entrainment remains descriptive cognition only. It cannot grant execution or
+promotion authority.
 
 ## 9. Market Hunting
 

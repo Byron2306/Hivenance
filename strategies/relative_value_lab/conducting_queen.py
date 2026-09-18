@@ -737,8 +737,8 @@ class ConductingQueen:
             authority=RELATIVE_VALUE_AUTHORITY,
         )
 
-    @staticmethod
     def _conducting_gestures(
+        self,
         *,
         motif: MotifScore,
         entrainment: EntrainmentReceipt,

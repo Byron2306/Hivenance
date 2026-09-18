@@ -118,6 +118,12 @@ __all__ = [
     "VNSSensoryPulse",
     "ResearchGovernanceEpochService",
     "EpochValidation",
+    "EdgeChorusHarmony",
+    "EdgeChorusObservation",
+    "EdgeChorusSpec",
+    "EdgeChorus",
+    "TemporalTextureReceipt",
+    "TemporalTexture",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -131,4 +137,11 @@ from .conducting_queen import (
     QueenNotationToken,
     QueenPolyphonicReceipt,
     ConductingQueen,
+)
+from .temporal_texture import TemporalTexture, TemporalTextureReceipt
+from .edge_chorus_harmony import (
+    EdgeChorus,
+    EdgeChorusSpec,
+    EdgeChorusObservation,
+    EdgeChorusHarmony,
 )

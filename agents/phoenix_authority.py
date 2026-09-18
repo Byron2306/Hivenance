@@ -124,6 +124,16 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "offline_and_walk_forward_research_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_edge_chorus": {
+        "role": "research_transition_companion_and_settlement_verifier",
+        "mode": "research_edge_governance_only",
+        "phoenix_entry_phase": 4,
+    },
+    "relative_value_notation_token": {
+        "role": "world_state_bound_single_use_research_transition_token",
+        "mode": "research_transition_authority_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

@@ -207,6 +207,22 @@ def main() -> int:
                     f"mean={float(row['mean_net_capture_bps']):+7.2f}bps"
                 )
 
+    for title,key in (
+        ("Passive horizon: target alignment","by_target_alignment"),
+        ("Passive horizon: macro source->target","by_macro_relation"),
+        ("Passive horizon: meso source->target","by_meso_relation"),
+    ):
+        rows3=nurse.get(key) or []
+        if rows3:
+            print()
+            print(title)
+            for row in rows3:
+                print(
+                    f"  {str(row['key']):18s} n={int(row['samples']):3d} "
+                    f"win={float(row['win_rate'])*100:5.1f}% "
+                    f"mean_net_capture={float(row['mean_net_capture_bps']):+7.2f}bps"
+                )
+
     strong=nurse.get("strong_candidate_memories") or []
     if strong:
         print()

@@ -1,6 +1,9 @@
 import math
 import requests
-import ccxt
+try:
+    import ccxt
+except ImportError:  # Optional on stdlib-only Termux public-market labs.
+    ccxt = None
 import logging
 try:
     from binance.client import Client

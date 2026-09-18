@@ -72,12 +72,44 @@ def main() -> int:
             start=float(json.loads(start_row[0] or "{}").get("start_usd",1000.0))
         except Exception:
             start=1000.0
+        if str(run["status"]) == "COMPLETE":
+            exact = {
+                str(row["mutation_id"]): row
+                for row in conn.execute(
+                    """
+                    SELECT mutation_id,
+                           COALESCE(SUM(net_pnl_usd),0.0) AS net_pnl_usd,
+                           COALESCE(SUM(entry_cost_usd),0.0)+COALESCE(SUM(exit_cost_usd),0.0) AS cost_usd,
+                           COUNT(*) AS closed_legs
+                    FROM rotation_legs
+                    WHERE run_id=? AND status='CLOSED'
+                    GROUP BY mutation_id
+                    """,
+                    (rid,),
+                ).fetchall()
+            }
+        else:
+            exact = {}
+
         for row in rows:
-            net=float(row["equity_usd"] or 0)-start
+            mid=str(row["mutation_id"])
+            if mid in exact:
+                rec=exact[mid]
+                net=float(rec["net_pnl_usd"] or 0.0)
+                equity=start+net
+                cost=float(rec["cost_usd"] or 0.0)
+                actions=int(rec["closed_legs"] or 0)*2
+                held="LIQUIDATED"
+            else:
+                equity=float(row["equity_usd"] or 0.0)
+                net=equity-start
+                cost=float(row["cost_usd"] or 0.0)
+                actions=int(row["actions"] or 0)
+                held=row["held_asset"]
             print(
-                f"{str(row['mutation_id']):28s} equity={float(row['equity_usd']):10.4f} "
-                f"net={net:+9.4f} cost={float(row['cost_usd'] or 0):7.4f} "
-                f"actions={int(row['actions'] or 0):4d} held={row['held_asset']}"
+                f"{mid:28s} equity={equity:10.4f} "
+                f"net={net:+9.4f} cost={cost:7.4f} "
+                f"actions={actions:4d} held={held}"
             )
 
         latency=conn.execute(

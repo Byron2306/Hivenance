@@ -124,6 +124,13 @@ __all__ = [
     "EdgeChorus",
     "TemporalTextureReceipt",
     "TemporalTexture",
+    "ColonyCorrelator",
+    "ColonyCorrelationReceipt",
+    "CorrelationEvent",
+    "MotifHunter",
+    "MotifHuntMatch",
+    "MotifHuntRule",
+    "HuntObservation",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -145,3 +152,5 @@ from .edge_chorus_harmony import (
     EdgeChorusObservation,
     EdgeChorusHarmony,
 )
+from .market_hunting import HuntObservation, MotifHuntRule, MotifHuntMatch, MotifHunter
+from .colony_correlation import CorrelationEvent, ColonyCorrelationReceipt, ColonyCorrelator

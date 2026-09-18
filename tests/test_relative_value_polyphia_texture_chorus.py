@@ -11,6 +11,8 @@ from strategies.relative_value_lab.musical_cognition import MusicalMotifAccumula
 from strategies.relative_value_lab.polyphonic_entrainment import PolyphonicEntrainment
 from strategies.relative_value_lab.temporal_texture import TemporalTexture
 from strategies.relative_value_lab.waggle_protocol import BeeLineage, LineageRegistry, WaggleProtocol
+from strategies.relative_value_lab.market_hunting import HuntObservation, MotifHunter
+from strategies.relative_value_lab.colony_correlation import CorrelationEvent, ColonyCorrelator
 
 
 WS_ID = "ws-polyphia"
@@ -149,3 +151,55 @@ def test_triune_score_sheets_hear_timing_and_edge_harmony():
     assert any("edge_chorus:" in x for x in metatron.motifs_heard)
     assert any("timing_jitter:" in x for x in michael.cautions)
     assert any("edge_resolution:" in x for x in loki.cautions)
+
+def test_queen_weaves_hunting_and_colony_correlation():
+    acc=_music()
+    motif=acc.score("motif-p")
+    ent=PolyphonicEntrainment().score(hypothesis_id="motif-p",notes=acc.notes("motif-p"))
+
+    hunts=MotifHunter().hunt([
+        HuntObservation(
+            observation_id="h1",timestamp_ms=10_000,scope="pair:A/B",
+            pair_id="A/B",asset_ids=("A","B"),venue="kraken",
+            family="microstructure",
+            features={
+                "abs_spread_zscore":2.5,
+                "flow_exhaustion":.7,
+                "relationship_stability":.8,
+            },
+            evidence_root="sha256:"+"7"*64,
+            world_state_id=WS_ID,world_state_hash=WS_HASH,
+        )
+    ])
+
+    correlations=ColonyCorrelator(temporal_window_ms=20_000).correlate([
+        CorrelationEvent(
+            event_id="e1",timestamp_ms=9_000,scope="pair:A/B",
+            pair_id="A/B",asset_ids=("A","B"),venue="kraken",
+            feature_family="microstructure",hypothesis_family="reversal",
+            lineage_root="l1",evidence_root="r1",
+        ),
+        CorrelationEvent(
+            event_id="e2",timestamp_ms=12_000,scope="pair:A/C",
+            pair_id="A/C",asset_ids=("A","C"),venue="kraken",
+            feature_family="structural",hypothesis_family="reversal",
+            lineage_root="l2",evidence_root="r2",
+        ),
+    ])
+
+    receipt=ConductingQueen().conduct(
+        hypothesis_id="motif-p",notes=acc.notes("motif-p"),
+        motif=motif,entrainment=ent,epoch=_epoch(),
+        hunt_matches=hunts,correlations=correlations,
+        now_ms=20_000,world_state_id=WS_ID,world_state_hash=WS_HASH,
+    )
+
+    assert receipt.hunt_pressure > 0.0
+    assert receipt.correlation_harmony > 0.0
+    assert "AMPLIFY_SEARCH" in receipt.conducting_gestures
+    assert "TRACE_SHARED_ASSET" in receipt.conducting_gestures
+    assert any(t.notation=="AMPLIFY_SEARCH" for t in receipt.notation_tokens)
+    assert any(t.notation=="TRACE_SHARED_ASSET" for t in receipt.notation_tokens)
+    loki=next(s for s in receipt.triune_scores if s.mind=="LOKI")
+    assert "challenge_correlation_not_causation" in loki.invitations
+    assert receipt.execution_eligible is False

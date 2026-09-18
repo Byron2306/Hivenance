@@ -20,6 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--predictions-output", type=Path, default=Path("data/relative_value_walk_forward_predictions.jsonl"))
     parser.add_argument("--minimum-train-samples", type=int, default=80)
     parser.add_argument("--ridge-alpha", type=float, default=8.0)
+    parser.add_argument("--ridge-refit-sec", type=float, default=60.0)
     parser.add_argument("--horizons", nargs="+", type=int, default=[10, 30, 60, 120])
     return parser.parse_args()
 
@@ -37,10 +38,21 @@ def load_examples(path: Path) -> list[RelativeValueExample]:
 def main() -> int:
     args = parse_args()
     examples = load_examples(args.dataset)
+    def progress(event, payload):
+        if event == "horizon_start":
+            print(f"evaluating {payload['horizon_seconds']}s horizon...")
+        elif event == "horizon_complete":
+            print(
+                f"completed {payload['horizon_seconds']}s horizon "
+                f"predictions={payload['predictions']}"
+            )
+
     evaluator = RelativeValueWalkForwardEvaluator(
         horizons_seconds=args.horizons,
         ridge_alpha=args.ridge_alpha,
         minimum_train_samples=args.minimum_train_samples,
+        ridge_refit_interval_ms=int(max(0.0, args.ridge_refit_sec) * 1000.0),
+        progress_callback=progress,
     )
     predictions, metrics = evaluator.evaluate(examples)
 
@@ -57,6 +69,7 @@ def main() -> int:
         "horizons_seconds": list(evaluator.horizons_seconds),
         "ridge_alpha": args.ridge_alpha,
         "minimum_train_samples": args.minimum_train_samples,
+        "ridge_refit_sec": args.ridge_refit_sec,
         "metrics": [metric.to_dict() for metric in metrics],
         "authority": "research_evidence_only_no_execution_or_promotion_authority",
         "execution_authority": "none",

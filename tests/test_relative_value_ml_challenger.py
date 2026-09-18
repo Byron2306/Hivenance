@@ -128,6 +128,7 @@ def test_synthetic_training_never_becomes_prospective_edge_evidence():
     )
     assert receipt.synthetic_training_used is True
     assert receipt.prospective_edge_evidence is False
+    assert receipt.independent_vote_eligible is False
     assert "synthetic_training_not_edge_evidence" in receipt.reasons
 
 

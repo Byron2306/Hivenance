@@ -1,16 +1,16 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
-SESSION="\${HIVENANCE_STREAK_SESSION:-hivenance-streak-live}"
-VENV="\${HIVENANCE_STREAK_VENV:-$ROOT/.venv-streak-termux}"
-DURATION="\${HIVENANCE_STREAK_DURATION_SEC:-900}"
-INTERVAL="\${HIVENANCE_STREAK_INTERVAL_SEC:-1.0}"
-DB="\${HIVENANCE_STREAK_DB:-$ROOT/data/live_profit_streak_lab.db}"
-COST="\${HIVENANCE_STREAK_COST_BPS_SIDE:-4.0}"
-NOTIONAL="\${HIVENANCE_STREAK_NOTIONAL_USD:-25}"
-START="\${HIVENANCE_STREAK_START_USD:-1000}"
-SYMBOLS="\${HIVENANCE_STREAK_SYMBOLS:-BTC/USD ETH/USD SOL/USD XRP/USD ADA/USD AVAX/USD DOGE/USD HYPE/USD}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SESSION="${HIVENANCE_STREAK_SESSION:-hivenance-streak-live}"
+VENV="${HIVENANCE_STREAK_VENV:-$ROOT/.venv-streak-termux}"
+DURATION="${HIVENANCE_STREAK_DURATION_SEC:-900}"
+INTERVAL="${HIVENANCE_STREAK_INTERVAL_SEC:-1.0}"
+DB="${HIVENANCE_STREAK_DB:-$ROOT/data/live_profit_streak_lab.db}"
+COST="${HIVENANCE_STREAK_COST_BPS_SIDE:-4.0}"
+NOTIONAL="${HIVENANCE_STREAK_NOTIONAL_USD:-25}"
+START="${HIVENANCE_STREAK_START_USD:-1000}"
+SYMBOLS="${HIVENANCE_STREAK_SYMBOLS:-BTC/USD ETH/USD SOL/USD XRP/USD ADA/USD AVAX/USD DOGE/USD HYPE/USD}"
 
 cd "$ROOT"
 
@@ -58,7 +58,7 @@ tmux select-window -t "$SESSION:streak-live"
 
 echo "Phoenix live public-market streak lab started."
 echo "Session: $SESSION"
-echo "Duration: \${DURATION}s | cadence: \${INTERVAL}s | cost model: \${COST} bps/side"
+echo "Duration: ${DURATION}s | cadence: ${INTERVAL}s | cost model: ${COST} bps/side"
 echo "Database: $DB"
 echo "Authority: PUBLIC MARKET + FAKE WALLETS ONLY"
 echo "Private API keys loaded: NO"

@@ -33,12 +33,11 @@ PIP="$VENV/bin/pip"
 
 if ! "$PY" - <<'PY' >/dev/null 2>&1
 import ccxt, requests
-import binance
 PY
 then
   echo "Installing lightweight public-market dependencies..."
   "$PIP" install --upgrade pip
-  "$PIP" install ccxt requests python-binance
+  "$PIP" install ccxt requests
 fi
 
 mkdir -p "$(dirname "$DB")"

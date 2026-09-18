@@ -13,6 +13,8 @@ from .musical_cognition import MotifNote, MotifScore
 from .polyphonic_entrainment import EntrainmentReceipt
 from .temporal_texture import TemporalTextureReceipt
 from .edge_chorus_harmony import EdgeChorusHarmony
+from .market_hunting import MotifHuntMatch
+from .colony_correlation import ColonyCorrelationReceipt
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -145,6 +147,8 @@ class QueenPolyphonicReceipt:
     edge_chorus_quality: float
     edge_mesh_entrainment: float
     edge_settlement: float
+    hunt_pressure: float
+    correlation_harmony: float
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -198,6 +202,8 @@ class ConductingQueen:
         harmonic_context: Mapping[str, float] | None = None,
         temporal_texture: TemporalTextureReceipt | None = None,
         edge_chorus: EdgeChorusHarmony | None = None,
+        hunt_matches: Sequence[MotifHuntMatch] = (),
+        correlations: Sequence[ColonyCorrelationReceipt] = (),
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -230,6 +236,9 @@ class ConductingQueen:
         edge_mesh = float(edge_chorus.mesh_entrainment) if edge_chorus else 0.0
         edge_settlement = float(edge_chorus.settlement) if edge_chorus else 0.0
 
+        hunt_pressure = self._hunt_pressure(hunt_matches)
+        correlation_harmony = self._correlation_harmony(correlations)
+
         harmonic_context = dict(harmonic_context or {})
         resonance = _clamp(float(harmonic_context.get("resonance", 0.0)))
         discord = _clamp(float(harmonic_context.get("discord", motif.dissonance)))
@@ -249,6 +258,8 @@ class ConductingQueen:
             + 0.04 * (1.0 - temporal_jitter)
             + 0.04 * (1.0 - temporal_burstiness)
             + 0.06 * edge_quality
+            + 0.05 * hunt_pressure
+            + 0.05 * correlation_harmony
         )
 
         triune_scores = self._write_triune_scores(
@@ -268,6 +279,8 @@ class ConductingQueen:
             discord=discord,
             temporal_texture=temporal_texture,
             edge_chorus=edge_chorus,
+            hunt_matches=hunt_matches,
+            correlations=correlations,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -285,6 +298,8 @@ class ConductingQueen:
             discord=discord,
             temporal_texture=temporal_texture,
             edge_chorus=edge_chorus,
+            hunt_matches=hunt_matches,
+            correlations=correlations,
         )
 
         notation = self._issue_notation(
@@ -299,6 +314,8 @@ class ConductingQueen:
             subtle_shift=subtle_shift,
             temporal_texture=temporal_texture,
             edge_chorus=edge_chorus,
+            hunt_matches=hunt_matches,
+            correlations=correlations,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -321,6 +338,10 @@ class ConductingQueen:
             reasons.append("cadence_drift_audible")
         if edge_chorus and edge_chorus.resolution_class != "consonant":
             reasons.append("edge_chorus_" + edge_chorus.resolution_class)
+        if hunt_pressure > 0.5:
+            reasons.append("motif_hunt_pressure")
+        if correlation_harmony > 0.5:
+            reasons.append("colony_correlation_harmony")
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -354,6 +375,8 @@ class ConductingQueen:
             edge_chorus_quality=round(edge_quality, 6),
             edge_mesh_entrainment=round(edge_mesh, 6),
             edge_settlement=round(edge_settlement, 6),
+            hunt_pressure=round(hunt_pressure, 6),
+            correlation_harmony=round(correlation_harmony, 6),
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -407,6 +430,25 @@ class ConductingQueen:
             return _clamp(energy), 0.0
         cv = statistics.pstdev(intervals) / mean
         return _clamp(energy), _clamp(cv)
+
+    @staticmethod
+    def _hunt_pressure(matches: Sequence[MotifHuntMatch]) -> float:
+        if not matches:
+            return 0.0
+        return _clamp(statistics.fmean(float(m.research_priority) for m in matches))
+
+    @staticmethod
+    def _correlation_harmony(rows: Sequence[ColonyCorrelationReceipt]) -> float:
+        if not rows:
+            return 0.0
+        independent = [
+            float(r.confidence)
+            for r in rows
+            if not r.shared_lineage and not r.shared_evidence_root
+        ]
+        if independent:
+            return _clamp(statistics.fmean(independent))
+        return _clamp(0.5 * statistics.fmean(float(r.confidence) for r in rows))
 
     @staticmethod
     def _voice_acoustics(notes: Sequence[MotifNote]) -> list[VoiceAcoustics]:
@@ -549,6 +591,8 @@ class ConductingQueen:
         discord: float,
         temporal_texture: TemporalTextureReceipt | None,
         edge_chorus: EdgeChorusHarmony | None,
+        hunt_matches: Sequence[MotifHuntMatch],
+        correlations: Sequence[ColonyCorrelationReceipt],
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -561,6 +605,8 @@ class ConductingQueen:
             f"vns_energy:{pulse_energy:.3f}",
             f"temporal_cadence:{(temporal_texture.cadence_coherence if temporal_texture else motif.rhythmic_regularity):.3f}",
             f"edge_chorus:{(edge_chorus.chorus_quality if edge_chorus else 0.0):.3f}",
+            f"hunt_pressure:{self._hunt_pressure(hunt_matches):.3f}",
+            f"correlation_harmony:{self._correlation_harmony(correlations):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -608,6 +654,8 @@ class ConductingQueen:
             michael_invites.append("retune_cadence_baseline")
         if edge_chorus and edge_chorus.chorus_quality < 0.78:
             michael_invites.append("rehearse_edge_chorus")
+        if any(r.shared_lineage or r.shared_evidence_root for r in correlations):
+            michael_invites.append("discount_dependent_correlation")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -638,6 +686,10 @@ class ConductingQueen:
             loki_invites.append("challenge_jitter_for_instability")
         if edge_chorus and edge_chorus.resolution_class != "consonant":
             loki_invites.append("challenge_edge_resolution")
+        if hunt_matches:
+            loki_invites.append("falsify_hunt_motif")
+        if correlations:
+            loki_invites.append("challenge_correlation_not_causation")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -700,6 +752,8 @@ class ConductingQueen:
         discord: float,
         temporal_texture: TemporalTextureReceipt | None,
         edge_chorus: EdgeChorusHarmony | None,
+        hunt_matches: Sequence[MotifHuntMatch],
+        correlations: Sequence[ColonyCorrelationReceipt],
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
         if pulse_energy > 0.35:
@@ -726,6 +780,12 @@ class ConductingQueen:
             gestures.append("REHEARSE_EDGE_CHORUS")
         if edge_chorus and edge_chorus.settlement < 0.75:
             gestures.append("HOLD_CODA_OPEN")
+        if hunt_matches:
+            gestures.append("AMPLIFY_SEARCH")
+        if any(r.shared_assets for r in correlations):
+            gestures.append("TRACE_SHARED_ASSET")
+        if correlations and self._correlation_harmony(correlations) > 0.45:
+            gestures.append("WEAVE_COLONY_COUNTERPOINT")
         if epoch_consonance < 0.8 or world_state_tension > 0.2:
             gestures.append("REKEY_PROGRESSIVELY")
         return list(dict.fromkeys(gestures))
@@ -744,6 +804,8 @@ class ConductingQueen:
         subtle_shift: float,
         temporal_texture: TemporalTextureReceipt | None,
         edge_chorus: EdgeChorusHarmony | None,
+        hunt_matches: Sequence[MotifHuntMatch],
+        correlations: Sequence[ColonyCorrelationReceipt],
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -820,6 +882,33 @@ class ConductingQueen:
                 _clamp(0.45 + 0.45 * (1.0 - edge_chorus.chorus_quality)),
                 ("governance_epoch", "edge_chorus", "audit"),
                 "REPAIR_RESEARCH_PHRASE",
+            ))
+
+        if hunt_matches:
+            phrases.append((
+                "market_hunter",
+                "AMPLIFY_SEARCH",
+                _clamp(0.35 + 0.5 * self._hunt_pressure(hunt_matches)),
+                ("vns", "harmony_law", "world_state_bind"),
+                "SEARCH_OR_ALARM",
+            ))
+
+        if any(r.shared_assets for r in correlations):
+            phrases.append((
+                "colony_correlator",
+                "TRACE_SHARED_ASSET",
+                _clamp(0.35 + 0.45 * self._correlation_harmony(correlations)),
+                ("lineage_registry", "world_state_bind"),
+                "CORRELATE_WITHOUT_CAUSAL_CLAIM",
+            ))
+
+        if correlations and self._correlation_harmony(correlations) > 0.45:
+            phrases.append((
+                "independent_counterpoint",
+                "INVITE_INDEPENDENT_CORROBORATION",
+                _clamp(0.40 + 0.40 * self._correlation_harmony(correlations)),
+                ("harmony_law", "lineage_registry"),
+                "FOLLOW_DISSENT_OR_SEARCH",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

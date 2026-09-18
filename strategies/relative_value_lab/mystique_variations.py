@@ -326,8 +326,25 @@ class MystiqueCounterfactualVariations:
             name for name, value in present
             if value < self.config.survival_threshold
         )
+        # A counterfactual variation is a targeted falsification probe.
+        # The attacked dimension cannot collapse below the survival floor and
+        # then be rescued by unrelated strong dimensions in the aggregate.
+        target_value = next(
+            (
+                value
+                for name, value in present
+                if name == world.variation.target
+            ),
+            None,
+        )
+        target_survived = (
+            target_value is not None
+            and target_value >= self.config.survival_threshold
+        )
+
         survived = (
             support >= self.config.survival_threshold
+            and target_survived
             and len(failed) <= max(1, len(present) // 3)
         )
         return CounterfactualEvaluation(

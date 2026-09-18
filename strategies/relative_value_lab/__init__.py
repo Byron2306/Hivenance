@@ -31,6 +31,12 @@ from .musical_cognition import (
     MusicalCognitionConfig,
     MusicalMotifAccumulator,
 )
+from .polyphonic_entrainment import (
+    BandEntrainment,
+    EntrainmentReceipt,
+    EntrainmentConfig,
+    PolyphonicEntrainment,
+)
 from .dataset import RelativeValueDatasetBuilder, RelativeValueExample, DatasetBuildSummary
 from .evaluation import (
     ExpandingRidgeModel,
@@ -90,6 +96,10 @@ __all__ = [
     "MotifScore",
     "MusicalCognitionConfig",
     "MusicalMotifAccumulator",
+    "BandEntrainment",
+    "EntrainmentReceipt",
+    "EntrainmentConfig",
+    "PolyphonicEntrainment",
     "RelativeValueDatasetBuilder",
     "RelativeValueExample",
     "DatasetBuildSummary",

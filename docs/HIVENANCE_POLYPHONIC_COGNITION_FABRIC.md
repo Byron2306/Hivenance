@@ -748,7 +748,22 @@ Implemented v1. Current retrospective result is discovery evidence only.
 
 ### Phase 4C — Waggle Protocol + lineage registry
 
-Typed inter-organ communication and anti-clone identity.
+**Implemented v1.**
+
+Current implementation:
+
+- `strategies/relative_value_lab/waggle_protocol.py`
+- deterministic `BeeLineage` and `LineageRegistry`;
+- Harmony-gated `WaggleProtocol`;
+- typed WAGGLE / FOLLOW / DISSENT / SEARCH / ABANDON / ALARM / SETTLE testimony;
+- append-only hash-linked receipts;
+- one independent root-lineage vote per hypothesis + horizon band + world state;
+- clone/descendant testimony remains visible but cannot manufacture quorum;
+- dissent and abandonment remain first-class state;
+- ALARM/FREEZE can only reduce or freeze authority;
+- no Waggle receipt can grant execution or promotion authority.
+
+The Waggle bus is cognition transport, not a forecasting engine and not an execution bus.
 
 ### Phase 4D — Hypothesis accumulation
 

@@ -10,6 +10,7 @@ from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from .contracts import RELATIVE_VALUE_AUTHORITY
 from .evaluation import WalkForwardPrediction
+from .ml_challenger import LearnedChallengerReceipt
 
 
 CANDIDATE_FAMILIES = {
@@ -217,6 +218,55 @@ class HarmonicForecastGovernance:
             ))
         return voices, controls
 
+    def _collapse_learned_challengers(
+        self,
+        challengers: Sequence[LearnedChallengerReceipt],
+        *,
+        pair_id: str,
+        timestamp_ms: int,
+    ) -> list[HarmonicForecastVoice]:
+        grouped: dict[int, list[LearnedChallengerReceipt]] = defaultdict(list)
+        for receipt in challengers:
+            if receipt.pair_id != pair_id:
+                continue
+            if receipt.observed_at_ms != timestamp_ms:
+                continue
+            grouped[int(receipt.horizon_seconds)].append(receipt)
+
+        voices: list[HarmonicForecastVoice] = []
+        for horizon, rows in sorted(grouped.items()):
+            healthy = [
+                row for row in rows
+                if row.independent_vote_eligible and row.direction != "ABSTAIN"
+            ]
+            audible = healthy or [
+                row for row in rows
+                if row.direction != "ABSTAIN"
+            ]
+            if not audible:
+                continue
+
+            weights = [
+                max(1e-9, float(row.voice_health) * (1.0 - float(row.uncertainty_pressure)))
+                for row in audible
+            ]
+            total = sum(weights)
+            predicted = sum(
+                float(row.predicted_signed_bps) * weight
+                for row, weight in zip(audible, weights)
+            ) / total
+
+            voices.append(HarmonicForecastVoice(
+                model_id="+".join(sorted({row.model_id for row in rows})),
+                family="learned",
+                horizon_seconds=horizon,
+                predicted_signed_bps=predicted,
+                sign=_sign(predicted, self.config.deadband_bps),
+                independent=bool(healthy),
+                control=False,
+            ))
+        return voices
+
     @staticmethod
     def _agreement(signs: Sequence[int]) -> float:
         active = [value for value in signs if value != 0]
@@ -409,12 +459,19 @@ class HarmonicForecastGovernance:
         pair_id: str,
         timestamp_ms: int,
         predictions: Sequence[WalkForwardPrediction],
+        challengers: Sequence[LearnedChallengerReceipt] = (),
     ) -> HarmonicForecastReceipt:
         rows = [
             row for row in predictions
             if row.pair_id == pair_id and row.timestamp_ms == timestamp_ms
         ]
         voices, controls = self._collapse_family_voices(rows)
+        learned_voices = self._collapse_learned_challengers(
+            challengers,
+            pair_id=pair_id,
+            timestamp_ms=timestamp_ms,
+        )
+        voices.extend(learned_voices)
         independent = [voice for voice in voices if voice.independent]
         families = sorted({voice.family for voice in independent})
         horizons = sorted({voice.horizon_seconds for voice in independent})
@@ -487,6 +544,8 @@ class HarmonicForecastGovernance:
             reasons.append("global_discord_above_ceiling")
         if confidence < self.config.min_confidence:
             reasons.append("global_confidence_below_floor")
+        if challengers and not any(v.family == "learned" and v.independent for v in voices):
+            reasons.append("learned_challenger_audible_but_nonindependent")
 
         body = {
             "pair_id": pair_id,

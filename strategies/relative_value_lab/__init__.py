@@ -1,3 +1,5 @@
+from .pair_lab import PairDiagnostics, PairRelationshipLab
+from .pair_graph import PairGraphEdge, RelativeValueGraph
 """Phoenix Relative-Value Laboratory.
 
 Research-only package for pair structure, forward relative-return forecasting,
@@ -21,4 +23,8 @@ __all__ = [
     "RELATIVE_VALUE_AUTHORITY",
     "MicrostructureSnapshot",
     "SequentialMicrostructureEngine",
+    "PairDiagnostics",
+    "PairRelationshipLab",
+    "PairGraphEdge",
+    "RelativeValueGraph",
 ]

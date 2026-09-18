@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from agents.phoenix_authority import PhoenixAuthorityGuard
+from pathlib import Path
+
+from agents.phoenix_authority import PhoenixAuthorityGuard, PROTECTED_ACTIONS
 from strategies.relative_value_lab.contracts import (
     ForwardRelativeForecast,
     PairRelationshipCrystal,
@@ -31,12 +33,12 @@ def test_relative_value_components_are_research_bounded():
         assert contract["scaling_authority"] == "none"
 
 
-def test_relative_value_components_cannot_submit_orders_or_promote():
+def test_relative_value_components_cannot_gain_any_protected_authority():
     guard = PhoenixAuthorityGuard()
     for component in COMPONENTS:
-        assert guard.decision(component, "submit_order").allowed is False
-        assert guard.decision(component, "promote_live").allowed is False
-        assert guard.decision(component, "scale_capital").allowed is False
+        for action in PROTECTED_ACTIONS:
+            decision = guard.decision(component, action)
+            assert decision.allowed is False, (component, action, decision.to_dict())
 
 
 def test_relative_value_components_can_do_bounded_research():
@@ -107,3 +109,20 @@ def test_research_council_can_never_promote():
     )
     assert receipt.execution_eligible is False
     assert receipt.promotion_eligible is False
+
+
+def test_relative_value_package_contains_no_private_or_order_api_calls():
+    root = Path(__file__).resolve().parents[1] / "strategies" / "relative_value_lab"
+    forbidden = (
+        ".create_order(",
+        ".fetch_balance(",
+        "submit_order(",
+        "transmit_order(",
+        "private_key",
+        "apiSecret",
+        "apiKey",
+    )
+    for path in root.glob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        for token in forbidden:
+            assert token not in source, f"{token} found in {path}"

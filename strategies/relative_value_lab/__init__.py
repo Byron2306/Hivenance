@@ -1,5 +1,6 @@
 from .pair_lab import PairDiagnostics, PairRelationshipLab
 from .pair_graph import PairGraphEdge, RelativeValueGraph
+from .forecast import OUMeanReversionForecaster, OUForecastConfig
 """Phoenix Relative-Value Laboratory.
 
 Research-only package for pair structure, forward relative-return forecasting,
@@ -27,4 +28,6 @@ __all__ = [
     "PairRelationshipLab",
     "PairGraphEdge",
     "RelativeValueGraph",
+    "OUMeanReversionForecaster",
+    "OUForecastConfig",
 ]

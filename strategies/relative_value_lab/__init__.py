@@ -131,6 +131,14 @@ __all__ = [
     "MotifHuntMatch",
     "MotifHuntRule",
     "HuntObservation",
+    "HivePulseEngine",
+    "DecayedHivePulse",
+    "HivePulse",
+    "CausalCascade",
+    "CausalCascadeReceipt",
+    "CascadeEdge",
+    "CascadeLink",
+    "CascadeEvent",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -154,3 +162,5 @@ from .edge_chorus_harmony import (
 )
 from .market_hunting import HuntObservation, MotifHuntRule, MotifHuntMatch, MotifHunter
 from .colony_correlation import CorrelationEvent, ColonyCorrelationReceipt, ColonyCorrelator
+from .causal_cascade import CascadeEvent, CascadeLink, CascadeEdge, CausalCascadeReceipt, CausalCascade
+from .hive_pulse import HivePulse, DecayedHivePulse, HivePulseEngine

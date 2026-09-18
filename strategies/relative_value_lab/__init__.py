@@ -154,6 +154,10 @@ __all__ = [
     "CounterfactualVariation",
     "SYNTHETIC_NAMESPACE",
     "OBSERVED_NAMESPACE",
+    "CognitiveMetabolism",
+    "CognitiveMetabolismConfig",
+    "CognitiveMetabolismReceipt",
+    "MetabolicObservation",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -195,4 +199,10 @@ from .mystique_variations import (
     MystiqueFalsificationReceipt,
     MystiqueConfig,
     MystiqueCounterfactualVariations,
+)
+from .cognitive_metabolism import (
+    MetabolicObservation,
+    CognitiveMetabolismReceipt,
+    CognitiveMetabolismConfig,
+    CognitiveMetabolism,
 )

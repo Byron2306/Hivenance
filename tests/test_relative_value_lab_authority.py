@@ -1,0 +1,109 @@
+from __future__ import annotations
+
+from agents.phoenix_authority import PhoenixAuthorityGuard
+from strategies.relative_value_lab.contracts import (
+    ForwardRelativeForecast,
+    PairRelationshipCrystal,
+    ResearchCouncilReceipt,
+    RelativeMarketState,
+    RELATIVE_VALUE_AUTHORITY,
+)
+
+
+COMPONENTS = (
+    "relative_value_microstructure",
+    "relative_value_pair_lab",
+    "relative_value_forecaster",
+    "relative_value_research_council",
+    "relative_value_graph",
+    "relative_value_execution_lab",
+)
+
+
+def test_relative_value_components_are_research_bounded():
+    guard = PhoenixAuthorityGuard()
+    for component in COMPONENTS:
+        contract = guard.component_contract(component)
+        assert contract["live_allowed"] is False
+        assert contract["execution_authority"] == "none"
+        assert contract["promotion_authority"] == "none"
+        assert contract["resume_authority"] == "none"
+        assert contract["scaling_authority"] == "none"
+
+
+def test_relative_value_components_cannot_submit_orders_or_promote():
+    guard = PhoenixAuthorityGuard()
+    for component in COMPONENTS:
+        assert guard.decision(component, "submit_order").allowed is False
+        assert guard.decision(component, "promote_live").allowed is False
+        assert guard.decision(component, "scale_capital").allowed is False
+
+
+def test_relative_value_components_can_do_bounded_research():
+    guard = PhoenixAuthorityGuard()
+    for component in COMPONENTS:
+        assert guard.decision(component, "observe").allowed is True
+        assert guard.decision(component, "generate_proposal").allowed is True
+
+
+def test_pair_relationship_crystal_defaults_to_no_execution():
+    crystal = PairRelationshipCrystal(
+        schema="hivenance_pair_relationship_crystal_v1",
+        pair_id="DOGE_SOL",
+        base_symbol="DOGE/USD",
+        quote_symbol="SOL/USD",
+        venue="kraken",
+        observed_at_ms=1,
+        lookback_seconds=3600,
+        direct_route_available=False,
+        relationship_method="research_test",
+    )
+    assert crystal.authority == RELATIVE_VALUE_AUTHORITY
+    assert crystal.execution_eligible is False
+
+
+def test_relative_market_state_defaults_to_no_execution():
+    state = RelativeMarketState(
+        schema="hivenance_relative_market_state_v1",
+        pair_id="DOGE_SOL",
+        timestamp_ms=1,
+        spread=0.0,
+        spread_zscore=0.0,
+    )
+    assert state.execution_eligible is False
+
+
+def test_forward_forecast_is_research_only_even_when_positive():
+    forecast = ForwardRelativeForecast(
+        schema="hivenance_forward_relative_forecast_v1",
+        forecast_id="f1",
+        pair_id="DOGE_SOL",
+        timestamp_ms=1,
+        horizon_seconds=60,
+        model_id="test",
+        expected_relative_move_bps=20.0,
+        prediction_lower_bps=10.0,
+        prediction_upper_bps=30.0,
+        probability_positive_gross=0.9,
+        expected_cost_bps=4.0,
+        expected_net_bps=16.0,
+        uncertainty=0.1,
+        calibration_state="TEST",
+        abstain=False,
+        reason="unit_test",
+    )
+    assert forecast.expected_net_bps > 0
+    assert forecast.execution_eligible is False
+    assert forecast.authority == RELATIVE_VALUE_AUTHORITY
+
+
+def test_research_council_can_never_promote():
+    receipt = ResearchCouncilReceipt(
+        schema="hivenance_relative_value_research_council_v1",
+        receipt_id="r1",
+        created_at_ms=1,
+        subject_id="f1",
+        adviser_model="ollama/test",
+    )
+    assert receipt.execution_eligible is False
+    assert receipt.promotion_eligible is False

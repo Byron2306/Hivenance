@@ -2,6 +2,14 @@ from .pair_lab import PairDiagnostics, PairRelationshipLab
 from .pair_graph import PairGraphEdge, RelativeValueGraph
 from .forecast import OUMeanReversionForecaster, OUForecastConfig
 from .research_council import LocalOllamaResearchCouncil
+from .dataset import RelativeValueDatasetBuilder, RelativeValueExample, DatasetBuildSummary
+from .evaluation import (
+    ExpandingRidgeModel,
+    RelativeValueWalkForwardEvaluator,
+    WalkForwardPrediction,
+    ModelMetrics,
+)
+from .settlement import ProspectiveForecastSettler, SettledRelativeForecast
 """Phoenix Relative-Value Laboratory.
 
 Research-only package for pair structure, forward relative-return forecasting,
@@ -32,4 +40,13 @@ __all__ = [
     "OUMeanReversionForecaster",
     "OUForecastConfig",
     "LocalOllamaResearchCouncil",
+    "RelativeValueDatasetBuilder",
+    "RelativeValueExample",
+    "DatasetBuildSummary",
+    "ExpandingRidgeModel",
+    "RelativeValueWalkForwardEvaluator",
+    "WalkForwardPrediction",
+    "ModelMetrics",
+    "ProspectiveForecastSettler",
+    "SettledRelativeForecast",
 ]

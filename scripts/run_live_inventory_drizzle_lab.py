@@ -146,7 +146,9 @@ class InventoryDrizzleLab:
           from_symbol TEXT,to_symbol TEXT,trade_usd REAL,route_sides INTEGER,
           route_label TEXT,fee_cost_bps REAL,spread_proxy_bps REAL,total_route_cost_bps REAL,
           modeled_cost_usd REAL,cheapness_z REAL,persistence REAL,
-          gross_edge_bps REAL,net_edge_bps REAL,batch_confirmations INTEGER,
+          gross_edge_bps REAL,net_edge_bps REAL,
+          break_even_fee_bps_side REAL,maker_cost_bps_side REAL,maker_net_edge_bps REAL,
+          batch_confirmations INTEGER,
           from_value_before REAL,to_value_before REAL,from_value_after REAL,to_value_after REAL,
           entry_ratio REAL,context_json TEXT);
         CREATE TABLE IF NOT EXISTS inventory_signal_outcomes(
@@ -318,6 +320,16 @@ class InventoryDrizzleLab:
             +max(0,family_delta)*self.args.family_delta_weight_bps
         )
         net_edge=gross_edge-float(route["total_cost_bps"])
+        break_even_fee=max(
+            0.0,
+            (gross_edge-float(route["spread_proxy_bps"])) / max(1,int(route["sides"]))
+        )
+        maker_cost=float(self.args.maker_cost_bps_side)
+        maker_net_edge=(
+            gross_edge
+            -(max(0.0,maker_cost)*int(route["sides"])+float(route["spread_proxy_bps"]))
+            if maker_cost>=0 else None
+        )
         rebound=(
             cheap<=-self.args.cheapness_z_min
             and drawdown<=-self.args.relative_drawdown_min_bps
@@ -365,6 +377,9 @@ class InventoryDrizzleLab:
             "persistence":persistence,"acceleration":acceleration,
             "support_delta":support_delta,"family_delta":family_delta,
             "gross_edge":gross_edge,"net_edge":net_edge,
+            "break_even_fee_bps_side":break_even_fee,
+            "maker_cost_bps_side":maker_cost if maker_cost>=0 else None,
+            "maker_net_edge_bps":maker_net_edge,
             "rebound":rebound,"streak":streak,"admissible":admissible,
             "required_confirmations":confirmations,"route":route,"samples":n,
         }
@@ -403,7 +418,12 @@ class InventoryDrizzleLab:
                     row["persistence"],row["acceleration"],row["support_delta"],row["family_delta"],
                     route["sides"],route["fee_cost_bps"],route["spread_proxy_bps"],route["total_cost_bps"],
                     row["gross_edge"],row["net_edge"],int(row["admissible"]),rank,
-                    js({"rebound":row["rebound"],"streak":row["streak"],"samples":row["samples"]}),
+                    js({
+                        "rebound":row["rebound"],"streak":row["streak"],"samples":row["samples"],
+                        "break_even_fee_bps_side":row["break_even_fee_bps_side"],
+                        "maker_cost_bps_side":row["maker_cost_bps_side"],
+                        "maker_net_edge_bps":row["maker_net_edge_bps"],
+                    }),
                 ),
             )
         return rows
@@ -461,18 +481,22 @@ class InventoryDrizzleLab:
             "rebound":row["rebound"],"streak":row["streak"],
             "support_delta":row["support_delta"],"family_delta":row["family_delta"],
             "route":route,
+            "break_even_fee_bps_side":row["break_even_fee_bps_side"],
+            "maker_cost_bps_side":row["maker_cost_bps_side"],
+            "maker_net_edge_bps":row["maker_net_edge_bps"],
             "horizon_context_passive":True,
             "from_horizon":self._latest_horizon_context(from_symbol),
             "to_horizon":self._latest_horizon_context(to_symbol),
         }
         self.conn.execute(
-            "INSERT INTO inventory_trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO inventory_trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 trade_id,self.run_id,mid,ts,from_symbol,to_symbol,trade_usd,
                 route["sides"],route["label"],route["fee_cost_bps"],route["spread_proxy_bps"],
                 route["total_cost_bps"],cost,row["cheapness_z"],row["persistence"],
-                row["gross_edge"],row["net_edge"],batch_count,
-                from_before,to_before,from_after,to_after,row["ratio"],js(context),
+                row["gross_edge"],row["net_edge"],
+                row["break_even_fee_bps_side"],row["maker_cost_bps_side"],row["maker_net_edge_bps"],
+                batch_count,from_before,to_before,from_after,to_after,row["ratio"],js(context),
             ),
         )
         self.conn.execute(
@@ -544,6 +568,9 @@ class InventoryDrizzleLab:
             "route_label":trade["route_label"],"total_route_cost_bps":trade["total_route_cost_bps"],
             "cheapness_z":trade["cheapness_z"],"streak_persistence":trade["persistence"],
             "gross_edge_bps":trade["gross_edge_bps"],"expected_net_edge_bps":trade["net_edge_bps"],
+            "break_even_fee_bps_side":trade["break_even_fee_bps_side"],
+            "maker_cost_bps_side":trade["maker_cost_bps_side"],
+            "maker_net_edge_bps":trade["maker_net_edge_bps"],
             "gross_capture_bps":gross_capture,"net_capture_bps":net_capture,
             "evidence_horizon_sec":horizon,
             "horizon_context_passive":trade_context.get("horizon_context_passive",False),
@@ -733,6 +760,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--inventory-floor-usd",type=float,default=5.0)
     p.add_argument("--max-asset-weight",type=float,default=0.25)
     p.add_argument("--cost-bps-side",type=float,default=4.0)
+    p.add_argument(
+        "--maker-cost-bps-side",type=float,default=-1.0,
+        help="Optional verified maker cost for counterfactual only; <0 disables."
+    )
     p.add_argument("--warm-samples",type=int,default=80)
     p.add_argument("--min-live-samples",type=int,default=10)
     p.add_argument("--relative-window",type=int,default=30)

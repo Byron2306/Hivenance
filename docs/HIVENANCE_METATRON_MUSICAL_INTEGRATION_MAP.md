@@ -697,3 +697,64 @@ Triune hears metabolism differently:
 
 Cognitive Metabolism manages attention and research density only. It cannot
 increase execution, promotion, or settlement authority.
+
+### Learned Challenger — adaptive instrument, never conductor
+
+HiveNance now exposes a provenance-bound learned challenger:
+
+`strategies/relative_value_lab/ml_challenger.py`
+
+The organ preserves the Metatron principle that learned inference is one
+contributor to cognition, not sovereign truth.
+
+Each learned voice carries:
+
+- model artifact digest;
+- training lineage digest;
+- feature lineage digest;
+- training cutoff;
+- validation interval;
+- dependence group;
+- calibration and baseline-comparison health;
+- leave-one-pair / leave-one-asset generalization diagnostics;
+- freshness;
+- drift pressure;
+- uncertainty pressure.
+
+The harmonic choir collapses all learned challengers for one horizon into a
+single learned family voice. Multiple ML models therefore cannot create fake
+independence by voting together.
+
+A learned challenger can be:
+
+- healthy and independent;
+- healthy but dependence-bound;
+- stale;
+- drifting;
+- uncertain;
+- abstaining;
+- synthetically trained.
+
+All remain research voices. Only a healthy, non-synthetic, provenance-clean
+challenger may count as an independent learned-family vote.
+
+The Conducting Queen hears ML as timbre:
+
+```text
+learned forecast
+  ↓
+health / drift / uncertainty / dependence
+  ↓
+learned counterpoint
+  ↓
+Triune
+  ├─ Metatron: hear the learned timbre
+  ├─ Michael: protect provenance and retune drift
+  └─ Loki: challenge learned disagreement
+```
+
+Synthetic-trained challengers remain audible but non-voting and carry no
+prospective edge authority.
+
+The learned voice never receives execution, promotion, resume or scaling
+authority.

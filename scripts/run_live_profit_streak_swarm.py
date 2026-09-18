@@ -14,7 +14,6 @@ import urllib.request
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -101,8 +100,6 @@ def _entropy(pos: int, neg: int) -> float:
     return out
 
 
-def _iso_now_minus(seconds: float) -> str:
-    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
 
 
 @dataclass
@@ -182,14 +179,25 @@ class PaperWallet:
 
 
 class KrakenPublicFeed:
-    """Stdlib-only Kraken public trade feed. No auth headers, keys, or private endpoints."""
+    """Stdlib-only Kraken public ticker feed.
+
+    Uses one multi-pair Ticker request per cycle. No auth headers, keys,
+    private endpoints, CCXT, or exchange SDKs.
+    """
 
     def __init__(self, symbols: list[str], timeout_sec: float = 8.0) -> None:
         self.symbols = symbols
-        self.symbol_set = set(symbols)
         self.timeout_sec = timeout_sec
-        self.from_ts: str | None = None
         self.last_prices: dict[str, float] = {}
+        self.last_cumulative_volume: dict[str, float] = {}
+        self.api_pairs: dict[str, str] = {}
+        self.result_key_to_symbol: dict[str, str] = {}
+        self._load_pair_map()
+
+    @staticmethod
+    def _canonical_wsname(wsname: str) -> str:
+        text = str(wsname or "").upper()
+        return text.replace("XBT/", "BTC/").replace("XDG/", "DOGE/")
 
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         query = urllib.parse.urlencode(params)
@@ -215,58 +223,75 @@ class KrakenPublicFeed:
         result = payload.get("result")
         return result if isinstance(result, dict) else {}
 
-    def seed_prices(self) -> dict[str, float]:
-        for canonical in self.symbols:
-            candidates = API_SYMBOL_CANDIDATES.get(canonical, (canonical,))
-            for api_symbol in candidates:
-                try:
-                    result = self._get("PostTrade", {"symbol": api_symbol, "count": 1})
-                    trades = result.get("trades") or []
-                    if trades:
-                        self.last_prices[canonical] = _finite(trades[-1].get("price"))
-                        break
-                except Exception:
-                    continue
+    def _load_pair_map(self) -> None:
+        pairs = self._get("AssetPairs", {})
+        wanted = set(self.symbols)
+        for result_key, info in pairs.items():
+            if not isinstance(info, dict):
+                continue
+            wsname = self._canonical_wsname(str(info.get("wsname") or ""))
+            if wsname not in wanted:
+                continue
+            altname = str(info.get("altname") or result_key)
+            self.api_pairs[wsname] = altname
+            self.result_key_to_symbol[str(result_key)] = wsname
 
-        # Bootstrap the streaming cursor from Kraken itself rather than the
-        # handset wall clock. Kraken documents last_ts as the value intended
-        # for the next from_ts request.
-        cursor_result = self._get("PostTrade", {"count": 1})
-        cursor = str(cursor_result.get("last_ts") or "").strip()
-        if not cursor:
-            raise RuntimeError("Kraken PostTrade did not return last_ts cursor")
-        self.from_ts = cursor
+        missing = [symbol for symbol in self.symbols if symbol not in self.api_pairs]
+        if missing:
+            raise RuntimeError(f"Kraken AssetPairs missing requested symbols: {missing}")
+
+    def _ticker_result(self) -> dict[str, Any]:
+        pair_arg = ",".join(self.api_pairs[symbol] for symbol in self.symbols)
+        return self._get("Ticker", {"pair": pair_arg})
+
+    def seed_prices(self) -> dict[str, float]:
+        result = self._ticker_result()
+        self._consume_ticker(result, seed_only=True)
         return dict(self.last_prices)
 
-    def poll(self) -> tuple[dict[str, float], dict[str, float], dict[str, Any]]:
-        params: dict[str, Any] = {"count": 1000}
-        if self.from_ts:
-            params["from_ts"] = self.from_ts
-        result = self._get("PostTrade", params)
-        trades = result.get("trades") or []
-        volume_by_symbol: dict[str, float] = defaultdict(float)
-        seen = 0
-        for trade in trades:
-            raw_symbol = str(trade.get("symbol") or "")
-            symbol = API_SYMBOL_ALIASES.get(raw_symbol, raw_symbol)
-            if symbol not in self.symbol_set:
+    def _consume_ticker(
+        self,
+        result: dict[str, Any],
+        *,
+        seed_only: bool = False,
+    ) -> tuple[dict[str, float], dict[str, float], int]:
+        incremental_volume: dict[str, float] = {}
+        updated = 0
+
+        for result_key, row in result.items():
+            symbol = self.result_key_to_symbol.get(str(result_key))
+            if not symbol or not isinstance(row, dict):
                 continue
-            price = _finite(trade.get("price"))
+            close = row.get("c") or []
+            volume = row.get("v") or []
+            if not close:
+                continue
+            price = _finite(close[0])
             if price <= 0:
                 continue
+            cumulative = _finite(volume[0]) if volume else 0.0
+            previous_cumulative = self.last_cumulative_volume.get(symbol)
+            if seed_only or previous_cumulative is None:
+                delta_volume = 0.0
+            else:
+                delta_volume = max(0.0, cumulative - previous_cumulative)
+            self.last_cumulative_volume[symbol] = cumulative
+            if self.last_prices.get(symbol) != price or delta_volume > 0.0:
+                updated += 1
             self.last_prices[symbol] = price
-            volume_by_symbol[symbol] += max(0.0, _finite(trade.get("quantity")))
-            seen += 1
-        last_ts = str(result.get("last_ts") or "").strip()
-        if last_ts:
-            self.from_ts = last_ts
-        return dict(self.last_prices), dict(volume_by_symbol), {
-            "returned_trades": int(result.get("count") or len(trades)),
-            "tracked_trades": seen,
-            "backlog_warning": int(result.get("count") or len(trades)) >= 1000,
-            "last_ts": last_ts,
-        }
+            incremental_volume[symbol] = delta_volume
 
+        return dict(self.last_prices), incremental_volume, updated
+
+    def poll(self) -> tuple[dict[str, float], dict[str, float], dict[str, Any]]:
+        result = self._ticker_result()
+        prices, volumes, updated = self._consume_ticker(result, seed_only=False)
+        return prices, volumes, {
+            "ticker_pairs": len(result),
+            "tracked_pairs": len(prices),
+            "updated_pairs": updated,
+            "transport": "kraken_public_multi_pair_ticker",
+        }
 
 class LiveStreakLab:
     def __init__(self, args: argparse.Namespace) -> None:
@@ -535,15 +560,13 @@ class LiveStreakLab:
                 )
 
         self.conn.commit()
-        if feed_meta.get("backlog_warning"):
-            print("WARN Kraken PostTrade returned 1000 trades; public feed may be lagging.")
         if self.args.verbose or int(ts) % max(1, self.args.report_every_sec) == 0:
             self.print_status(fetch_ms, cycle_ms, feed_meta)
 
     def print_status(self, fetch_ms: float, cycle_ms: float, feed_meta: dict[str, Any]) -> None:
         print(
             f"\n[{time.strftime('%H:%M:%S')}] fetch={fetch_ms:.0f}ms cycle={cycle_ms:.0f}ms "
-            f"tracked_trades={feed_meta.get('tracked_trades', 0)} authority={AUTHORITY}"
+            f"updated_pairs={feed_meta.get('updated_pairs', 0)} authority={AUTHORITY}"
         )
         for item in MUTATIONS:
             mid, w = item["id"], self.wallets[item["id"]]
@@ -563,7 +586,7 @@ class LiveStreakLab:
                     self._sell(mid, symbol, price, ts, {}, self.series[symbol].regime(), "lab_end_liquidation")
         self.conn.execute("UPDATE live_streak_runs SET ended_ts=?,status=? WHERE run_id=?", (time.time(), status, self.run_id))
         self.conn.commit()
-        self.print_status(0.0, 0.0, {"tracked_trades": 0})
+        self.print_status(0.0, 0.0, {"updated_pairs": 0})
         print(f"SQLite: {self.args.database}\nrun_id: {self.run_id}\nPRIVATE ORDERS: 0")
         self.conn.close()
 

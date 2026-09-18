@@ -18,6 +18,7 @@ from .colony_correlation import ColonyCorrelationReceipt
 from .causal_cascade import CausalCascadeReceipt
 from .hive_pulse import HivePulse, HivePulseEngine
 from .polyphonic_resonance import PolyphonicResonanceReceipt
+from .mystique_variations import MystiqueFalsificationReceipt
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -161,6 +162,9 @@ class QueenPolyphonicReceipt:
     overtone_coherence: float
     resonance_drift: float
     resonance_texture: str
+    mystique_fragility: float
+    mystique_survival_rate: float
+    mystique_contamination_guard: bool
     tonal_coherence: float
     timbral_diversity: float
     pitch_convergence: float
@@ -219,6 +223,7 @@ class ConductingQueen:
         cascade: CausalCascadeReceipt | None = None,
         hive_pulses: Sequence[HivePulse] = (),
         polyphonic_resonance: PolyphonicResonanceReceipt | None = None,
+        mystique: MystiqueFalsificationReceipt | None = None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -269,6 +274,10 @@ class ConductingQueen:
         resonance_drift = float(polyphonic_resonance.resonance_drift) if polyphonic_resonance else 0.0
         resonance_texture = polyphonic_resonance.texture if polyphonic_resonance else "UNHEARD"
 
+        mystique_fragility = float(mystique.fragility_score) if mystique else 0.0
+        mystique_survival = float(mystique.survival_rate) if mystique else 0.0
+        mystique_guard = bool(mystique.contamination_guard_passed) if mystique else True
+
         polyphonic_pressure = _clamp(
             0.12 * motif.dynamic_intensity
             + 0.10 * motif.crescendo
@@ -292,6 +301,7 @@ class ConductingQueen:
             + 0.04 * register_diversity
             + 0.04 * overtone_coherence
             + 0.03 * (1.0 - resonance_drift)
+            + 0.04 * (1.0 - mystique_fragility)
         )
 
         triune_scores = self._write_triune_scores(
@@ -316,6 +326,7 @@ class ConductingQueen:
             cascade=cascade,
             hive_pulses=hive_pulses,
             polyphonic_resonance=polyphonic_resonance,
+            mystique=mystique,
             polyphonic_pressure=polyphonic_pressure,
             world_state_id=world_state_id,
         )
@@ -338,6 +349,7 @@ class ConductingQueen:
             cascade=cascade,
             hive_pulses=hive_pulses,
             polyphonic_resonance=polyphonic_resonance,
+            mystique=mystique,
             now_ms=now_ms,
         )
 
@@ -358,6 +370,7 @@ class ConductingQueen:
             cascade=cascade,
             hive_pulses=hive_pulses,
             polyphonic_resonance=polyphonic_resonance,
+            mystique=mystique,
             now_ms=now_ms,
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
@@ -396,6 +409,12 @@ class ConductingQueen:
             reasons.append("polyphonic_modulation")
         if resonance_texture != "UNHEARD":
             reasons.append("resonance_texture_" + resonance_texture.lower())
+        if mystique and mystique_fragility > 0.50:
+            reasons.append("mystique_fragility_high")
+        if mystique and mystique_survival > 0.75:
+            reasons.append("synthetic_variation_survival_high")
+        if mystique and not mystique_guard:
+            reasons.append("mystique_contamination_guard_failed")
         if polyphonic_pressure > 0.65:
             reasons.append("polyphonic_crescendo")
 
@@ -440,6 +459,9 @@ class ConductingQueen:
             overtone_coherence=round(overtone_coherence, 6),
             resonance_drift=round(resonance_drift, 6),
             resonance_texture=resonance_texture,
+            mystique_fragility=round(mystique_fragility, 6),
+            mystique_survival_rate=round(mystique_survival, 6),
+            mystique_contamination_guard=mystique_guard,
             tonal_coherence=round(tonal_coherence, 6),
             timbral_diversity=round(timbral_diversity, 6),
             pitch_convergence=round(pitch_convergence, 6),
@@ -676,6 +698,7 @@ class ConductingQueen:
         cascade: CausalCascadeReceipt | None,
         hive_pulses: Sequence[HivePulse],
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
+        mystique: MystiqueFalsificationReceipt | None,
         polyphonic_pressure: float,
         world_state_id: str,
     ) -> list[TriuneScoreSheet]:
@@ -695,6 +718,8 @@ class ConductingQueen:
             f"register_diversity:{(polyphonic_resonance.register_diversity if polyphonic_resonance else 0.0):.3f}",
             f"overtone_coherence:{(polyphonic_resonance.overtone_coherence if polyphonic_resonance else 0.0):.3f}",
             f"cross_band_tension:{(polyphonic_resonance.cross_band_tension if polyphonic_resonance else 0.0):.3f}",
+            f"mystique_survival:{(mystique.survival_rate if mystique else 0.0):.3f}",
+            f"mystique_fragility:{(mystique.fragility_score if mystique else 0.0):.3f}",
         ]
         metatron_dynamics = []
         if motif.crescendo > motif.decrescendo:
@@ -719,6 +744,8 @@ class ConductingQueen:
             metatron_dynamics.append("hive_pulse_accent")
         if polyphonic_resonance:
             metatron_dynamics.append("resonance_" + polyphonic_resonance.texture.lower())
+        if mystique:
+            metatron_dynamics.append("theme_and_variations_tested")
         scores.append(self._score_sheet(
             mind="METATRON",
             motifs=metatron_motifs,
@@ -758,6 +785,10 @@ class ConductingQueen:
             michael_invites.append("honour_negative_pulse")
         if polyphonic_resonance and polyphonic_resonance.resonance_drift > 0.45:
             michael_invites.append("retune_polyphonic_registers")
+        if mystique and not mystique.contamination_guard_passed:
+            michael_invites.append("seal_synthetic_chamber")
+        if mystique and not mystique.prospective_evidence_eligible:
+            michael_invites.append("keep_synthetic_out_of_prospective_truth")
         scores.append(self._score_sheet(
             mind="MICHAEL",
             motifs=(f"tonal_coherence:{tonal_coherence:.3f}",),
@@ -798,6 +829,12 @@ class ConductingQueen:
             loki_invites.append("challenge_pulse_amplification")
         if polyphonic_resonance and polyphonic_resonance.cross_band_tension > 0.55:
             loki_invites.append("preserve_cross_band_counterpoint")
+        if mystique:
+            loki_invites.append("interrogate_counterfactual_failures")
+            if mystique.fragility_score > 0.50:
+                loki_invites.append("challenge_fragile_cadence")
+            if mystique.critical_dependencies:
+                loki_invites.append("attack_critical_dependencies")
         scores.append(self._score_sheet(
             mind="LOKI",
             motifs=(f"counterpoint_diversity:{motif.counterpoint_diversity:.3f}",),
@@ -865,6 +902,7 @@ class ConductingQueen:
         cascade: CausalCascadeReceipt | None,
         hive_pulses: Sequence[HivePulse],
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
+        mystique: MystiqueFalsificationReceipt | None,
         now_ms: int,
     ) -> list[str]:
         gestures = ["LISTEN_CONTINUOUSLY"]
@@ -915,6 +953,11 @@ class ConductingQueen:
                 gestures.append("HOLD_SUSPENSION")
             elif polyphonic_resonance.texture == "MODULATING":
                 gestures.append("FOLLOW_REGISTER_MODULATION")
+        if mystique:
+            if mystique.fragility_score > 0.50:
+                gestures.append("HOLD_FRAGILE_CADENCE")
+            elif mystique.survival_rate > 0.75:
+                gestures.append("NOTE_SYNTHETIC_ROBUSTNESS")
         if any(
             p.authority_effect == "REDUCE_OR_FREEZE_ONLY"
             and not HivePulseEngine.decay(p, now_ms=now_ms).expired
@@ -944,6 +987,7 @@ class ConductingQueen:
         cascade: CausalCascadeReceipt | None,
         hive_pulses: Sequence[HivePulse],
         polyphonic_resonance: PolyphonicResonanceReceipt | None,
+        mystique: MystiqueFalsificationReceipt | None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
@@ -1096,6 +1140,36 @@ class ConductingQueen:
                 _clamp(0.40 + 0.40 * polyphonic_resonance.resonance_drift),
                 ("world_state_bind", "harmonic_governance"),
                 "SEARCH_OR_DISSENT",
+            ))
+
+        if mystique is None and (
+            motif.cadence_strength > 0.55
+            or entrainment.entrainment_strength > 0.55
+        ):
+            phrases.append((
+                "loki_counterpoint",
+                "RUN_MYSTIQUE_VARIATIONS",
+                _clamp(0.45 + 0.35 * max(motif.cadence_strength, entrainment.entrainment_strength)),
+                ("world_state_bind", "synthetic_namespace", "triune_loki"),
+                "SYNTHETIC_FALSIFICATION_ONLY",
+            ))
+
+        if mystique and mystique.fragility_score > 0.50:
+            phrases.append((
+                "loki_counterpoint",
+                "CHALLENGE_FRAGILE_CADENCE",
+                _clamp(0.45 + 0.45 * mystique.fragility_score),
+                ("mystique", "harmony_law"),
+                "DISSENT_OR_SEARCH",
+            ))
+
+        if mystique and not mystique.contamination_guard_passed:
+            phrases.append((
+                "michael_tuning",
+                "SEAL_SYNTHETIC_CHAMBER",
+                1.0,
+                ("mystique", "governance_epoch"),
+                "RESEARCH_ISOLATION_ONLY",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

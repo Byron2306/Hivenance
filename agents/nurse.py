@@ -423,6 +423,218 @@ class NurseAgent:
         finally:
             conn.close()
 
+    def review_relative_drizzle_lab(self, database: str, run_id: str | None = None) -> Dict[str, Any]:
+        """Read-only autopsy of relative-cheapness + streak drizzle evidence."""
+        conn = sqlite3.connect(database)
+        conn.row_factory = sqlite3.Row
+        try:
+            if run_id is None:
+                run = conn.execute(
+                    "SELECT run_id,status,started_ts,ended_ts,learning_authority,config_json "
+                    "FROM relative_runs ORDER BY started_ts DESC LIMIT 1"
+                ).fetchone()
+            else:
+                run = conn.execute(
+                    "SELECT run_id,status,started_ts,ended_ts,learning_authority,config_json "
+                    "FROM relative_runs WHERE run_id=?",
+                    (run_id,),
+                ).fetchone()
+            if not run:
+                return {
+                    "schema": "hivenance_nurse_relative_drizzle_review_v1",
+                    "status": "NO_RELATIVE_DRIZZLE_RUN",
+                    "authority": "read_only_learning_review",
+                }
+            rid = str(run["run_id"])
+            try:
+                start_usd = float(json.loads(run["config_json"] or "{}").get("start_usd", 1000.0))
+            except Exception:
+                start_usd = 1000.0
+
+            marks = conn.execute(
+                """
+                SELECT w.mutation_id,w.total_equity_usd,w.cumulative_cost_usd,
+                       w.switches,w.actions,w.held_asset
+                FROM relative_wallet_marks w
+                JOIN (
+                  SELECT mutation_id,MAX(ts) AS max_ts
+                  FROM relative_wallet_marks WHERE run_id=? GROUP BY mutation_id
+                ) x ON x.mutation_id=w.mutation_id AND x.max_ts=w.ts
+                WHERE w.run_id=?
+                """,
+                (rid,rid),
+            ).fetchall()
+            legs = conn.execute(
+                """
+                SELECT mutation_id,symbol,net_pnl_usd,net_return_bps,duration_sec,
+                       exit_reason,entry_context_json,exit_context_json
+                FROM relative_legs
+                WHERE run_id=? AND status='CLOSED'
+                  AND exit_reason='relative_switch'
+                """,
+                (rid,),
+            ).fetchall()
+            crystals = conn.execute(
+                """
+                SELECT mutation_id,crystal_family,symbol,evidence_strength,
+                       net_return_bps,duration_sec,cheapness_z,streak_persistence,
+                       payload_json
+                FROM relative_learning_crystals WHERE run_id=?
+                """,
+                (rid,),
+            ).fetchall()
+            decisions = conn.execute(
+                """
+                SELECT mutation_id,action,COUNT(*) AS n
+                FROM relative_decisions
+                WHERE run_id=?
+                GROUP BY mutation_id,action
+                """,
+                (rid,),
+            ).fetchall()
+
+            final = {}
+            for row in marks:
+                equity = float(row["total_equity_usd"] or 0.0)
+                final[str(row["mutation_id"])] = {
+                    "mutation_id": str(row["mutation_id"]),
+                    "final_equity_usd": round(equity,6),
+                    "net_usd": round(equity-start_usd,6),
+                    "modeled_cost_usd": round(float(row["cumulative_cost_usd"] or 0.0),6),
+                    "switches": int(row["switches"] or 0),
+                    "actions": int(row["actions"] or 0),
+                    "held_asset": str(row["held_asset"] or ""),
+                }
+
+            by_mutation: Dict[str, Dict[str, Any]] = {}
+            by_symbol: Dict[str, Dict[str, Any]] = {}
+            by_transition: Dict[str, Dict[str, Any]] = {}
+            cheapness_buckets: Dict[str, Dict[str, Any]] = {}
+            persistence_buckets: Dict[str, Dict[str, Any]] = {}
+
+            def acc(target: Dict[str, Dict[str, Any]], key: str, net_bps: float, net_usd: float, duration: float):
+                bucket = target.setdefault(key,{
+                    "samples":0,"wins":0,"net_bps_sum":0.0,"net_usd_sum":0.0,"duration_sum":0.0
+                })
+                bucket["samples"] += 1
+                bucket["wins"] += 1 if net_bps > 0 else 0
+                bucket["net_bps_sum"] += net_bps
+                bucket["net_usd_sum"] += net_usd
+                bucket["duration_sum"] += duration
+
+            for leg in legs:
+                mid = str(leg["mutation_id"])
+                symbol = str(leg["symbol"])
+                net_usd = float(leg["net_pnl_usd"] or 0.0)
+                net_bps = float(leg["net_return_bps"] or 0.0)
+                duration = float(leg["duration_sec"] or 0.0)
+                try:
+                    exit_context = json.loads(leg["exit_context_json"] or "{}")
+                except Exception:
+                    exit_context = {}
+                challenger = str(exit_context.get("challenger") or "unknown")
+                acc(by_mutation,mid,net_bps,net_usd,duration)
+                acc(by_symbol,symbol,net_bps,net_usd,duration)
+                acc(by_transition,f"{symbol}->{challenger}",net_bps,net_usd,duration)
+
+            for crystal in crystals:
+                mid = str(crystal["mutation_id"])
+                net_bps = float(crystal["net_return_bps"] or 0.0)
+                duration = float(crystal["duration_sec"] or 0.0)
+                cheap = float(crystal["cheapness_z"] or 0.0)
+                persistence = float(crystal["streak_persistence"] or 0.0)
+                if cheap <= -1.5:
+                    ckey = "<=-1.5z"
+                elif cheap <= -1.0:
+                    ckey = "-1.5..-1.0z"
+                elif cheap <= -0.5:
+                    ckey = "-1.0..-0.5z"
+                else:
+                    ckey = ">-0.5z"
+                if persistence >= 1.0:
+                    pkey = "1.00"
+                elif persistence >= 0.75:
+                    pkey = "0.75..0.99"
+                elif persistence >= 0.50:
+                    pkey = "0.50..0.74"
+                else:
+                    pkey = "<0.50"
+                acc(cheapness_buckets,ckey,net_bps,0.0,duration)
+                acc(persistence_buckets,pkey,net_bps,0.0,duration)
+
+            def finish(groups: Dict[str, Dict[str, Any]]) -> list[Dict[str, Any]]:
+                rows = []
+                for key,value in groups.items():
+                    n=max(1,int(value["samples"]))
+                    rows.append({
+                        "key":key,
+                        "samples":int(value["samples"]),
+                        "wins":int(value["wins"]),
+                        "win_rate":round(float(value["wins"])/n,6),
+                        "mean_net_return_bps":round(float(value["net_bps_sum"])/n,6),
+                        "net_pnl_usd":round(float(value["net_usd_sum"]),6),
+                        "mean_duration_sec":round(float(value["duration_sum"])/n,3),
+                    })
+                return sorted(rows,key=lambda item:(
+                    float(item["mean_net_return_bps"]),int(item["samples"])
+                ),reverse=True)
+
+            decision_counts: Dict[str, Dict[str, int]] = {}
+            for row in decisions:
+                decision_counts.setdefault(str(row["mutation_id"]),{})[
+                    str(row["action"])
+                ] = int(row["n"])
+
+            positives=sum(1 for row in crystals if str(row["crystal_family"])=="positive_capability")
+            negatives=sum(1 for row in crystals if str(row["crystal_family"])=="negative_capability")
+            strong=[]
+            for row in crystals:
+                if float(row["evidence_strength"] or 0.0) < 0.5:
+                    continue
+                try:
+                    payload=json.loads(row["payload_json"] or "{}")
+                except Exception:
+                    payload={}
+                strong.append({
+                    "mutation_id":str(row["mutation_id"]),
+                    "family":str(row["crystal_family"]),
+                    "incumbent":str(payload.get("incumbent") or row["symbol"]),
+                    "challenger":str(payload.get("challenger") or "unknown"),
+                    "evidence_strength":round(float(row["evidence_strength"] or 0.0),6),
+                    "cheapness_z":round(float(row["cheapness_z"] or 0.0),6),
+                    "streak_persistence":round(float(row["streak_persistence"] or 0.0),6),
+                    "net_return_bps":round(float(row["net_return_bps"] or 0.0),6),
+                })
+            strong.sort(key=lambda item:float(item["evidence_strength"]),reverse=True)
+
+            return {
+                "schema":"hivenance_nurse_relative_drizzle_review_v1",
+                "authority":"read_only_learning_review",
+                "learning_authority":str(run["learning_authority"] or ""),
+                "run_id":rid,
+                "run_status":str(run["status"]),
+                "objective":"tiny_incremental_relative_gains_after_costs",
+                "final_scorecard":sorted(final.values(),key=lambda item:float(item["net_usd"]),reverse=True),
+                "closed_switch_legs":len(legs),
+                "candidate_crystals":len(crystals),
+                "positive_candidate_crystals":positives,
+                "negative_candidate_crystals":negatives,
+                "by_mutation":finish(by_mutation),
+                "by_symbol":finish(by_symbol),
+                "by_transition":finish(by_transition),
+                "by_relative_cheapness":finish(cheapness_buckets),
+                "by_streak_persistence":finish(persistence_buckets),
+                "decision_counts":decision_counts,
+                "strong_candidate_memories":strong[:16],
+                "promotion_state":"NOT_PROMOTED",
+                "notes":(
+                    "Relative-drizzle evidence remains candidate research memory. "
+                    "No weights, canonical crystals, live orders or execution authority changed."
+                ),
+            }
+        finally:
+            conn.close()
+
     def _emit(self, payload: Dict[str, Any]):
         if not self.coordinator:
             return

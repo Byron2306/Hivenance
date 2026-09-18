@@ -9,6 +9,15 @@ from .harmonic_governance import (
     HarmonicForecastVoice,
     HarmonicSpectrum,
 )
+from .harmony_law import (
+    HarmonyBeeMessage,
+    HarmonyLaw,
+    HarmonyLawConfig,
+    HarmonyLawDecision,
+    HarmonyChorusDecision,
+    horizon_band,
+    make_message_id,
+)
 from .dataset import RelativeValueDatasetBuilder, RelativeValueExample, DatasetBuildSummary
 from .evaluation import (
     ExpandingRidgeModel,
@@ -52,6 +61,13 @@ __all__ = [
     "HarmonicForecastReceipt",
     "HarmonicForecastVoice",
     "HarmonicSpectrum",
+    "HarmonyBeeMessage",
+    "HarmonyLaw",
+    "HarmonyLawConfig",
+    "HarmonyLawDecision",
+    "HarmonyChorusDecision",
+    "horizon_band",
+    "make_message_id",
     "RelativeValueDatasetBuilder",
     "RelativeValueExample",
     "DatasetBuildSummary",

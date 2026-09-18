@@ -184,6 +184,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "descriptive_polyphonic_research_cognition",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_mystique": {
+        "role": "sealed_synthetic_theme_and_variations_falsifier",
+        "mode": "synthetic_counterfactual_research_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

@@ -63,7 +63,14 @@ def test_live_ensemble_can_form_with_counterpoint_without_agreement():
         ou_equilibrium=0.0,
     )
     economy=QueenPollenEconomy()
-    quorum, issue, motion_bps, motion_kind=_ensemble(
+    (
+        quorum,
+        issue,
+        motion_bps,
+        motion_kind,
+        treatment_admitted,
+        treatment_resolution,
+    )=_ensemble(
         forecast=forecast,
         diagnostics=diagnostics,
         frame=frame,
@@ -84,3 +91,55 @@ def test_live_ensemble_can_form_with_counterpoint_without_agreement():
     assert quorum.execution_eligible is False
     assert quorum.promotion_eligible is False
     assert len(issue.bounty_ids)>=1
+
+def test_live_ensemble_follow_can_be_resolved_for_treatment():
+    feed=FakeFeed()
+    frame=_world_frame(
+        pair_id="A/USD__B/USD",
+        symbol_a="A/USD",
+        symbol_b="B/USD",
+        now_ms=1000,
+        feed=feed,
+    )
+    forecast=SimpleNamespace(
+        forecast_id="f-follow",
+        direction="LONG_A_SHORT_B",
+        expected_relative_move_bps=8.0,
+        uncertainty=2.0,
+        horizon_seconds=30,
+    )
+    diagnostics=SimpleNamespace(
+        stability_score=.8,
+        half_life_seconds=20.0,
+        hedge_alpha=0.0,
+        hedge_ratio=1.0,
+        spread_last=0.01,
+        ou_equilibrium=0.0,
+    )
+    economy=QueenPollenEconomy()
+    (
+        quorum,
+        issue,
+        motion_bps,
+        motion_kind,
+        treatment_admitted,
+        treatment_resolution,
+    )=_ensemble(
+        forecast=forecast,
+        diagnostics=diagnostics,
+        frame=frame,
+        pair_id="A/USD__B/USD",
+        symbol_a="A/USD",
+        symbol_b="B/USD",
+        previous_a=100.0,
+        previous_b=100.0,
+        current_a=101.0,
+        current_b=100.0,
+        now_ms=1000,
+        economy=economy,
+    )
+    assert motion_kind == "FOLLOW"
+    assert quorum.quorum_formed is True
+    assert quorum.explicit_dissent_present is False
+    assert treatment_admitted is True
+    assert treatment_resolution == "ADMIT_RESOLVED"

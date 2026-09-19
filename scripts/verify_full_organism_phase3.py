@@ -56,6 +56,9 @@ def main()->int:
   matched=row.get("matched_n_by_type") if isinstance(row.get("matched_n_by_type"),dict) else {}
   if int(matched.get("CROSS_SECTION") or 0)>0:cross_section_live+=1
   if int(matched.get("NEAREST_PRIOR_STATES") or 0)>0:nearest_live+=1
+  sr=row.get("selected_rejected_counts") if isinstance(row.get("selected_rejected_counts"),dict) else {}
+  if int(sr.get("selected_n") or 0)>0 and int(sr.get("rejected_n") or 0)>0:
+   selected_rejected_with_both+=1
   controls=row.get("controls") if isinstance(row.get("controls"),dict) else {}
   if not REQUIRED_CONTROLS.issubset(set(controls)):rr.append("required_controls_missing")
   for key in REQUIRED_CONTROLS:
@@ -66,6 +69,7 @@ def main()->int:
    "packet_id":row.get("packet_id"),
    "matched_n_by_type":matched,
    "selected_rejected_history_runs":row.get("selected_rejected_history_runs"),
+   "selected_rejected_counts":sr,
    "valid":not rr,
    "reasons":rr,
   })
@@ -86,6 +90,7 @@ def main()->int:
  if persisted_rejected<=0:reasons.append("persisted_rejected_universe_missing")
  if cross_section_live<=0:reasons.append("no_live_cross_section_matches")
  if nearest_live<=0:reasons.append("no_nearest_prior_state_matches")
+ if selected_rejected_with_both<=0:reasons.append("no_prior_selected_vs_rejected_two_sided_comparison")
  if any(not x["valid"] for x in reports):reasons.append("one_or_more_comparison_packets_invalid")
 
  # Stronger selected/rejected gate: read current packet results from the latest run payload's
@@ -102,6 +107,7 @@ def main()->int:
   "persisted_rejected":persisted_rejected,
   "cross_section_symbols_with_matches":cross_section_live,
   "nearest_state_symbols_with_matches":nearest_live,
+  "selected_rejected_symbols_with_both_sides":selected_rejected_with_both,
   "rows":reports,"reasons":reasons,
   "execution_eligible":False,"promotion_eligible":False,"real_orders_submitted":0,
  }

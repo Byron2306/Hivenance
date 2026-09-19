@@ -21,7 +21,7 @@ _SCOPE_BY_FAMILY={
  "COMPARISON":"comparison_engine",
 }
 
-def quorum_for_forecast(*,cycle:Any,forecast:Any,feature:Any)->Any:
+def notes_for_forecast(*,cycle:Any,forecast:Any,feature:Any)->tuple[MotifNote,...]:
  notes=[]
  fid=_digest({"cycle":cycle.cycle_id,"model":forecast.model_id,"horizon":forecast.horizon_seconds})
  notes.append(MotifNote(
@@ -49,7 +49,11 @@ def quorum_for_forecast(*,cycle:Any,forecast:Any,feature:Any)->Any:
    expected_move_bps=None,uncertainty=float(n.uncertainty),pulse_type="COUNTERPOINT" if vetoed else "RESPONSE",
    evidence_root=roots[0],world_state_id=cycle.world_state_id,world_state_hash=cycle.world_state_hash,
    independent_voice=True))
- return PolyphonicQuorum().score(tuple(notes))
+ return tuple(notes)
+
+
+def quorum_for_forecast(*,cycle:Any,forecast:Any,feature:Any)->Any:
+ return PolyphonicQuorum().score(notes_for_forecast(cycle=cycle,forecast=forecast,feature=feature))
 
 
 def apply_quorum_gate(forecast:Any,receipt:Any)->Any:

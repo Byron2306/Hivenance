@@ -14,7 +14,7 @@ def add_learning_receipt(graph:WorldGraph,receipt:Mapping[str,Any],*,created_at_
  if receipt.get("execution_eligible") is not False or receipt.get("promotion_eligible") is not False:
   raise ValueError("learning receipt must remain non-execution/non-promotion")
  authority=str(receipt.get("authority",""))
- if authority not in {"HISTORICAL_DISCOVERY_ONLY","PROSPECTIVE_RESEARCH_ONLY"}:
+ if authority not in {"HISTORICAL_DISCOVERY_ONLY","PROSPECTIVE_RESEARCH_ONLY","PROSPECTIVE_SHADOW_RESEARCH_ONLY"}:
   raise ValueError("unsupported learning authority")
  rid=str(receipt.get("learning_id") or "anonymous")
  roots=[]
@@ -30,7 +30,7 @@ def add_learning_receipt(graph:WorldGraph,receipt:Mapping[str,Any],*,created_at_
   evidence_roots=roots,lineage_id=f"learning-receipt:{rid}",
   transformation_id=str(receipt.get("schema","hivenance_learning_receipt_v1")),
   payload=payload,freshness=1.0,
-  uncertainty=0.75 if authority=="HISTORICAL_DISCOVERY_ONLY" else 0.5,
+  uncertainty=0.75 if authority=="HISTORICAL_DISCOVERY_ONLY" else (0.35 if authority=="PROSPECTIVE_SHADOW_RESEARCH_ONLY" else 0.5),
   synthetic=False,
  )
 

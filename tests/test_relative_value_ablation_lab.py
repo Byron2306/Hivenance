@@ -23,13 +23,15 @@ def snapshot(
     pollen_dissent: bool = False,
     srep: float = .6,
     mrep: float = .5,
+    pair_id: str = "A__B",
+    cost: float = 1.0,
 ):
     return AblationSnapshot(
         forecast_id=fid,
-        pair_id="A__B",
+        pair_id=pair_id,
         forecast_timestamp_ms=1000,
         expected_net_bps=edge,
-        expected_cost_bps=1.0,
+        expected_cost_bps=cost,
         stability_score=stability,
         quorum_formed=True,
         ensemble_lock=lock,
@@ -56,11 +58,11 @@ def snapshot(
     )
 
 
-def settled(fid: str, net: float):
+def settled(fid: str, net: float, pair_id: str = "A__B"):
     return SettledRelativeForecast(
         schema="hivenance_settled_relative_forecast_v1",
         forecast_id=fid,
-        pair_id="A__B",
+        pair_id=pair_id,
         model_id="test",
         forecast_timestamp_ms=1000,
         target_timestamp_ms=2000,
@@ -180,6 +182,9 @@ def test_interaction_mutations_are_distinct():
     assert admit("QUORUM_PLUS_EDGE2",s) is False
     assert admit("FOLLOW_PLUS_EDGE1",s) is True
     assert admit("FOLLOW_PLUS_STABILITY060",s) is True
+    assert admit("FOLLOW_PLUS_LOW_COST_1",s) is True
+    assert admit("FOLLOW_EDGE_COST_RATIO_1",s) is True
+    assert admit("FOLLOW_MOTION_GE_EDGE",s) is True
 
 
 def test_organ_findings_expose_selection_dead_weight():
@@ -209,3 +214,72 @@ def test_organ_findings_can_flag_harmful_candidate():
     findings={f.organ_id:f for f in lab.organ_findings(minimum_changed_cases=5)}
     # Removing counterpoint hold hurts performance, so counterpoint hold is useful.
     assert findings["counterpoint_hold"].utility_status=="USEFUL_CANDIDATE_THIS_SAMPLE"
+
+def test_report_marks_reject_all_as_degenerate_select_none():
+    lab=RelativeValueAblationLab()
+    for idx,net in enumerate((2.0,-1.0,3.0),start=1):
+        fid=f"d{idx}"
+        lab.freeze(snapshot(fid))
+        lab.settle(settled(fid,net))
+    books={b.variant_id:b for b in lab.report().books}
+    assert books["REJECT_ALL"].selected_count==0
+    assert books["REJECT_ALL"].degenerate_select_none is True
+    assert books["CONTROL_ALL"].degenerate_select_all is True
+    assert books["CONTROL_ALL"].selection_rate==1.0
+
+
+def test_selector_equivalence_exposes_policy_aliases():
+    lab=RelativeValueAblationLab()
+    # In this constructed path FULL_HIVE, NO_POLLEN and NO_REPUTATION are exact aliases.
+    for idx in range(4):
+        fid=f"eq{idx}"
+        lab.freeze(snapshot(fid,resolution="ADMIT_RESOLVED"))
+        lab.settle(settled(fid,1.0))
+    classes=lab.selector_equivalence_classes()
+    alias_sets=[set(row.variant_ids) for row in classes]
+    assert any(
+        {"FULL_HIVE","NO_POLLEN","NO_REPUTATION"}.issubset(group)
+        for group in alias_sets
+    )
+
+
+def test_variant_stability_detects_best_pair_dependency():
+    lab=RelativeValueAblationLab()
+    rows=[
+        ("s1","A__B",6.0),
+        ("s2","A__B",5.0),
+        ("s3","C__D",-2.0),
+        ("s4","C__D",-2.0),
+    ]
+    for fid,pair,net in rows:
+        lab.freeze(snapshot(fid,pair_id=pair))
+        lab.settle(settled(fid,net,pair_id=pair))
+    stability={row.variant_id:row for row in lab.variant_stability()}
+    full=stability["FULL_HIVE"]
+    assert full.best_pair_id=="A__B"
+    assert full.net_without_best_pair_bps==-4.0
+    assert full.survives_best_pair_removal is False
+
+
+def test_variant_stability_detects_temporal_fragility():
+    lab=RelativeValueAblationLab()
+    for idx,net in enumerate((4.0,3.0,-5.0,-4.0),start=1):
+        fid=f"t{idx}"
+        lab.freeze(snapshot(fid))
+        lab.settle(settled(fid,net))
+    stability={row.variant_id:row for row in lab.variant_stability()}
+    full=stability["FULL_HIVE"]
+    assert full.first_half_net_bps==7.0
+    assert full.second_half_net_bps==-9.0
+    assert full.both_halves_positive is False
+
+
+def test_cost_motion_interactions_do_not_alias_by_definition():
+    low=snapshot("low",motion_kind="FOLLOW",motion_bps=3.0,edge=2.0,cost=.5)
+    high=snapshot("high",motion_kind="FOLLOW",motion_bps=1.0,edge=2.0,cost=2.5)
+    assert admit("FOLLOW_PLUS_LOW_COST_1",low) is True
+    assert admit("FOLLOW_PLUS_LOW_COST_1",high) is False
+    assert admit("FOLLOW_EDGE_COST_RATIO_2",low) is True
+    assert admit("FOLLOW_EDGE_COST_RATIO_2",high) is False
+    assert admit("FOLLOW_MOTION_GE_EDGE",low) is True
+    assert admit("FOLLOW_MOTION_GE_EDGE",high) is False

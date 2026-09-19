@@ -15,6 +15,7 @@ from .models import FeatureVector, HypothesisRunSummary
 from .research_reuse import ResearchReuseGovernor
 from .walk_forward_calibration import WalkForwardForecastCalibrator
 from strategies.relative_value_lab.temporal_lattice import attach_temporal_lattice
+from strategies.relative_value_lab.full_comparison_packet import attach_full_comparison_packet
 
 
 def _canonical_hash(payload: Any) -> str:
@@ -1186,6 +1187,8 @@ class HypothesisSwarmAgent:
             feature = self._feature_with_worker_signal_memory(feature, worker_signal_memory_map)
             feature = self._feature_with_cex_market_oracle(feature, venue)
             feature = attach_temporal_lattice(feature)
+            if phase_store is not None:
+                feature = attach_full_comparison_packet(feature, phase_store)
             lattice = (
                 (feature.values or {}).get("full_temporal_lattice")
                 if isinstance(feature.values, dict)

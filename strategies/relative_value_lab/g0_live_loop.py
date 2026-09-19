@@ -17,7 +17,7 @@ from .synthesis_runtime import SynthesisRuntime
 from .g0_hypothesis_adapter import bind_synthesis_context
 from .g0_forecast_challenge import challenge_forecast
 from .g0_forecast_binding import freeze_forecast_pair
-from .g0_live_evidence import horizon_from_feature,temporal_from_store
+from .g0_live_evidence import horizon_from_feature,temporal_from_store,latest_shadow_learning,same_hour_comparison
 
 def _hash(x:Any)->str:
  return "sha256:"+hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
@@ -67,16 +67,22 @@ class G0LiveLoop:
    EdgeEcology.liquidity_voice(bid_depth=bid,ask_depth=ask,spread_bps=float(feature.spread_bps)),))
   horizon=horizon_from_feature(feature)
   temporal=temporal_from_store(data_store,feature)
+  learning=latest_shadow_learning(data_store)
+  comparison=same_hour_comparison(data_store,feature)
   full=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
-   edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal)
+   edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal,
+   learning_receipts=learning,comparison_results=(comparison,) if comparison is not None else ())
   entry={"price":feature.price,"data_quality":feature.data_quality,"spread_bps":feature.spread_bps,
    "depth_usd_25bps":feature.depth_usd_25bps}
   experiments=[("edge_ecology","EDGE_BLIND")]
   if horizon is not None:experiments.append(("horizon_context","HORIZON_BLIND"))
   if temporal is not None:experiments.append(("temporal_participation_bee","TEMPORAL_BLIND"))
+  if learning:experiments.append(("learning_memory","LEARNING_BLIND"))
+  if comparison is not None:experiments.append(("comparison_engine","COMPARISON_BLIND"))
   for organ_id,path_label in experiments:
    blind=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
     edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal,
+    learning_receipts=learning,comparison_results=(comparison,) if comparison is not None else (),
     disabled_organs=(organ_id,))
    full_feature=bind_synthesis_context(feature,full);blind_feature=bind_synthesis_context(feature,blind)
    full_forecasts=competition.evaluate(full_feature,horizons)

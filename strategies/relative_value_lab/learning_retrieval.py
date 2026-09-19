@@ -37,5 +37,11 @@ def learning_brief(view:QueenView)->LearningBrief:
     if k!="supported" and v:limits.append(f"{k}: {v}")
   weak.extend(str(x) for x in p.get("falsified_or_weakened_explanations",()))
   nxt.extend(str(x) for x in p.get("next_falsification",()))
+  if str(p.get("authority",""))=="PROSPECTIVE_SHADOW_RESEARCH_ONLY":
+   comparisons=p.get("comparisons") if isinstance(p.get("comparisons"),Mapping) else {}
+   for name,delta in comparisons.items():
+    claims.append(f"{name}={delta} bps")
+   for control in p.get("unsettled_controls",()):
+    nxt.append(f"settle shadow control {control}")
  def uq(xs):return tuple(dict.fromkeys(xs))
  return LearningBrief(uq(ids),uq(statuses),uq(claims),uq(limits),uq(weak),uq(nxt),uq(auth))

@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
  sys.path.insert(0,str(ROOT))
 from collections import defaultdict
 from strategies.relative_value_lab.g1_campaign_freeze import get_latest_g1_campaign_freeze,policy_from_freeze
-from strategies.relative_value_lab.g1_utility_campaign import evaluate_store,load_prospective_outcomes
+from strategies.relative_value_lab.g1_utility_campaign import evaluate_store,evaluate_store_stratified,load_prospective_outcomes
 from main import load_config,apply_phase0_safety_policy
 
 class Store:
@@ -57,8 +57,9 @@ def main()->int:
  except Exception:
   pass
  reports={r.organ_id:r for r in evaluate_store(s,policy=policy,campaign_id=campaign_id,target_id=target_id)}
+ strata=evaluate_store_stratified(s,policy=policy,campaign_id=campaign_id,target_id=target_id)
  payload={"campaign_id":frozen.get("campaign_id"),"created_ts":frozen.get("created_ts"),
-  "policy":policy.to_dict(),"organs":[],"execution_eligible":False,"promotion_eligible":False}
+  "policy":policy.to_dict(),"organs":[],"strata":strata,"execution_eligible":False,"promotion_eligible":False}
  for organ in organs:
   r=reports.get(organ)
   row={"organ_id":organ,**counts[organ]}
@@ -89,6 +90,16 @@ def main()->int:
          f"CI=[{row['ci_lower_bps']:+.3f},{row['ci_upper_bps']:+.3f}] "
          f"stress={row['stressed_mean_delta_bps']:+.3f}bps")
    if row.get("reasons"):print("  reasons="+",".join(row["reasons"]))
+ print("STRATIFIED BY MODEL")
+ for r in payload["strata"].get("by_model",()):
+  if r.get("paired_n"):
+   print(f"  {r['stratum']:38s} {r['organ_id']:28s} n={r['paired_n']:4d} mean={r['mean_delta_bps']:+.3f} "
+         f"CI=[{r['ci_lower_bps']:+.3f},{r['ci_upper_bps']:+.3f}] stress={r['stressed_mean_delta_bps']:+.3f} {r['classification']}")
+ print("STRATIFIED BY HORIZON")
+ for r in payload["strata"].get("by_horizon",()):
+  if r.get("paired_n"):
+   print(f"  {int(r['stratum']):5d}s {r['organ_id']:28s} n={r['paired_n']:4d} mean={r['mean_delta_bps']:+.3f} "
+         f"CI=[{r['ci_lower_bps']:+.3f},{r['ci_upper_bps']:+.3f}] stress={r['stressed_mean_delta_bps']:+.3f} {r['classification']}")
  return 0
 
 if __name__=="__main__":raise SystemExit(main())

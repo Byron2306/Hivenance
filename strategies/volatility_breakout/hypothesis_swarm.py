@@ -514,7 +514,7 @@ class HypothesisSwarmAgent:
     def _scorecard_context(self) -> dict[str, Any]:
         if not self.coordinator:
             return {}
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         if store is None or not hasattr(store, "get_hypothesis_scorecard"):
             return {}
         try:
@@ -558,7 +558,7 @@ class HypothesisSwarmAgent:
     ) -> dict[str, dict[str, Any]]:
         if not self.coordinator:
             return {}
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         if store is None:
             return {}
         scorecard = scorecard if isinstance(scorecard, dict) else self._scorecard_context()
@@ -673,7 +673,7 @@ class HypothesisSwarmAgent:
             return {}
         if not bool(getattr(self.cfg, "phase2_worker_signal_negative_memory_enabled", True)):
             return {}
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         conn = getattr(store, "conn", None)
         if conn is None:
             return {}
@@ -786,7 +786,7 @@ class HypothesisSwarmAgent:
             return feature
         if not self.coordinator:
             return feature
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         if store is None or not hasattr(store, "cex_market_oracle_context"):
             return feature
         try:
@@ -803,7 +803,7 @@ class HypothesisSwarmAgent:
     def _medium_trend_context_map(self) -> dict[str, dict[str, Any]]:
         if not self.coordinator:
             return {}
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         conn = getattr(store, "conn", None)
         if conn is None:
             return {}
@@ -877,7 +877,7 @@ class HypothesisSwarmAgent:
         accepted = trend_map.get(str(feature.symbol or "unknown"))
         if not accepted:
             return feature
-        store = getattr(self.coordinator, "store", None) if self.coordinator else None
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator else None
         conn = getattr(store, "conn", None)
         if conn is None:
             return feature
@@ -926,7 +926,7 @@ class HypothesisSwarmAgent:
         """
         if not self.coordinator:
             return {}
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         conn = getattr(store, "conn", None)
         if conn is None:
             return {}
@@ -995,7 +995,7 @@ class HypothesisSwarmAgent:
         accepted = trend_map.get(str(feature.symbol or "unknown"))
         if not accepted:
             return feature
-        store = getattr(self.coordinator, "store", None) if self.coordinator else None
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator else None
         conn = getattr(store, "conn", None)
         if conn is None:
             return feature
@@ -1042,7 +1042,7 @@ class HypothesisSwarmAgent:
     def _crystal_context(self, feature: FeatureVector) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         if not self.coordinator:
             return ([], [])
-        store = getattr(self.coordinator, "store", None)
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store"))
         if store is None or not hasattr(store, "get_crystal_registry_rows"):
             return ([], [])
         values = feature.values if isinstance(feature.values, dict) else {}
@@ -1163,7 +1163,7 @@ class HypothesisSwarmAgent:
         derivatives_trend_map = self._derivatives_trend_context_map()
         commons_candidates: list[tuple[dict[str, Any], FeatureVector]] = []
         g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0}
-        phase_store = getattr(self.coordinator, "store", None) if self.coordinator is not None else None
+        phase_store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         g0_live = None
         if phase_store is not None:
             try:
@@ -1332,7 +1332,7 @@ class HypothesisSwarmAgent:
                 created_ts=started_ms / 1000.0,
             )
 
-        store = getattr(self.coordinator, "store", None) if self.coordinator is not None else None
+        store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         if store is not None and hasattr(store, "get_commons_phase2_adopted_challenger_packets"):
             try:
                 commons_packets = store.get_commons_phase2_adopted_challenger_packets(limit=100)

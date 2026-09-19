@@ -115,13 +115,21 @@ class CanonicalMemoryWorldBridge:
         if int(feature_payload.get("timestamp_ms") or observed_at_ms) != observed_at_ms:
             raise ValueError("canonical_bridge_feature_timestamp_mismatch")
 
+        normalized_rows = tuple(tuple(row) for row in ohlcv)
+        future_rows = [
+            int(row[0]) for row in normalized_rows
+            if len(row) >= 1 and int(row[0]) > observed_at_ms
+        ]
+        if future_rows:
+            raise ValueError("canonical_bridge_future_ohlcv_forbidden")
+
         source_prefix = str(venue or "unknown").lower()
         memory = MarketMemory(self.memory_path)
         try:
             bar_line_ids = memory.append_bars(
                 symbol=str(symbol),
                 timeframe=str(timeframe),
-                rows=ohlcv,
+                rows=normalized_rows,
                 source=f"{source_prefix}_public_ohlcv",
             )
             book_line_id = None

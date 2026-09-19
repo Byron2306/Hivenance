@@ -281,3 +281,77 @@ S1 must implement:
 5. a Queen-readable graph snapshot that can be passed to conducting cognition without mutating observed truth.
 
 This becomes the canonical synthesis seam for all subsequent phases.
+
+
+## S0.1 clarification: Queen sees the Hive through the World Graph
+
+The intended semantic is now precise:
+
+> The World Graph is the Queen's current view of her Hive: what every lawful organ is observing, interpreting, comparing, proposing, contradicting, failing to explain, and learning as of one canonical market world binding.
+
+The Queen does not create observed truth and does not merely receive a static feature page. She reads the state of the **organism about the world**.
+
+Her recurrent questions are:
+1. **What is my Hive trying to tell me right now?**
+2. **Is the current cognition working?**
+3. **What is missing, stale, duplicated, contradictory or overconfident?**
+4. **What should change next?**
+5. **Which graph nodes/relationships need fresh evidence, challenge, comparison, thinning, amplification or retirement?**
+6. **Should the research epoch/cadence change?**
+
+### Queen graph diagnostics
+
+The WorldGraph snapshot presented to ConductingQueen should expose at minimum:
+- active evidence nodes and freshness;
+- root lineage/evidence-root independence;
+- missing expected voices;
+- contradiction/corroboration edges;
+- selected and rejected candidate nodes;
+- comparison/control nodes;
+- unresolved hypotheses;
+- settled historical analogues;
+- node influence history;
+- harmonic/temporal/metabolic health;
+- stale/decayed/superseded knowledge;
+- current epoch and notation obligations.
+
+Queen outputs remain bounded research choreography:
+- AMPLIFY(node/family);
+- THIN(node/family);
+- REFRESH(node);
+- CHALLENGE(node/hypothesis);
+- COMPARE(node, reference-set);
+- INVITE_INDEPENDENT_CORROBORATION;
+- PRESERVE_COUNTERPOINT;
+- RETIRE_FROM_ACTIVE_SCORE;
+- REHEARSE_EDGE_RESOLUTION;
+- CHANGE_EPOCH;
+- WAIT / REST.
+
+These outputs request changes to the **active cognition graph**, never mutation of the immutable observed root.
+
+### Node health model
+
+Each graph node should carry research-health state:
+- freshness;
+- provenance validity;
+- lineage independence;
+- uncertainty;
+- contradiction pressure;
+- corroboration strength;
+- historical marginal utility;
+- prospective marginal utility;
+- drift/decay;
+- cost/latency;
+- invocation count;
+- influence count.
+
+This allows the Queen to conduct not only hypotheses but the Hive's own cognition: strengthen useful senses, demand missing evidence, expose redundant voices, and retune a changing organism.
+
+### Existing code fit
+
+This is an extension of existing ConductingQueen semantics, not a replacement. The current Queen already calculates world-state tension, VNS energy/syncopation, temporal cadence/jitter/drift/burstiness, edge quality, correlation harmony, causal cascade, resonance, Mystique fragility, metabolic strain/breath, learned-voice health/drift/uncertainty/dissent, tonal coherence, timbral diversity, pitch convergence and polyphonic pressure before issuing notation.
+
+The WorldGraph will make those signals addressable to concrete nodes and relationships so notation can answer not only **how the orchestra sounds**, but **which section should change and why**.
+
+S0.1 disposition: REUSE ConductingQueen; EXPAND input from flat receipt collection to a graph-bound QueenView adapter; preserve current `conduct_against_frame()` world-binding invariant.

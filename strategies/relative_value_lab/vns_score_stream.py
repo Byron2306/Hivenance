@@ -95,6 +95,32 @@ class VNSScoreStream:
         return {(p.scope,p.pulse_class) for p in measure.pulses}
 
     @staticmethod
+    def _observed_vector(measure:VNSMeasure)->dict[str,float]:
+        keys=("price","spread_bps","depth_usd_25bps","data_quality","freshness_sec","continuity_ratio")
+        buckets={key:[] for key in keys}
+        for obs in measure.frame.observations:
+            payload=obs.payload if isinstance(obs.payload,dict) else dict(obs.payload)
+            for key in keys:
+                value=payload.get(key)
+                if isinstance(value,(int,float)):
+                    buckets[key].append(float(value))
+        return {
+            key:(statistics.fmean(values) if values else 0.0)
+            for key,values in buckets.items()
+        }
+
+    @staticmethod
+    def _feature_novelty(left:VNSMeasure,right:VNSMeasure)->float:
+        a=VNSScoreStream._observed_vector(left)
+        b=VNSScoreStream._observed_vector(right)
+        distances=[]
+        for key in a:
+            av=float(a[key]); bv=float(b[key])
+            scale=max(abs(av),abs(bv),1e-9)
+            distances.append(min(1.0,abs(bv-av)/scale))
+        return _clamp(statistics.fmean(distances) if distances else 0.0)
+
+    @staticmethod
     def _jaccard_distance(a:set[Any],b:set[Any])->float:
         union=a|b
         if not union:
@@ -134,10 +160,7 @@ class VNSScoreStream:
             cs=self._pulse_signature(curr)
             if ps or cs:
                 pulse_recurrence_vals.append(1.0-self._jaccard_distance(ps,cs))
-            novelty_vals.append(self._jaccard_distance(
-                set(prev.frame.observed_digest),
-                set(curr.frame.observed_digest),
-            ))
+            novelty_vals.append(self._feature_novelty(prev,curr))
             source_churn_vals.append(self._jaccard_distance(
                 self._source_signature(prev),self._source_signature(curr)
             ))
@@ -148,14 +171,9 @@ class VNSScoreStream:
                 self._scope_signature(prev),self._scope_signature(curr)
             ))
 
-        # Digest novelty is binary-ish at the frame level; temper it with source/scope continuity.
-        frame_changes=sum(
-            1 for a,b in zip(rows,rows[1:])
-            if a.frame.observed_digest!=b.frame.observed_digest
-        )
-        raw_novelty=frame_changes/max(1,len(rows)-1)
+        feature_novelty=statistics.fmean(novelty_vals) if novelty_vals else 0.0
         measure_novelty=_clamp(
-            .65*raw_novelty
+            .65*feature_novelty
             +.20*(statistics.fmean(source_churn_vals) if source_churn_vals else 0.0)
             +.15*(statistics.fmean(modulation_vals) if modulation_vals else 0.0)
         )

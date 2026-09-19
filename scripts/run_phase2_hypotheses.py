@@ -23,6 +23,10 @@ from strategies.volatility_breakout.current_truth import (
 )
 from strategies.volatility_breakout.hypothesis_swarm import HypothesisSwarmAgent
 from strategies.volatility_breakout.observation_swarm import ObservationSwarmAgent
+from strategies.relative_value_lab.selection_regret import (
+    settle_mature_selector_freezes,
+    selector_regret_report,
+)
 
 
 class StoreBridge:
@@ -102,7 +106,34 @@ def main() -> int:
                 abandon_after_sec=float(getattr(cfg, "phase2_settlement_abandon_after_sec", 3600) or 3600),
             )
         )
-        evidence_changed = payload is not None or int(settlement.get("settled") or 0) > 0
+        selector_settlement = (
+            {"examined": 0, "settled": 0, "deferred": 0, "skipped": "report_only"}
+            if args.report_only
+            else settle_mature_selector_freezes(
+                store=store,
+                now_ts=time.time(),
+                tolerance_sec=float(
+                    getattr(cfg, "full_organism_selector_settlement_tolerance_sec", 180.0) or 180.0
+                ),
+                limit=max(
+                    1,
+                    int(getattr(cfg, "full_organism_selector_settlement_batch_limit", 2000) or 2000),
+                ),
+            )
+        )
+        selector_report = selector_regret_report(store)
+        if payload is not None:
+            payload["selector_regret"] = {
+                "settlement": selector_settlement,
+                "report": selector_report,
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            }
+        evidence_changed = (
+            payload is not None
+            or int(settlement.get("settled") or 0) > 0
+            or int(selector_settlement.get("settled") or 0) > 0
+        )
         scorecard = (
             (
                 _materialized_compact_phase2_scorecard(store, cfg, limit=int(args.compact_limit), force=True)
@@ -140,6 +171,8 @@ def main() -> int:
                 "compact_scorecard": compact_mode,
                 "cycle": payload,
                 "settlement": settlement,
+                "selector_settlement": selector_settlement,
+                "selector_regret": selector_report,
                 "scorecard": scorecard,
                 "readiness": readiness,
                 "dio_gate": dio_gate,
@@ -170,6 +203,8 @@ def main() -> int:
                 f"{calibration.get('refused', 0)}R/"
                 f"{calibration.get('insufficient_evidence', 0)}E "
                 f"settled_now={settlement.get('settled', 0)} "
+                f"selector_settled={selector_settlement.get('settled', 0)} "
+                f"selector_pairs={selector_report.get('settled_n', 0)} "
                 f"gate={dio_gate.get('decision')} "
                 f"compact={1 if compact_mode else 0} orders=0"
             )

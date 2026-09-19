@@ -8892,7 +8892,9 @@ class DataStoreAgent:
     def settle_mature_shadow_intents(self, settler: Any, *, now_ts: Optional[float] = None, tolerance_sec: int = 900) -> Dict[str, Any]:
         result = {"phase": 5, "examined": 0, "settled": 0, "missed_fills": 0,
                   "adversarial_courts_created": 0, "adversarial_court_errors": 0,
-                  "g0_twins_examined": 0, "g0_twins_settled": 0, "g0_twin_errors": 0,
+                  "g0_twins_examined": 0, "g0_twins_settled": 0, "g0_twins_deferred": 0,
+                  "g0_twin_errors": 0, "g0_twin_error_reasons": {}, "g0_twin_deferred_reasons": {},
+                  "g0_twin_by_organ": {},
                   "transmission_attempts": 0, "real_orders_submitted": 0}
         if not self.conn:
             result["error"] = "data_store_unavailable"
@@ -8980,7 +8982,11 @@ class DataStoreAgent:
                 g0 = settle_mature_g0_twins(self, settler, now_ts=now, tolerance_sec=int(tolerance_sec))
                 result["g0_twins_examined"] = int(g0.get("examined") or 0)
                 result["g0_twins_settled"] = int(g0.get("settled") or 0)
+                result["g0_twins_deferred"] = int(g0.get("deferred") or 0)
                 result["g0_twin_errors"] = int(g0.get("errors") or 0)
+                result["g0_twin_error_reasons"] = dict(g0.get("error_reasons") or {})
+                result["g0_twin_deferred_reasons"] = dict(g0.get("deferred_reasons") or {})
+                result["g0_twin_by_organ"] = dict(g0.get("by_organ") or {})
             except Exception:
                 result["g0_twin_errors"] += 1
                 logging.exception("Phase-5 G0 prospective twin settlement failed")

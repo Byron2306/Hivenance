@@ -1469,6 +1469,9 @@ class HypothesisSwarmAgent:
             "run_id": run_id,
             "forecasts_total": len(forecast_rows),
             "non_abstain_forecasts": non_abstain,
+            "g0_prospective_frozen": int(g0_prospective.get("frozen") or 0),
+            "g0_prospective_diverged": int(g0_prospective.get("diverged") or 0),
+            "g0_prospective_errors": int(g0_prospective.get("errors") or 0),
             "execution_wired": False,
             "orders_submitted": 0,
         })

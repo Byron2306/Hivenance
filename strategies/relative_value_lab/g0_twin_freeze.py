@@ -13,6 +13,7 @@ class FrozenG0Twin:
  frozen_at_ms:int; target_ts:float; full_cycle_id:str; ablated_cycle_id:str
  full_cognition_hash:str; ablated_cognition_hash:str
  full_intent:Mapping[str,Any]; ablated_intent:Mapping[str,Any]
+ research_campaign_id:str|None=None; research_target_id:str|None=None
  authority:str="SYNTHESIS_G0_PROSPECTIVE_SHADOW_ONLY"
  execution_eligible:bool=False; promotion_eligible:bool=False
  def to_dict(self):return asdict(self)
@@ -20,7 +21,8 @@ class FrozenG0Twin:
 def freeze_shadow_twin(*,organ_id:str,opportunity_id:str,frame:Any,full_cycle:Any,
                        ablated_cycle:Any,full_cognition_hash:str,ablated_cognition_hash:str,
                        full_intent:Mapping[str,Any],ablated_intent:Mapping[str,Any],
-                       frozen_at_ms:int)->FrozenG0Twin:
+                       frozen_at_ms:int,research_campaign_id:str|None=None,
+                       research_target_id:str|None=None)->FrozenG0Twin:
  if full_cycle.world_state_hash!=frame.world_state_hash or ablated_cycle.world_state_hash!=frame.world_state_hash:
   raise ValueError("twin_cycles_must_share_frozen_world")
  targets={float(full_intent.get("target_ts") or 0),float(ablated_intent.get("target_ts") or 0)}
@@ -31,7 +33,9 @@ def freeze_shadow_twin(*,organ_id:str,opportunity_id:str,frame:Any,full_cycle:An
  body={"organ_id":organ_id,"opportunity_id":opportunity_id,"world":frame.world_state_hash,
   "full_cycle":full_cycle.cycle_id,"ablated_cycle":ablated_cycle.cycle_id,
   "full_cognition":full_cognition_hash,"ablated_cognition":ablated_cognition_hash,
-  "full_intent":dict(full_intent),"ablated_intent":dict(ablated_intent)}
+  "full_intent":dict(full_intent),"ablated_intent":dict(ablated_intent),
+  "research_campaign_id":research_campaign_id,"research_target_id":research_target_id}
  return FrozenG0Twin(_hash(body),organ_id,opportunity_id,frame.world_state_id,frame.world_state_hash,
   int(frozen_at_ms),next(iter(targets)),full_cycle.cycle_id,ablated_cycle.cycle_id,
-  full_cognition_hash,ablated_cognition_hash,dict(full_intent),dict(ablated_intent))
+  full_cognition_hash,ablated_cognition_hash,dict(full_intent),dict(ablated_intent),
+  research_campaign_id,research_target_id)

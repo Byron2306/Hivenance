@@ -20,6 +20,7 @@ from .g0_forecast_binding import freeze_forecast_pair
 from .g0_live_evidence import horizon_from_feature,temporal_from_store,latest_shadow_learning,same_hour_comparison
 from .g1_polyphonic_bridge import quorum_for_forecast,apply_quorum_gate
 from .g1_post_cognition_freeze import freeze_post_cognition_pair
+from .g1_conducting_queen_bridge import queen_receipt_for_forecast,apply_queen_gate
 
 def _hash(x:Any)->str:
  return "sha256:"+hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
@@ -117,27 +118,48 @@ class G0LiveLoop:
     except Exception:
      out["errors"]+=1
 
-  # Post-cognition organ: PolyphonicQuorum may veto an existing Phoenix call,
-  # but its blind twin preserves the exact raw forecast.
+  # Post-cognition organs are evaluated independently against the exact raw
+  # Phoenix forecast, never against one another's modified output.
   for raw_full in competition.evaluate(full_feature,horizons):
    if str(raw_full.model_id)!=freeze.model_id or raw_full.abstain:continue
    if freeze.direction and str(raw_full.direction).upper()!=str(freeze.direction).upper():continue
+
    out["examined"]+=1;out["eligible"]+=1
    try:
     receipt=quorum_for_forecast(cycle=full,forecast=raw_full,feature=full_feature)
     gated=apply_quorum_gate(raw_full,receipt)
-    if _decision(gated)==_decision(raw_full):
-     out["skipped"]+=1;continue
-    out["diverged"]+=1
-    ff=_row(gated,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_GATED",entry_price=feature.price)
-    bf=_row(raw_full,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_BLIND",entry_price=feature.price)
-    opportunity=_hash({"world":frame.world_state_hash,"organ":"polyphonic_quorum","model":freeze.model_id,
-     "horizon":int(raw_full.horizon_seconds)})
-    r=freeze_post_cognition_pair(data_store=data_store,builder=self.builder,freeze=freeze,
-     organ_id="polyphonic_quorum",opportunity_id=opportunity,frame=frame,
-     full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
-     intervention_receipt=receipt.to_dict(),frozen_at_ms=int(now_ms))
-    if r.get("created"):out["frozen"]+=1
+    if _decision(gated)!=_decision(raw_full):
+     out["diverged"]+=1
+     ff=_row(gated,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_GATED",entry_price=feature.price)
+     bf=_row(raw_full,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_BLIND",entry_price=feature.price)
+     opportunity=_hash({"world":frame.world_state_hash,"organ":"polyphonic_quorum","model":freeze.model_id,
+      "horizon":int(raw_full.horizon_seconds)})
+     r=freeze_post_cognition_pair(data_store=data_store,builder=self.builder,freeze=freeze,
+      organ_id="polyphonic_quorum",opportunity_id=opportunity,frame=frame,
+      full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
+      intervention_receipt=receipt.to_dict(),frozen_at_ms=int(now_ms))
+     if r.get("created"):out["frozen"]+=1
+     else:out["skipped"]+=1
+    else:out["skipped"]+=1
+   except Exception:
+    out["errors"]+=1
+
+   out["examined"]+=1;out["eligible"]+=1
+   try:
+    queen=queen_receipt_for_forecast(frame=frame,cycle=full,forecast=raw_full,feature=full_feature,now_ms=int(now_ms))
+    gated=apply_queen_gate(raw_full,queen)
+    if _decision(gated)!=_decision(raw_full):
+     out["diverged"]+=1
+     ff=_row(gated,venue=venue,world_hash=frame.world_state_hash,path="QUEEN_GATED",entry_price=feature.price)
+     bf=_row(raw_full,venue=venue,world_hash=frame.world_state_hash,path="QUEEN_BLIND",entry_price=feature.price)
+     opportunity=_hash({"world":frame.world_state_hash,"organ":"conducting_queen","model":freeze.model_id,
+      "horizon":int(raw_full.horizon_seconds)})
+     r=freeze_post_cognition_pair(data_store=data_store,builder=self.builder,freeze=freeze,
+      organ_id="conducting_queen",opportunity_id=opportunity,frame=frame,
+      full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
+      intervention_receipt=queen.to_dict(),frozen_at_ms=int(now_ms))
+     if r.get("created"):out["frozen"]+=1
+     else:out["skipped"]+=1
     else:out["skipped"]+=1
    except Exception:
     out["errors"]+=1

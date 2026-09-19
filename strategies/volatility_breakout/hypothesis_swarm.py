@@ -1163,6 +1163,7 @@ class HypothesisSwarmAgent:
         medium_trend_map = self._medium_trend_context_map()
         derivatives_trend_map = self._derivatives_trend_context_map()
         commons_candidates: list[tuple[dict[str, Any], FeatureVector]] = []
+        temporal_lattice_rows: list[dict[str, Any]] = []
         g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0, "by_organ": {}}
         phase_store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         g0_live = None
@@ -1185,6 +1186,26 @@ class HypothesisSwarmAgent:
             feature = self._feature_with_worker_signal_memory(feature, worker_signal_memory_map)
             feature = self._feature_with_cex_market_oracle(feature, venue)
             feature = attach_temporal_lattice(feature)
+            lattice = (
+                (feature.values or {}).get("full_temporal_lattice")
+                if isinstance(feature.values, dict)
+                else None
+            )
+            if isinstance(lattice, dict):
+                temporal_lattice_rows.append({
+                    "symbol": feature.symbol,
+                    "lattice_id": lattice.get("lattice_id"),
+                    "canonical_world_state_id": lattice.get("canonical_world_state_id"),
+                    "canonical_world_state_hash": lattice.get("canonical_world_state_hash"),
+                    "conflict": lattice.get("conflict"),
+                    "present": {
+                        "micro": sum(1 for row in (lattice.get("micro") or {}).values() if isinstance(row, dict) and row.get("status") == "PRESENT"),
+                        "meso": sum(1 for row in (lattice.get("meso") or {}).values() if isinstance(row, dict) and row.get("status") == "PRESENT"),
+                        "macro": sum(1 for row in (lattice.get("macro") or {}).values() if isinstance(row, dict) and row.get("status") == "PRESENT"),
+                        "oracle": sum(1 for row in (lattice.get("oracle") or {}).values() if isinstance(row, dict) and row.get("status") == "PRESENT"),
+                    },
+                    "lineage_groups": ((lattice.get("provenance") or {}).get("lineage_groups") or {}),
+                })
             feature = self._feature_with_medium_trend_context(feature, medium_trend_map)
             feature = self._feature_with_derivatives_trend_context(feature, derivatives_trend_map)
             thesis_crystals, negative_crystals = self._crystal_context(feature)
@@ -1403,6 +1424,14 @@ class HypothesisSwarmAgent:
             "medium_trend_horizons_seconds": list(self.medium_trend_horizons),
             "derivatives_trend_horizons_seconds": list(self.derivatives_trend_horizons),
             "federation": self.competition.federation_manifest(),
+            "temporal_lattice": {
+                "schema": "hivenance_full_temporal_lattice_run_summary_v1",
+                "symbols_evaluated": evaluated_symbols,
+                "lattices_built": len(temporal_lattice_rows),
+                "rows": temporal_lattice_rows,
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            },
             "walk_forward_calibration": calibration_summary,
             "g0_prospective": {
                 **g0_prospective,

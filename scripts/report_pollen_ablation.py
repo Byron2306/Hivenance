@@ -3,13 +3,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+ROOT=Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0,str(ROOT))
+
+from strategies.relative_value_lab.ablation_lab import CONFIRMATORY_V5_VARIANTS
 
 
 def parse_args():
     p=argparse.ArgumentParser(description="Report HiveNance relative-value ablation autopsy")
     p.add_argument("--input",type=Path,default=Path("data/pollen_paper_ablation.json"))
     p.add_argument("--top",type=int,default=12)
+    p.add_argument("--confirmatory-v5",action="store_true",
+                   help="Report only the frozen v5 confirmatory slate with hard robustness verdicts")
+    p.add_argument("--minimum-confirmatory-n",type=int,default=20)
     return p.parse_args()
 
 
@@ -173,6 +183,69 @@ def main()->int:
             f"select={float(row.get('selection_rate') or 0.0):.3f} "
             f"variants={variants}"
         )
+
+
+    if args.confirmatory_v5:
+        print("\nV5 CONFIRMATORY SLATE")
+        print("frozen_before_v5_outcomes=true")
+        hash_vectors={}
+        for eqrow in payload.get("selector_equivalence_classes",[]):
+            for vid in eqrow.get("variant_ids",[]):
+                hash_vectors[vid]=set(eqrow.get("variant_ids",[]))
+
+        rows=[]
+        for vid in CONFIRMATORY_V5_VARIANTS:
+            book=books.get(vid)
+            stab=stability.get(vid)
+            if not book or not stab:
+                continue
+            n=int(book.get("selected_count") or 0)
+            net=float(book.get("cumulative_net_bps") or 0.0)
+            mean=float(book.get("mean_net_bps") or 0.0)
+            first=float(stab.get("first_half_net_bps") or 0.0)
+            second=float(stab.get("second_half_net_bps") or 0.0)
+            without_best=float(stab.get("net_without_best_pair_bps") or 0.0)
+            positive_pairs=int(stab.get("positive_pair_count") or 0)
+            aliases=hash_vectors.get(vid,set())
+            blind_alias=any(x.startswith("HASH_") for x in aliases if x != vid)
+
+            if vid in {"CONTROL_ALL","REJECT_ALL","HASH_25","HASH_50"}:
+                verdict="CONTROL"
+            elif n < int(args.minimum_confirmatory_n):
+                verdict="INSUFFICIENT_N"
+            elif blind_alias:
+                verdict="DATA_BLIND_ALIAS"
+            elif net <= 0 or mean <= 0:
+                verdict="NEGATIVE"
+            elif first <= 0 or second <= 0:
+                verdict="TEMPORALLY_FRAGILE"
+            elif without_best <= 0:
+                verdict="PAIR_CONCENTRATED"
+            elif positive_pairs < 2:
+                verdict="INSUFFICIENT_PAIR_BREADTH"
+            else:
+                verdict="SURVIVED_V5_SAMPLE"
+
+            rows.append((verdict,vid,n,net,mean,first,second,without_best,positive_pairs))
+        order={
+            "SURVIVED_V5_SAMPLE":0,
+            "INSUFFICIENT_N":1,
+            "TEMPORALLY_FRAGILE":2,
+            "PAIR_CONCENTRATED":3,
+            "INSUFFICIENT_PAIR_BREADTH":4,
+            "DATA_BLIND_ALIAS":5,
+            "NEGATIVE":6,
+            "CONTROL":7,
+        }
+        for verdict,vid,n,net,mean,first,second,without_best,positive_pairs in sorted(
+            rows,key=lambda r:(order.get(r[0],9),-r[3],r[1])
+        ):
+            print(
+                f"{vid:36s} {verdict:26s} "
+                f"n={n:3d} net={net:+.3f} mean={mean:+.3f} "
+                f"halves={first:+.2f}/{second:+.2f} "
+                f"w/o_best={without_best:+.2f} pairs+={positive_pairs}"
+            )
 
     print("\nNOTE")
     print("These are prospective sample effects, not proof of durable edge. ZERO_SELECTION_EFFECT means")

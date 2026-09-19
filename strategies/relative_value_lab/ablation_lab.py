@@ -113,6 +113,26 @@ class OrganUtilityFinding:
 
 
 @dataclass(frozen=True)
+class VariantStability:
+    variant_id: str
+    selected_count: int
+    first_half_net_bps: float
+    second_half_net_bps: float
+    first_half_selected: int
+    second_half_selected: int
+    positive_pair_count: int
+    negative_pair_count: int
+    zero_pair_count: int
+    best_pair_id: str | None
+    best_pair_net_bps: float
+    worst_pair_id: str | None
+    worst_pair_net_bps: float
+    net_without_best_pair_bps: float
+    survives_best_pair_removal: bool
+    both_halves_positive: bool
+
+
+@dataclass(frozen=True)
 class SelectorEquivalenceClass:
     class_id: str
     variant_ids: tuple[str, ...]
@@ -129,6 +149,7 @@ class AblationReport:
     books: tuple[VariantBook, ...]
     organ_findings: tuple[OrganUtilityFinding, ...] = ()
     selector_equivalence_classes: tuple[SelectorEquivalenceClass, ...] = ()
+    variant_stability: tuple[VariantStability, ...] = ()
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -143,6 +164,7 @@ class AblationReport:
             "selector_equivalence_classes": [
                 asdict(item) for item in self.selector_equivalence_classes
             ],
+            "variant_stability": [asdict(item) for item in self.variant_stability],
             "authority": self.authority,
             "execution_eligible": self.execution_eligible,
             "promotion_eligible": self.promotion_eligible,
@@ -170,6 +192,12 @@ VARIANTS: tuple[AblationVariant, ...] = (
     AblationVariant("QUORUM_PLUS_EDGE2", "Require quorum, no dissent and expected net edge >= 2 bps.", "interaction"),
     AblationVariant("FOLLOW_PLUS_EDGE1", "Require motion FOLLOW and expected net edge >= 1 bps.", "interaction"),
     AblationVariant("FOLLOW_PLUS_STABILITY060", "Require motion FOLLOW and stability >= 0.60.", "interaction"),
+    AblationVariant("FOLLOW_PLUS_LOW_COST_1", "Require FOLLOW and expected cost <= 1 bps.", "cost_interaction"),
+    AblationVariant("FOLLOW_PLUS_LOW_COST_2", "Require FOLLOW and expected cost <= 2 bps.", "cost_interaction"),
+    AblationVariant("FOLLOW_EDGE_COST_RATIO_1", "Require FOLLOW and expected edge >= expected cost.", "cost_interaction"),
+    AblationVariant("FOLLOW_EDGE_COST_RATIO_2", "Require FOLLOW and expected edge >= 2x expected cost.", "cost_interaction"),
+    AblationVariant("FOLLOW_MOTION_GE_EDGE", "Require FOLLOW and |motion| >= expected net edge.", "motion_interaction"),
+    AblationVariant("FOLLOW_MOTION_GE_2X_EDGE", "Require FOLLOW and |motion| >= 2x expected net edge.", "motion_interaction"),
     AblationVariant("QUEEN_METRICS_COMPOSITE", "Require strong Queen pressure/tonal/pitch composite.", "interaction"),
     AblationVariant("MUSIC_COMPOSITE", "Require cadence/entrainment with low dissonance and false-unison.", "interaction"),
     AblationVariant("REP_STRUCT_GE_MOTION", "Admit only if structural reputation >= motion reputation.", "reputation_selection"),
@@ -244,6 +272,18 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
         return s.motion_kind == "FOLLOW" and s.expected_net_bps >= 1.0
     if vid == "FOLLOW_PLUS_STABILITY060":
         return s.motion_kind == "FOLLOW" and s.stability_score >= 0.60
+    if vid == "FOLLOW_PLUS_LOW_COST_1":
+        return s.motion_kind == "FOLLOW" and s.expected_cost_bps <= 1.0
+    if vid == "FOLLOW_PLUS_LOW_COST_2":
+        return s.motion_kind == "FOLLOW" and s.expected_cost_bps <= 2.0
+    if vid == "FOLLOW_EDGE_COST_RATIO_1":
+        return s.motion_kind == "FOLLOW" and s.expected_net_bps >= s.expected_cost_bps
+    if vid == "FOLLOW_EDGE_COST_RATIO_2":
+        return s.motion_kind == "FOLLOW" and s.expected_net_bps >= 2.0 * s.expected_cost_bps
+    if vid == "FOLLOW_MOTION_GE_EDGE":
+        return s.motion_kind == "FOLLOW" and abs(s.motion_bps) >= max(0.0, s.expected_net_bps)
+    if vid == "FOLLOW_MOTION_GE_2X_EDGE":
+        return s.motion_kind == "FOLLOW" and abs(s.motion_bps) >= 2.0 * max(0.0, s.expected_net_bps)
     if vid == "QUEEN_METRICS_COMPOSITE":
         return (
             s.queen_polyphonic_pressure >= 0.55
@@ -319,6 +359,7 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
 @dataclass(frozen=True)
 class _SettledRow:
     forecast_id: str
+    pair_id: str
     net_bps: float
     decisions: Mapping[str, bool]
 
@@ -354,6 +395,7 @@ class RelativeValueAblationLab:
         }
         self._rows.append(_SettledRow(
             forecast_id=settlement.forecast_id,
+            pair_id=settlement.pair_id,
             net_bps=float(settlement.realized_directional_net_bps),
             decisions=decisions,
         ))
@@ -477,6 +519,51 @@ class RelativeValueAblationLab:
         return tuple(out)
 
 
+    def variant_stability(self) -> tuple[VariantStability, ...]:
+        """Expose temporal and pair concentration of each selector's result."""
+        out = []
+        midpoint = len(self._rows) // 2
+        for variant in self.variants:
+            selected = [
+                (index, row)
+                for index, row in enumerate(self._rows)
+                if row.decisions.get(variant.variant_id, False)
+            ]
+            first = [row.net_bps for index, row in selected if index < midpoint]
+            second = [row.net_bps for index, row in selected if index >= midpoint]
+
+            by_pair: dict[str, float] = {}
+            for _, row in selected:
+                by_pair[row.pair_id] = by_pair.get(row.pair_id, 0.0) + row.net_bps
+
+            ordered_pairs = sorted(by_pair.items(), key=lambda item: (item[1], item[0]))
+            worst_pair_id = ordered_pairs[0][0] if ordered_pairs else None
+            worst_pair_net = ordered_pairs[0][1] if ordered_pairs else 0.0
+            best_pair_id = ordered_pairs[-1][0] if ordered_pairs else None
+            best_pair_net = ordered_pairs[-1][1] if ordered_pairs else 0.0
+            total = sum(row.net_bps for _, row in selected)
+            without_best = total - best_pair_net if ordered_pairs else total
+
+            out.append(VariantStability(
+                variant_id=variant.variant_id,
+                selected_count=len(selected),
+                first_half_net_bps=round(sum(first), 6),
+                second_half_net_bps=round(sum(second), 6),
+                first_half_selected=len(first),
+                second_half_selected=len(second),
+                positive_pair_count=sum(value > 0 for value in by_pair.values()),
+                negative_pair_count=sum(value < 0 for value in by_pair.values()),
+                zero_pair_count=sum(value == 0 for value in by_pair.values()),
+                best_pair_id=best_pair_id,
+                best_pair_net_bps=round(best_pair_net, 6),
+                worst_pair_id=worst_pair_id,
+                worst_pair_net_bps=round(worst_pair_net, 6),
+                net_without_best_pair_bps=round(without_best, 6),
+                survives_best_pair_removal=(without_best > 0),
+                both_halves_positive=(sum(first) > 0 and sum(second) > 0),
+            ))
+        return tuple(out)
+
     def selector_equivalence_classes(self) -> tuple[SelectorEquivalenceClass, ...]:
         """Group policies that made exactly the same admissions over settled cases.
 
@@ -597,6 +684,7 @@ class RelativeValueAblationLab:
             books=tuple(books),
             organ_findings=self.organ_findings(),
             selector_equivalence_classes=self.selector_equivalence_classes(),
+            variant_stability=self.variant_stability(),
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,

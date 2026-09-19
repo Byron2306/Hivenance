@@ -40,7 +40,7 @@ def _matched(rows,n,key):
 def _books(settled,cost):
     out={}
     for h in HORIZONS:
-        rows=[r for r in settled if r["horizon_sec"]==h]
+        rows=[r for r in settled if r["horizon_sec"]==h and r.get("source_flow_sign",0)!=0]
         for mode in ("REVERSION","CONTINUATION"):
             field="reversion_bps" if mode=="REVERSION" else "continuation_bps"
             out[f"CONTROL_ALL_{mode}_H{h}"]=_stats(r[field]-cost for r in rows)
@@ -78,8 +78,8 @@ def main():
         selectors={"FLOW_EXHAUSTION":exhaustion,"FLOW_PERSISTENT":persistent,"EXHAUSTION_LIQUID":exhaustion and liquid,
           "EXHAUSTION_TREND_GUARD":exhaustion and trend_guard,"EXHAUSTION_ML_GUARD":exhaustion and ml_guard,
           "FULL_EDGE_ECOLOGY":exhaustion and liquid and trend_guard and ml_guard}
-        direction=-1 if prev_flow>0 else 1; oid=_digest(f"{a.symbol}|{ts}")[:24]
-        row={"observation_id":oid,"forecast_ts":ts,"symbol":a.symbol,"px":px,"direction":direction,"selectors":selectors,
+        flow_sign=1 if prev_flow>0 else -1 if prev_flow<0 else 0; oid=_digest(f"{a.symbol}|{ts}")[:24]
+        row={"observation_id":oid,"forecast_ts":ts,"symbol":a.symbol,"px":px,"source_flow":prev_flow,"source_flow_sign":flow_sign,"selectors":selectors,
           "states":{"flow":fv.state,"liquidity":lv.state,"trend":tv.state,"volatility":vv.state,"ml":challenge.regime if challenge else "WARMUP"},
           "scores":{"flow":fv.score,"liquidity":lv.score,"trend":tv.score,"volatility":vv.score,"spread_bps":spread},
           "authority":"research_only","execution_eligible":False}
@@ -93,11 +93,11 @@ def main():
             settled.append({**p,"settled_ts":ts,"settled_px":px,"continuation_bps":cont,"reversion_bps":-cont})
         pending=still; prev_flow=fv.features["imbalance"]; prev_bd,prev_ad=bd,ad
         books=_books(settled,a.cost_bps)
-        key="FULL_EDGE_ECOLOGY_REVERSION_H30"; b=books.get(key,{})
+        key="FULL_EDGE_ECOLOGY_FLOW_REVERSION_H30"; b=books.get(key,{})
         effects={"liquidity_veto":sum(x["selectors"]["FLOW_EXHAUSTION"] and not x["selectors"]["EXHAUSTION_LIQUID"] for x in observations),
           "trend_veto":sum(x["selectors"]["FLOW_EXHAUSTION"] and not x["selectors"]["EXHAUSTION_TREND_GUARD"] for x in observations),
           "ml_veto":sum(x["selectors"]["FLOW_EXHAUSTION"] and not x["selectors"]["EXHAUSTION_ML_GUARD"] for x in observations)}
-        payload={"schema":"hivenance_edge_ecology_experiment_v2","protocol":"frozen_multi_horizon_directional_ecology",
+        payload={"schema":"hivenance_edge_ecology_experiment_v2_1","protocol":"frozen_multi_horizon_directional_ecology",
           "symbol":a.symbol,"horizons_sec":HORIZONS,"cost_bps":a.cost_bps,"observation_count":len(observations),
           "settled_count":len(settled),"organ_marginal_effects":effects,"books":books,"observations":observations,"settled":settled,
           "private_orders":0,"execution_eligible":False,"promotion_eligible":False}

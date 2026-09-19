@@ -1,12 +1,23 @@
 ﻿import math
 import logging
-import ccxt
-from binance.client import Client
-from binance.exceptions import BinanceAPIException, BinanceOrderException
+try:
+    import ccxt
+except Exception:
+    ccxt = None
+try:
+    from binance.client import Client
+    from binance.exceptions import BinanceAPIException, BinanceOrderException
+except Exception:
+    Client = Any if "Any" in globals() else object
+    class BinanceAPIException(Exception): pass
+    class BinanceOrderException(Exception): pass
 from typing import Tuple, Dict, Any, Optional, List
 import json
 import requests
-from web3 import Web3
+try:
+    from web3 import Web3
+except Exception:
+    Web3 = None
 import time
 
 
@@ -149,6 +160,8 @@ class BinanceTrader:
 # Placeholder for DEX execution
 class DexTrader:
     def __init__(self, web3_provider: str, private_key: str, uniswap_router_address: str):
+        if Web3 is None:
+            raise RuntimeError("web3_not_installed")
         self.w3 = Web3(Web3.HTTPProvider(web3_provider))
         self.account = self.w3.eth.account.from_key(private_key)
         self.router = self.w3.eth.contract(address=uniswap_router_address, abi=[])  # Need Uniswap ABI
@@ -202,7 +215,7 @@ class DexExecutionAgent:
         self._last_error: Optional[Dict[str, Any]] = None
         self._last_route_quality: Dict[str, Any] = {}
         self._w3 = None
-        if self.web3_rpc_url:
+        if self.web3_rpc_url and Web3 is not None:
             try:
                 self._w3 = Web3(Web3.HTTPProvider(self.web3_rpc_url, request_kwargs={"timeout": 6}))
             except Exception:
@@ -734,7 +747,7 @@ class KrakenTrader:
     Uses base-amount orders (ccxt standard). For BUY, quote_amount is converted using last price.
     """
 
-    def __init__(self, client: ccxt.kraken, symbol: str, dry_run: bool, max_position_base: float):
+    def __init__(self, client: Any, symbol: str, dry_run: bool, max_position_base: float):
         self.client = client
         self.symbol = symbol  # e.g., "XBT/USDT"
         self.dry_run = dry_run

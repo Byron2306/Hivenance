@@ -18,7 +18,8 @@ from .synthesis_runtime import SynthesisRuntime
 from .g0_hypothesis_adapter import bind_synthesis_context
 from .g0_forecast_challenge import challenge_forecast
 from .g0_forecast_binding import freeze_forecast_pair
-from .g0_live_evidence import horizon_from_feature,temporal_from_store,latest_shadow_learning,same_hour_comparison
+from .g0_live_evidence import horizon_from_feature,temporal_from_store,latest_shadow_learning
+from .full_comparison_packet import comparison_results_from_feature
 from .g1_polyphonic_bridge import quorum_for_forecast,apply_quorum_gate
 from .g1_post_cognition_freeze import freeze_post_cognition_pair
 from .g1_conducting_queen_bridge import queen_receipt_for_forecast,apply_queen_gate
@@ -130,22 +131,22 @@ class G0LiveLoop:
   horizon=horizon_from_feature(feature)
   temporal=temporal_from_store(data_store,feature)
   learning=latest_shadow_learning(data_store)
-  comparison=same_hour_comparison(data_store,feature)
+  comparisons=comparison_results_from_feature(feature)
   full=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
    edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal,
-   learning_receipts=learning,comparison_results=(comparison,) if comparison is not None else ())
+   learning_receipts=learning,comparison_results=comparisons)
   entry={"price":feature.price,"data_quality":feature.data_quality,"spread_bps":feature.spread_bps,
    "depth_usd_25bps":feature.depth_usd_25bps}
   experiments=[("edge_ecology","EDGE_BLIND")]
   if horizon is not None:experiments.append(("horizon_context","HORIZON_BLIND"))
   if temporal is not None:experiments.append(("temporal_participation_bee","TEMPORAL_BLIND"))
   if learning:experiments.append(("learning_memory","LEARNING_BLIND"))
-  if comparison is not None:experiments.append(("comparison_engine","COMPARISON_BLIND"))
+  if comparisons:experiments.append(("comparison_engine","COMPARISON_BLIND"))
   full_feature=bind_synthesis_context(feature,full)
   for organ_id,path_label in experiments:
    blind=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
     edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal,
-    learning_receipts=learning,comparison_results=(comparison,) if comparison is not None else (),
+    learning_receipts=learning,comparison_results=comparisons,
     disabled_organs=(organ_id,))
    blind_feature=bind_synthesis_context(feature,blind)
    full_forecasts=competition.evaluate(full_feature,horizons)

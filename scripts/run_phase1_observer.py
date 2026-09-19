@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Run the Phoenix Phase-1 Observation Swarm without loading execution modules.
 
-This process uses public CCXT market-data endpoints only. It persists immutable
-observation runs and symbol snapshots to the configured SQLite database. It has
-no order submission, wallet, or authenticated exchange path.
+This process uses public market-data endpoints only. Kraken can run through the
+stdlib REST adapter when CCXT is unavailable. It persists immutable observation
+runs and symbol snapshots to the configured SQLite database. It has no order
+submission, wallet, or authenticated exchange path.
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ from agents.kraken_public_rest import KrakenPublicRestClient
 from strategies.volatility_breakout.observation_swarm import ObservationSwarmAgent
 from strategies.relative_value_lab.vns_score_conductor import VNSScoreConductor
 from strategies.relative_value_lab.vns_score_stream import VNSScoreStream
+from strategies.relative_value_lab.temporal_texture import TemporalTexture
 
 ALLOWED_PUBLIC_VENUES = {"kraken", "coinbase", "binance", "valr", "luno"}
 
@@ -163,7 +165,14 @@ def main() -> int:
             int(getattr(cfg, "phase1_observation_stale_after_sec", 180) or 180) * 1000,
         )
     )
-    score_stream = VNSScoreStream()
+    expected_interval_ms = max(1_000, int(observer.interval_sec) * 1000)
+    score_stream = VNSScoreStream(
+        temporal=TemporalTexture(
+            baseline_median_ms=expected_interval_ms,
+            baseline_jitter_ms=max(1_000.0, expected_interval_ms * 0.25),
+            short_threshold_ms=max(1_000.0, expected_interval_ms * 0.50),
+        )
+    )
 
     def collect() -> None:
         payload = observer.run_once()

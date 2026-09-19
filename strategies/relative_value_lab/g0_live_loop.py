@@ -81,8 +81,16 @@ class G0LiveLoop:
    if target is None:
     target=ensure_g1_research_target(data_store,self.cfg,created_ts=float(now_ms)/1000.0)
    freezes=shadow_freezes_from_research_target(target)
-   research_campaign_id=str(target.get("campaign_id") or "") or None
    research_target_id=str(target.get("target_id") or "") or None
+   research_campaign_id=str(target.get("campaign_id") or "") or None
+   if research_campaign_id is None and research_target_id is not None:
+    try:
+     from .g1_campaign_freeze import get_latest_g1_campaign_freeze
+     latest_campaign=get_latest_g1_campaign_freeze(data_store)
+     if str((latest_campaign or {}).get("research_target_id") or "")==research_target_id:
+      research_campaign_id=str(latest_campaign.get("campaign_id") or "") or None
+    except Exception:
+     research_campaign_id=None
   freeze_by_model={str(x.model_id):x for x in freezes if x.status=="ACTIVE"}
   if not freeze_by_model:return out
   if feature.book_imbalance is None or feature.depth_usd_25bps is None or feature.spread_bps is None:return out

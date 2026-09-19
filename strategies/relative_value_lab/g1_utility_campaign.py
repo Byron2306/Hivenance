@@ -166,3 +166,51 @@ def evaluate_store_stratified(data_store:Any,*,policy:G1CampaignPolicy|None=None
     d=r.to_dict();d["stratum"]=group;reports.append(d)
   result[label]=tuple(reports)
  return result
+
+
+def world_cluster_diagnostic(rows:Iterable[Mapping[str,Any]],*,organ_id:str,
+ policy:G1CampaignPolicy|None=None)->dict[str,Any]:
+ """Post-hoc robustness diagnostic: aggregate pair deltas within world first.
+
+ This does not alter the frozen G1 classification. It asks whether the sign and
+ confidence survive treating each distinct world as the effective observation.
+ """
+ policy=policy or G1CampaignPolicy()
+ xs=[dict(x) for x in rows if str(x.get("organ_id") or "")==str(organ_id)
+     and str(x.get("evidence_class") or "")=="PROSPECTIVE"]
+ groups={}
+ for row in xs:
+  world=str(row.get("world_state_hash") or "")
+  if not world:continue
+  groups.setdefault(world,[]).append(row)
+ world_delta=[]
+ world_stress=[]
+ for world,group in groups.items():
+  ds=[float(x.get("delta_bps") if x.get("delta_bps") is not None
+      else float(x.get("full_net_bps") or 0)-float(x.get("ablated_net_bps") or 0)) for x in group]
+  ss=[_stressed_delta(x,policy.extra_cost_stress_bps) for x in group]
+  world_delta.append(mean(ds));world_stress.append(mean(ss))
+ lo,hi=_ci(world_delta,policy.confidence_z)
+ return {
+  "organ_id":str(organ_id),
+  "world_n":len(world_delta),
+  "pair_n":len(xs),
+  "mean_world_delta_bps":mean(world_delta) if world_delta else 0.0,
+  "median_world_delta_bps":_median(world_delta),
+  "ci_lower_bps":lo,
+  "ci_upper_bps":hi,
+  "stressed_mean_world_delta_bps":mean(world_stress) if world_stress else 0.0,
+  "positive_worlds":sum(x>0 for x in world_delta),
+  "negative_worlds":sum(x<0 for x in world_delta),
+  "zero_worlds":sum(x==0 for x in world_delta),
+  "robust_positive":bool(len(world_delta)>=policy.min_distinct_worlds and lo>0
+   and (mean(world_stress) if world_stress else 0.0)>0),
+  "authority":"POST_HOC_WORLD_CLUSTER_DIAGNOSTIC_ONLY",
+  "changes_frozen_classification":False,
+ }
+
+def evaluate_store_world_clustered(data_store:Any,*,policy:G1CampaignPolicy|None=None,
+ campaign_id:str|None=None,target_id:str|None=None)->tuple[dict[str,Any],...]:
+ rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
+ organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
+ return tuple(world_cluster_diagnostic(rows,organ_id=o,policy=policy) for o in organs)

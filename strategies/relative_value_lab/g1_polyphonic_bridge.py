@@ -40,7 +40,7 @@ def quorum_for_forecast(*,cycle:Any,forecast:Any,feature:Any)->Any:
   challenged=challenge_forecast(forecast,feature,organ_scope=scope)
   vetoed=bool(challenged.abstain and not forecast.abstain)
   roots=tuple(sorted(set(n.evidence_roots)))
-  lineage=_digest({"family":n.family,"roots":roots})
+  lineage=_digest({"roots":roots})
   notes.append(MotifNote(
    message_id="note_"+n.node_id[-16:],receipt_id=n.node_id,hypothesis_id=str(forecast.hypothesis),
    bee_id=str(n.organ_id),family=str(n.family),lineage_digest=str(n.lineage_id),

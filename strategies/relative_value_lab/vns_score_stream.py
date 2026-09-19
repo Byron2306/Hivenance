@@ -5,11 +5,13 @@ import json
 import statistics
 from collections import deque
 from dataclasses import asdict, dataclass
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from .contracts import RELATIVE_VALUE_AUTHORITY
 from .temporal_texture import TemporalTexture, TemporalTextureReceipt
-from .vns_score_conductor import VNSMeasure
+
+if TYPE_CHECKING:
+    from .vns_score_conductor import VNSMeasure
 
 
 def _clamp(v:float)->float:

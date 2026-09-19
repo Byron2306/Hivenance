@@ -957,3 +957,33 @@ Loki may challenge repeated accents or suspicious novelty. Michael may discount
 echo pressure or request a fresh measure.
 
 Score Stream memory cannot create execution or promotion authority.
+
+### Live VNS calibration — cadence and attention versus modulation
+
+The first live Kraken phrase exposed two important calibration truths.
+
+1. Temporal texture must be scored relative to the observer's actual cadence.
+   A 120-second observation loop must not be judged against a 5-second timing
+   baseline. The live observer now constructs TemporalTexture using its configured
+   observation interval, and entropy buckets scale proportionally from that baseline.
+
+2. Candidate-set rotation is not the same thing as market modulation.
+   The VNS Score Stream now separates:
+   - \`attention_churn\` — scopes entering/leaving the ranked observation set;
+   - \`source_churn\` — source identity turnover;
+   - \`modulation\` — observed-feature change inside scopes that persist across
+     adjacent measures.
+
+This keeps the music semantically honest:
+
+\`\`\`text
+new instrument enters the stage
+    = attention churn
+
+same instrument changes its line
+    = modulation
+\`\`\`
+
+The distinction matters because selector rotation can be high even when the
+underlying market feature trajectory for persistent symbols is comparatively
+stable.

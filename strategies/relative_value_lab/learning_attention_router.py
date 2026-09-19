@@ -26,13 +26,18 @@ class OrganResearchRequest:
 class LearningAttentionRouter:
  """Maps learned obligations onto organs that already own the responsibility."""
  routes={
+  "time_shift_placebo":("temporal_observer","TEMPORAL",("public_future_observations","candidate_horizon","world_graph")),
+  "same_root":("lineage_guard","LINEAGE",("world_graph","evidence_roots","lineage_registry")),
+  "independent lineage":("lineage_guard","LINEAGE",("world_graph","evidence_roots","lineage_registry")),
+  "cost":("edge_ecology","LIQUIDITY",("bid_depth","ask_depth","spread_bps","previous_depth")),
+  "stale":("public_observer","REFRESH",("source_identity","last_observed_at","freshness_policy")),
   "flow":("edge_ecology","FLOW",("taker_buy_volume","taker_sell_volume","previous_imbalance")),
   "liquidity":("edge_ecology","LIQUIDITY",("bid_depth","ask_depth","spread_bps","previous_depth")),
   "state":("counterpoint","COUNTERPOINT",("world_graph","learning_brief","matched_controls")),
  }
  def route(self,o:ResearchAttentionObligation)->OrganResearchRequest:
   low=o.target.lower()
-  key=next((k for k in self.routes if k in low),None)
+  key=next((k for k in self.routes if k.replace("_"," ") in low),None)
   if key is None: return OrganResearchRequest("hypothesis_swarm","HYPOTHESIS",o.action,o.target,o.reason,("world_graph","learning_brief"),o.source_learning_ids)
   organ,family,inputs=self.routes[key]
   return OrganResearchRequest(organ,family,o.action,o.target,o.reason,inputs,o.source_learning_ids)

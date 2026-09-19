@@ -372,6 +372,38 @@ def _print_summary(
                 )
             )
 
+        organ_findings = report.organ_findings
+        dead = [
+            f for f in organ_findings
+            if f.utility_status == "ZERO_SELECTION_EFFECT"
+        ]
+        useful = [
+            f for f in organ_findings
+            if f.utility_status == "USEFUL_CANDIDATE_THIS_SAMPLE"
+        ]
+        harmful = [
+            f for f in organ_findings
+            if f.utility_status == "HARMFUL_CANDIDATE_THIS_SAMPLE"
+        ]
+        if dead:
+            print("DEADWEIGHT? " + ",".join(f.organ_id for f in dead))
+        if useful:
+            print(
+                "USEFUL? "
+                + " | ".join(
+                    f"{f.organ_id}:Δremove={f.cumulative_net_delta_bps:+.2f}bps"
+                    for f in useful
+                )
+            )
+        if harmful:
+            print(
+                "HARMFUL? "
+                + " | ".join(
+                    f"{f.organ_id}:Δremove={f.cumulative_net_delta_bps:+.2f}bps"
+                    for f in harmful
+                )
+            )
+
     leaders = economy.leaderboard()
     if leaders:
         print(

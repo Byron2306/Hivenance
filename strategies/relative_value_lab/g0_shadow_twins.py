@@ -14,6 +14,7 @@ from .g0_no_trade import no_trade_settlement
 class G0ShadowTwin:
  organ_id:str; opportunity_id:str; world_state_hash:str
  full_intent:Mapping[str,Any]; ablated_intent:Mapping[str,Any]
+ research_campaign_id:str|None=None; research_target_id:str|None=None
  execution_eligible:bool=False; promotion_eligible:bool=False
 
 @dataclass(frozen=True)
@@ -44,5 +45,6 @@ def settle_shadow_twin(*,twin:G0ShadowTwin,settler:Any,
  pair=G0PairedOutcome(twin.organ_id,"PROSPECTIVE",twin.opportunity_id,twin.world_state_hash,
   float(fd.get("net_return_bps") or 0.0),float(bd.get("net_return_bps") or 0.0),
   str(fd.get("status")) not in {"MISSED_FILL","ABSTAIN_NO_TRADE"},
-  str(bd.get("status")) not in {"MISSED_FILL","ABSTAIN_NO_TRADE"})
+  str(bd.get("status")) not in {"MISSED_FILL","ABSTAIN_NO_TRADE"},
+  twin.research_campaign_id,twin.research_target_id)
  return G0ShadowTwinSettlement(twin.organ_id,twin.opportunity_id,twin.world_state_hash,fd,bd,pair,False,False)

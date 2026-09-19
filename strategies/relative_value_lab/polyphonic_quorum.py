@@ -48,6 +48,8 @@ class PolyphonicQuorumReceipt:
     world_state_id:str
     world_state_hash:str
     note_count:int
+    first_note_ms:int
+    last_note_ms:int
     independent_root_count:int
     family_count:int
     evidence_root_count:int
@@ -198,6 +200,8 @@ class PolyphonicQuorum:
             world_state_id=world_state_id,
             world_state_hash=world_state_hash,
             note_count=len(rows),
+            first_note_ms=min(times),
+            last_note_ms=max(times),
             independent_root_count=len(roots),
             family_count=len(families),
             evidence_root_count=len(evidence_roots),
@@ -225,6 +229,8 @@ class PolyphonicQuorum:
             world_state_id="",
             world_state_hash="",
             note_count=0,
+            first_note_ms=0,
+            last_note_ms=0,
             independent_root_count=0,
             family_count=0,
             evidence_root_count=0,

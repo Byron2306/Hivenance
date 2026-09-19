@@ -12,6 +12,7 @@ from typing import Any
 from strategies.volatility_breakout.shadow_flight import ShadowIntentBuilder
 from strategies.volatility_breakout.shadow_models import ShadowFreeze
 from .world_score import ScoreObservation,CanonicalWorldScore
+from .canonical_memory_bridge import frame_from_binding,validate_binding
 from .edge_ecology import EdgeEcology
 from .synthesis_runtime import SynthesisRuntime
 from .g0_hypothesis_adapter import bind_synthesis_context
@@ -94,12 +95,29 @@ class G0LiveLoop:
   freeze_by_model={str(x.model_id):x for x in freezes if x.status=="ACTIVE"}
   if not freeze_by_model:return out
   if feature.book_imbalance is None or feature.depth_usd_25bps is None or feature.spread_bps is None:return out
-  payload=asdict(feature);root=_hash(payload)
-  observed=min(int(feature.timestamp_ms),int(now_ms))
-  obs=ScoreObservation(_hash({"root":root,"symbol":feature.symbol})[-24:],str(venue),"public_market_feature",
-   str(feature.symbol),observed,int(now_ms),root,payload)
-  frame=CanonicalWorldScore.assemble(observations=(obs,),assembled_at_ms=int(now_ms),
-   freshness_window_ms=max(1000,int(getattr(self.cfg,"phase1_observation_stale_after_sec",180) or 180)*1000))
+  payload=asdict(feature)
+  values=feature.values if isinstance(getattr(feature,"values",None),dict) else {}
+  binding=values.get("canonical_world_binding") if isinstance(values.get("canonical_world_binding"),dict) else None
+  frame=None;root=None
+  if binding is not None:
+   valid,_binding_reasons=validate_binding(binding,symbol=str(feature.symbol),observed_at_ms=int(feature.timestamp_ms))
+   if valid:
+    try:
+     frame=frame_from_binding(binding)
+     root=str(frame.observations[0].evidence_root) if frame.observations else None
+    except Exception:
+     frame=None;root=None
+  if frame is None:
+   # Compatibility fallback for historical fixtures/older stored observations.
+   # Live Phase-1 observations produced after Phase 1 must carry the canonical binding.
+   root=_hash(payload)
+   observed=min(int(feature.timestamp_ms),int(now_ms))
+   obs=ScoreObservation(_hash({"root":root,"symbol":feature.symbol})[-24:],str(venue),"public_market_feature",
+    str(feature.symbol),observed,int(now_ms),root,payload)
+   frame=CanonicalWorldScore.assemble(observations=(obs,),assembled_at_ms=int(now_ms),
+    freshness_window_ms=max(1000,int(getattr(self.cfg,"phase1_observation_stale_after_sec",180) or 180)*1000))
+  if root is None:
+   return out
   total=max(0.0,float(feature.depth_usd_25bps));imb=max(-1.0,min(1.0,float(feature.book_imbalance)))
   bid=total*(1.0+imb)/2.0;ask=total*(1.0-imb)/2.0
   snap=EdgeEcology().snapshot(timestamp_ms=int(feature.timestamp_ms),pair_id=str(feature.symbol),voices=(

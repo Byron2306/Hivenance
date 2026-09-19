@@ -193,6 +193,15 @@ __all__ = [
     "ProspectivePollenPaperRuntime",
     "PaperSettlementBatch",
     "RegisteredPaperHypothesis",
+    "admit",
+    "VARIANTS",
+    "RelativeValueAblationLab",
+    "AblationReport",
+    "AblationFinding",
+    "AblationDelta",
+    "VariantBook",
+    "AblationVariant",
+    "AblationSnapshot",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -281,4 +290,15 @@ from .pollen_paper_runtime import (
     RegisteredPaperHypothesis,
     PaperSettlementBatch,
     ProspectivePollenPaperRuntime,
+)
+from .ablation_lab import (
+    AblationSnapshot,
+    AblationVariant,
+    VariantBook,
+    AblationDelta,
+    AblationFinding,
+    AblationReport,
+    RelativeValueAblationLab,
+    VARIANTS,
+    admit,
 )

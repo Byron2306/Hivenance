@@ -147,6 +147,14 @@ VARIANTS: tuple[AblationVariant, ...] = (
     AblationVariant("POLLEN_PRESENT", "Require at least one Queen-issued bounty.", "pollen_selection"),
     AblationVariant("DISSENT_BOUNTY_ONLY", "Require Queen to issue a dissent bounty.", "pollen_selection"),
     AblationVariant("NO_REPUTATION", "Canonical resolution without historical reputation.", "reputation_ablation"),
+    AblationVariant("POLLEN_AND_REPUTATION", "Require canonical resolution, pollen presence and structural reputation >= motion reputation.", "interaction"),
+    AblationVariant("QUORUM_PLUS_FOLLOW", "Require quorum and motion FOLLOW, bypass Queen resolution label.", "interaction"),
+    AblationVariant("QUORUM_PLUS_EDGE1", "Require quorum, no dissent and expected net edge >= 1 bps.", "interaction"),
+    AblationVariant("QUORUM_PLUS_EDGE2", "Require quorum, no dissent and expected net edge >= 2 bps.", "interaction"),
+    AblationVariant("FOLLOW_PLUS_EDGE1", "Require motion FOLLOW and expected net edge >= 1 bps.", "interaction"),
+    AblationVariant("FOLLOW_PLUS_STABILITY060", "Require motion FOLLOW and stability >= 0.60.", "interaction"),
+    AblationVariant("QUEEN_METRICS_COMPOSITE", "Require strong Queen pressure/tonal/pitch composite.", "interaction"),
+    AblationVariant("MUSIC_COMPOSITE", "Require cadence/entrainment with low dissonance and false-unison.", "interaction"),
     AblationVariant("REP_STRUCT_GE_MOTION", "Admit only if structural reputation >= motion reputation.", "reputation_selection"),
     AblationVariant("REP_MOTION_GE_STRUCT", "Admit only if motion reputation >= structural reputation.", "reputation_selection"),
     AblationVariant("EDGE_GT_0", "Any positive expected post-cost edge.", "edge_threshold"),
@@ -201,6 +209,35 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
         return s.motion_kind == "DISSENT"
     if vid in {"NO_POLLEN", "NO_REPUTATION"}:
         return s.queen_resolution == "ADMIT_RESOLVED"
+    if vid == "POLLEN_AND_REPUTATION":
+        return (
+            s.queen_resolution == "ADMIT_RESOLVED"
+            and s.pollen_bounty_count > 0
+            and s.structural_reputation >= s.motion_reputation
+        )
+    if vid == "QUORUM_PLUS_FOLLOW":
+        return s.quorum_formed and s.motion_kind == "FOLLOW"
+    if vid == "QUORUM_PLUS_EDGE1":
+        return s.quorum_formed and not s.explicit_dissent and s.expected_net_bps >= 1.0
+    if vid == "QUORUM_PLUS_EDGE2":
+        return s.quorum_formed and not s.explicit_dissent and s.expected_net_bps >= 2.0
+    if vid == "FOLLOW_PLUS_EDGE1":
+        return s.motion_kind == "FOLLOW" and s.expected_net_bps >= 1.0
+    if vid == "FOLLOW_PLUS_STABILITY060":
+        return s.motion_kind == "FOLLOW" and s.stability_score >= 0.60
+    if vid == "QUEEN_METRICS_COMPOSITE":
+        return (
+            s.queen_polyphonic_pressure >= 0.55
+            and s.queen_tonal_coherence >= 0.50
+            and s.queen_pitch_convergence >= 0.50
+        )
+    if vid == "MUSIC_COMPOSITE":
+        return (
+            s.motif_cadence_strength >= 0.60
+            and s.entrainment_strength >= 0.50
+            and s.motif_dissonance < 0.30
+            and s.false_unison_risk < 0.30
+        )
     if vid == "POLLEN_PRESENT":
         return s.queen_resolution == "ADMIT_RESOLVED" and s.pollen_bounty_count > 0
     if vid == "DISSENT_BOUNTY_ONLY":

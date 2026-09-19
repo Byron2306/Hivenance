@@ -9,6 +9,7 @@ if str(ROOT) not in sys.path:
 from collections import defaultdict
 from strategies.relative_value_lab.g1_campaign_freeze import get_latest_g1_campaign_freeze,policy_from_freeze
 from strategies.relative_value_lab.g1_utility_campaign import evaluate_store,load_prospective_outcomes
+from main import load_config,apply_phase0_safety_policy
 
 class Store:
  def __init__(self,path:str):
@@ -16,9 +17,13 @@ class Store:
 
 def main()->int:
  ap=argparse.ArgumentParser(description="Show frozen G1 campaign progress and organ utility status.")
- ap.add_argument("--db",default="swarm_data.db")
+ ap.add_argument("--db",default=None,help="SQLite path; defaults to configured cfg.db_path")
  ap.add_argument("--json",action="store_true")
- args=ap.parse_args();s=Store(args.db)
+ args=ap.parse_args()
+ cfg=apply_phase0_safety_policy(load_config())
+ db_path=str(args.db or getattr(cfg,"db_path","swarm_data.db") or "swarm_data.db")
+ print(f"[G1 STATUS] db={db_path}")
+ s=Store(db_path)
  frozen=get_latest_g1_campaign_freeze(s)
  if frozen is None:
   print("G1: campaign not frozen yet; run one Phase-5 shadow cycle first.")

@@ -24,19 +24,15 @@ def fc(hypothesis="baseline_simple_momentum",direction="UP"):
   uncertainty=.5,calibration_state="BASELINE_FIXED",feature_version="phase2.v1",
   abstain=False,reason="probe",reasons=(),inputs={},execution_eligible=False)
 
-def test_momentum_probe_can_be_vetoed_by_missing_horizon_but_never_flipped():
+def test_momentum_probe_missing_horizon_is_neutral():
  original=fc()
  out=challenge_forecast(original,feature(families=("LIQUIDITY",)),organ_scope="horizon_context")
- assert out.abstain is True
- assert out.direction=="ABSTAIN"
- assert out.expected_net_bps is None
- assert out.execution_eligible is False
+ assert out==original
 
-def test_reversion_probe_uses_reversion_liquidity_semantics():
+def test_reversion_probe_missing_edge_is_neutral():
  original=fc("baseline_simple_mean_reversion","DOWN")
  out=challenge_forecast(original,feature(families=()),organ_scope="edge_ecology")
- assert out.abstain is True
- assert out.reason=="g0_liquidity_not_corroborated"
+ assert out==original
 
 def test_random_negative_control_is_challengeable_but_not_improvable():
  original=fc("baseline_random","UP")

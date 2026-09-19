@@ -92,3 +92,29 @@ def add_edge_ecology(
                     metadata={"reason": "shared_underlying_observation_root"},
                 )
     return tuple(nodes)
+
+
+def add_temporal_participation(
+    graph: WorldGraph,
+    *,
+    evidence: Any,
+    created_at_ms: int,
+) -> WorldGraphNode:
+    """Bind TemporalParticipationEvidence into the current world graph."""
+    ratio = evidence.volume_ratio_to_same_hour_median
+    freshness = 1.0
+    uncertainty = 1.0 if ratio is None else max(
+        0.05,
+        min(1.0, 1.0 / max(1.0, float(evidence.historical_same_hour_n) ** 0.5)),
+    )
+    return graph.add_node(
+        organ_id="temporal_participation_bee",
+        family="TEMPORAL_PARTICIPATION",
+        created_at_ms=created_at_ms,
+        evidence_roots=(evidence.evidence_root,),
+        lineage_id="hivenance.temporal_participation.v1",
+        transformation_id="utc_same_hour_participation.v1",
+        payload=evidence.to_dict(),
+        freshness=freshness,
+        uncertainty=uncertainty,
+    )

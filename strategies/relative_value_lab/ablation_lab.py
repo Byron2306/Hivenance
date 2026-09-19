@@ -100,11 +100,22 @@ class AblationFinding:
 
 
 @dataclass(frozen=True)
+class OrganUtilityFinding:
+    organ_id: str
+    ablation_variant_id: str
+    changed_decisions: int
+    cumulative_net_delta_bps: float
+    utility_status: str
+    interpretation: str
+
+
+@dataclass(frozen=True)
 class AblationReport:
     schema: str
     report_id: str
     settled_count: int
     books: tuple[VariantBook, ...]
+    organ_findings: tuple[OrganUtilityFinding, ...] = ()
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -115,6 +126,7 @@ class AblationReport:
             "report_id": self.report_id,
             "settled_count": self.settled_count,
             "books": [asdict(book) for book in self.books],
+            "organ_findings": [asdict(item) for item in self.organ_findings],
             "authority": self.authority,
             "execution_eligible": self.execution_eligible,
             "promotion_eligible": self.promotion_eligible,
@@ -404,6 +416,71 @@ class RelativeValueAblationLab:
             ))
         return tuple(out)
 
+
+    def organ_findings(
+        self,
+        *,
+        minimum_changed_cases: int = 8,
+    ) -> tuple[OrganUtilityFinding, ...]:
+        """Translate policy ablations into conservative organ-utility findings.
+
+        ZERO_SELECTION_EFFECT means the organ currently does not change canonical
+        treatment admissions at all. It does not mean the organ has no audit,
+        safety, observability, or future research value.
+        """
+        mapping = (
+            ("quorum_gate", "NO_QUORUM_GATE"),
+            ("counterpoint_hold", "NO_COUNTERPOINT_HOLD"),
+            ("queen_resolution", "NO_QUEEN"),
+            ("motion_voice", "STRUCTURAL_ONLY"),
+            ("pollen_bounties", "NO_POLLEN"),
+            ("reputation", "NO_REPUTATION"),
+        )
+        deltas = {row.variant_id: row for row in self.deltas()}
+        out = []
+        for organ_id, variant_id in mapping:
+            delta = deltas[variant_id]
+            if delta.changed_decisions == 0:
+                status = "ZERO_SELECTION_EFFECT"
+                interpretation = (
+                    "Removing this organ did not change any canonical treatment "
+                    "admissions in the observed sample. Treat it as selection-dead "
+                    "weight until a future path demonstrates incremental value."
+                )
+            elif delta.changed_decisions < int(minimum_changed_cases):
+                status = "UNRESOLVED_TOO_FEW_CHANGED_CASES"
+                interpretation = (
+                    "This organ changes admissions, but too few differing cases "
+                    "have settled to judge whether the added complexity helps."
+                )
+            elif delta.cumulative_net_delta_bps > 0:
+                status = "HARMFUL_CANDIDATE_THIS_SAMPLE"
+                interpretation = (
+                    "Removing this organ improved cumulative net bps over the "
+                    "cases where its presence changed admission."
+                )
+            elif delta.cumulative_net_delta_bps < 0:
+                status = "USEFUL_CANDIDATE_THIS_SAMPLE"
+                interpretation = (
+                    "Removing this organ hurt cumulative net bps over the cases "
+                    "where its presence changed admission."
+                )
+            else:
+                status = "NO_NET_VALUE_THIS_SAMPLE"
+                interpretation = (
+                    "The organ changes admissions but produced zero cumulative "
+                    "incremental net value over those changed cases."
+                )
+            out.append(OrganUtilityFinding(
+                organ_id=organ_id,
+                ablation_variant_id=variant_id,
+                changed_decisions=delta.changed_decisions,
+                cumulative_net_delta_bps=delta.cumulative_net_delta_bps,
+                utility_status=status,
+                interpretation=interpretation,
+            ))
+        return tuple(out)
+
     def report(self) -> AblationReport:
         settled_count = len(self._rows)
         books = []
@@ -423,6 +500,7 @@ class RelativeValueAblationLab:
             report_id="ablate_" + _digest(body).split(":", 1)[1][:24],
             settled_count=settled_count,
             books=tuple(books),
+            organ_findings=self.organ_findings(),
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,

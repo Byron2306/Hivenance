@@ -1084,3 +1084,45 @@ pollen + reputation redistribution
 \`\`\`
 
 Pollen rewards usefulness to the hive, not conformity.
+
+## Prospective Pollen Profit Experiment
+
+**Implemented v1.**
+
+The Queen's existing research notation can now issue bounded Pollen bounties through
+\`QueenPollenConductor\`. The mapping preserves the score instead of inventing a
+second command language: challenge notation can fund dissent/falsification,
+search notation can fund discovery, fresh-timbre notation can fund novelty, and
+resolution notation can fund settlement work.
+
+Profit testing is explicitly prospective.
+
+For every resolved non-abstaining paper forecast, \`PollenProfitExperiment\`
+maintains two books over the same future market outcome:
+
+\`\`\`text
+CONTROL
+all resolved eligible paper forecasts
+
+POLLEN / QUORUM TREATMENT
+only forecasts whose choreographed quorum had already formed by forecast time
+\`\`\`
+
+A quorum timestamp is now part of the canonical Polyphonic Quorum receipt.
+Treatment selection is rejected when \`quorum.last_note_ms\` is later than the
+forecast timestamp. This prevents hindsight quorum construction.
+
+The comparison reports:
+
+- settled and selected counts;
+- abstention count;
+- cumulative and mean net basis points;
+- win rate;
+- current and longest positive streak;
+- maximum drawdown in cumulative net basis points;
+- treatment selection rate;
+- control-versus-treatment cumulative and mean deltas.
+
+This experiment does not claim edge and does not alter execution. It is designed
+to test whether Queen-issued incentives plus choreographed quorum improve
+prospective cost-adjusted paper outcomes relative to the untreated control hive.

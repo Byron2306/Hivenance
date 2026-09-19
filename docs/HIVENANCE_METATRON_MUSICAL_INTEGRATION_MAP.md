@@ -864,3 +864,72 @@ The distinction is constitutional:
 - **Conducting Queen** = how the organism listens and responds to the composition.
 
 No VNS measure or sensory pulse creates execution or promotion authority.
+
+## VNS Score Stream — phrase memory across canonical measures
+
+**Implemented v1.**
+
+Current implementation:
+
+- \`strategies/relative_value_lab/vns_score_stream.py\`;
+- \`scripts/run_phase1_observer.py\` now writes both:
+  - \`VNS_SCORE.json\` — the current canonical bar;
+  - \`VNS_STREAM.json\` — the recent phrase across canonical bars.
+
+The score stream is musical memory, not a lifecycle machine.
+
+It preserves:
+
+- measure timing through the existing \`TemporalTexture\` organ;
+- pulse density;
+- pulse recurrence;
+- rest density;
+- observed-feature novelty;
+- echo pressure;
+- source churn;
+- freshness decay;
+- crescendo / decrescendo;
+- scope modulation;
+- phrase energy.
+
+A critical distinction is preserved:
+
+- frame digest change means **new provenance**;
+- observed-feature change means **new musical content**.
+
+Every canonical bar naturally receives a new digest because its evidence and
+timestamps differ. The stream therefore does not mistake provenance churn for
+novelty.
+
+### Three listening scales
+
+\`\`\`text
+Canonical World Score
+    = this observed bar
+
+VNS Score Stream
+    = how observed bars form a phrase
+
+Conducting Queen
+    = how that phrase interacts with the rest of Polyphia
+\`\`\`
+
+The Queen now hears:
+
+- VNS phrase energy;
+- observed novelty;
+- echo pressure;
+- rest density;
+- phrase modulation.
+
+She may conduct:
+
+- SHAPE_VNS_PHRASE_CRESCENDO;
+- HEAR_VNS_REST;
+- FOLLOW_VNS_MODULATION;
+- THIN_VNS_ECHO.
+
+Loki may challenge repeated accents or suspicious novelty. Michael may discount
+echo pressure or request a fresh measure.
+
+Score Stream memory cannot create execution or promotion authority.

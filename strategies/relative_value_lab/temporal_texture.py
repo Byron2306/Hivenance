@@ -55,11 +55,15 @@ class TemporalTexture:
         self.entropy_target = _clamp(entropy_target)
         self.entropy_tolerance = max(0.01, float(entropy_tolerance))
 
-    @staticmethod
-    def _entropy(intervals: Sequence[float]) -> float:
+    def _entropy(self, intervals: Sequence[float]) -> float:
         if not intervals:
             return 0.0
-        buckets = [1_000.0, 2_500.0, 5_000.0, 10_000.0]
+        buckets = [
+            0.20 * self.baseline_median_ms,
+            0.50 * self.baseline_median_ms,
+            1.00 * self.baseline_median_ms,
+            2.00 * self.baseline_median_ms,
+        ]
         counts = [0] * (len(buckets) + 1)
         for value in intervals:
             placed = False

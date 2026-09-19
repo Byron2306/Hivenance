@@ -111,6 +111,60 @@ class MarketMemory:
                          effective_ts_ms=ts,symbol=symbol)
         return line
 
+    def append_bars(
+        self, *, symbol: str, timeframe: str, rows: Iterable[Iterable[float]],
+        source: str = "kraken_public_ohlcv",
+    ) -> tuple[str, ...]:
+        """Idempotently append a bounded OHLCV batch with one transaction.
+
+        The memory-line identity excludes insertion time, so replaying the same
+        public batch cannot manufacture new evidence.
+        """
+        line_ids: list[str] = []
+        inserted_ms = int(time.time() * 1000)
+        for row in rows:
+            values = list(row)
+            if len(values) < 6:
+                raise ValueError("OHLCV row requires timestamp, open, high, low, close, volume")
+            ts = int(values[0])
+            payload = {
+                "timeframe": str(timeframe),
+                "open": float(values[1]),
+                "high": float(values[2]),
+                "low": float(values[3]),
+                "close": float(values[4]),
+                "volume": float(values[5]),
+            }
+            payload_hash = _digest(payload)
+            body = {
+                "schema": SCHEMA,
+                "source": str(source),
+                "kind": "MARKET_BAR",
+                "symbol": str(symbol),
+                "effective_ts_ms": ts,
+                "world_state_id": None,
+                "payload": payload,
+            }
+            line_id = _digest(body)
+            self.conn.execute(
+                """INSERT OR IGNORE INTO market_bar VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    str(symbol), str(timeframe), ts,
+                    payload["open"], payload["high"], payload["low"],
+                    payload["close"], payload["volume"], str(source), payload_hash,
+                ),
+            )
+            self.conn.execute(
+                """INSERT OR IGNORE INTO memory_line VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    line_id, ts, ts, str(source), "MARKET_BAR", str(symbol), None,
+                    _json(payload), payload_hash, AUTHORITY, 0, 0, inserted_ms,
+                ),
+            )
+            line_ids.append(line_id)
+        self.conn.commit()
+        return tuple(line_ids)
+
     def append_trade_flow(
         self, *, symbol: str, trades: Iterable[dict[str, Any]],
         source: str = "kraken_public_trades", observed_ts_ms: int | None = None,

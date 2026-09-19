@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,json,sqlite3,threading,sys
+import argparse,json,sqlite3,threading,sys,os
 from pathlib import Path
+
+# Termux/Python 3.14: preload libpython before cryptography Rust bindings load.
+if os.environ.get("PREFIX") and not os.environ.get("HIVENANCE_G1_PRELOAD_DONE"):
+    libpython=Path(os.environ["PREFIX"])/"lib"/f"libpython{sys.version_info.major}.{sys.version_info.minor}.so"
+    if libpython.exists():
+        env=dict(os.environ)
+        existing=env.get("LD_PRELOAD","").strip()
+        env["LD_PRELOAD"]=str(libpython) if not existing else str(libpython)+":"+existing
+        env["HIVENANCE_G1_PRELOAD_DONE"]="1"
+        os.execve(sys.executable,[sys.executable,*sys.argv],env)
 
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:

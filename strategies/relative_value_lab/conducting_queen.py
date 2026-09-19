@@ -59,6 +59,7 @@ class VNSSensoryPulse:
     features: Mapping[str, float] = field(default_factory=dict)
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
+    promotion_eligible: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

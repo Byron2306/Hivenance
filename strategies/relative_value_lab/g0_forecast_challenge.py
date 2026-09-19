@@ -14,7 +14,7 @@ def _ctx(features:Any)->dict:
  x=v.get("synthesis_context")
  return x if isinstance(x,dict) else {}
 
-def challenge_forecast(forecast:Forecast,features:Any)->Forecast:
+def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ecology")->Forecast:
  c=_ctx(features)
  if not c or forecast.abstain:return forecast
  families=set(c.get("families") or ())
@@ -24,26 +24,29 @@ def challenge_forecast(forecast:Forecast,features:Any)->Forecast:
  def first(family):
   xs=payloads.get(family) or ()
   return xs[0] if xs and isinstance(xs[0],dict) else {}
- if forecast.hypothesis=="breakout_continuation":
-  if features.order_flow_imbalance is not None and "FLOW" not in families:
-   reasons.append("g0_flow_not_corroborated")
-  if features.book_imbalance is not None and "LIQUIDITY" not in families:
-   reasons.append("g0_liquidity_not_corroborated")
+ if organ_scope=="edge_ecology":
+  if forecast.hypothesis=="breakout_continuation":
+   if features.order_flow_imbalance is not None and "FLOW" not in families:
+    reasons.append("g0_flow_not_corroborated")
+   if features.book_imbalance is not None and "LIQUIDITY" not in families:
+    reasons.append("g0_liquidity_not_corroborated")
+  if forecast.hypothesis=="exhaustion_mean_reversion":
+   if features.book_imbalance is not None and "LIQUIDITY" not in families:
+    reasons.append("g0_liquidity_not_corroborated")
+ elif organ_scope=="horizon_context" and forecast.hypothesis=="breakout_continuation":
   if "HORIZON" not in families:
    reasons.append("g0_horizon_not_corroborated")
   else:
    h=first("HORIZON");alignment=str(h.get("alignment") or "")
    wanted="ALIGNED_UP" if forecast.direction=="UP" else "ALIGNED_DOWN"
    if alignment not in {wanted,"NEUTRAL"}:reasons.append("g0_horizon_conflict")
+ elif organ_scope=="temporal_participation_bee" and forecast.hypothesis=="breakout_continuation":
   if "TEMPORAL_PARTICIPATION" not in families:
    reasons.append("g0_temporal_participation_not_corroborated")
   else:
    t=first("TEMPORAL_PARTICIPATION");state=str(t.get("activity_state") or "")
    if state not in {"PARTICIPATION_NORMAL","PARTICIPATION_ELEVATED"}:
     reasons.append("g0_temporal_participation_weak")
- if forecast.hypothesis=="exhaustion_mean_reversion":
-  if features.book_imbalance is not None and "LIQUIDITY" not in families:
-   reasons.append("g0_liquidity_not_corroborated")
  if not reasons:return forecast
  inputs=dict(forecast.inputs or {});inputs["g0_synthesis_challenge"]={
   "cycle_id":c.get("cycle_id"),"world_state_hash":c.get("world_state_hash"),

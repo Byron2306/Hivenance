@@ -1,0 +1,42 @@
+{
+  "schema": "hivenance_full_organism_phase2_completion_receipt_v1",
+  "phase": 2,
+  "phase_name": "Full Temporal Lattice",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "verified_run_id": "hyp-1789834817318-9db77946",
+  "symbols_evaluated": 16,
+  "lattices_built": 16,
+  "acceptance": {
+    "every_symbol_bound": true,
+    "canonical_world_binding_preserved": true,
+    "explicit_missingness": true,
+    "conflict_map_present": true,
+    "same_price_history_not_counted_as_independent": true,
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0,
+    "reasons": []
+  },
+  "examples": {
+    "btc_usd": {
+      "micro_bias": "UP",
+      "meso_bias": "CONFLICT",
+      "macro_bias": "CONFLICT",
+      "oracle_bias": "UP"
+    },
+    "ondo_usd": {
+      "micro_bias": "DOWN",
+      "meso_bias": "DOWN",
+      "macro_bias": "NEUTRAL_OR_MISSING",
+      "oracle_bias": "UP",
+      "world_vs_oracle": "CONFLICT"
+    }
+  },
+  "next_phase": {
+    "phase": 3,
+    "name": "Full Comparison Engine Composition",
+    "gate": "No Phase 4 work until all supported comparison families are timestamp-safe, root-bound, and live-composed."
+  },
+  "authority": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+}

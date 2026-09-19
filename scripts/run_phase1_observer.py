@@ -23,6 +23,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agents.data_store_agent import DataStoreAgent
+from agents.kraken_public_rest import KrakenPublicRestClient
 from strategies.volatility_breakout.observation_swarm import ObservationSwarmAgent
 from strategies.relative_value_lab.vns_score_conductor import VNSScoreConductor
 from strategies.relative_value_lab.vns_score_stream import VNSScoreStream
@@ -94,16 +95,24 @@ def build_public_client(exchange_id: str) -> Any:
     exchange_id = exchange_id.lower().strip()
     if exchange_id not in ALLOWED_PUBLIC_VENUES:
         raise ValueError(f"Unsupported Phase-1 public venue: {exchange_id}")
+
     try:
         import ccxt
-    except ImportError as exc:
-        raise RuntimeError(
-            "CCXT is required for the standalone observer. Install requirements-phase1.txt"
-        ) from exc
-    factory = getattr(ccxt, exchange_id, None)
-    if factory is None:
-        raise RuntimeError(f"Installed CCXT build does not expose venue {exchange_id}")
-    return factory({"enableRateLimit": True, "timeout": 20_000})
+    except ImportError:
+        ccxt = None
+
+    if ccxt is not None:
+        factory = getattr(ccxt, exchange_id, None)
+        if factory is not None:
+            return factory({"enableRateLimit": True, "timeout": 20_000})
+
+    if exchange_id == "kraken":
+        return KrakenPublicRestClient(timeout=20.0)
+
+    raise RuntimeError(
+        f"CCXT is unavailable for {exchange_id}. "
+        "Kraken has a stdlib-only public fallback; other venues currently require CCXT."
+    )
 
 
 class StoreBridge:

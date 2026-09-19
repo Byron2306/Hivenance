@@ -15,6 +15,7 @@ from .candidate_selector import ObservationOnlyCandidateSelector
 from .feature_engine import Phase1FeatureEngine
 from .models import CandidateObservation, ObservationRunSummary
 from .signal_model import ObservationOnlySignalModel
+from strategies.relative_value_lab.canonical_memory_bridge import CanonicalMemoryWorldBridge
 
 
 def _float(value: Any) -> Optional[float]:
@@ -232,6 +233,13 @@ class ObservationSwarmAgent:
             niche_min_volatility_to_cost=float(getattr(cfg, 'phase1_observation_niche_min_volatility_to_cost', 0.35) or 0.35),
         )
         self.signal_model = ObservationOnlySignalModel()
+        self.canonical_memory_bridge = CanonicalMemoryWorldBridge(
+            getattr(cfg, 'hivenance_market_memory_path', 'data/hivenance_market_memory.db'),
+            freshness_window_ms=max(
+                1000,
+                int(getattr(cfg, 'phase1_observation_stale_after_sec', 180) or 180) * 1000,
+            ),
+        )
 
     def start(self) -> bool:
         if not self.enabled or self.client is None:
@@ -477,6 +485,20 @@ class ObservationSwarmAgent:
                     ticker=ticker or {},
                     observed_at_ms=observed_at_ms,
                 )
+                feature_payload = asdict(features)
+                canonical_binding = self.canonical_memory_bridge.ingest(
+                    venue=venue,
+                    symbol=symbol,
+                    observed_at_ms=observed_at_ms,
+                    timeframe=self.timeframe,
+                    ohlcv=ohlcv,
+                    orderbook=orderbook,
+                    feature_payload=feature_payload,
+                    peer_symbols=(),
+                )
+                feature_payload_values = dict(feature_payload.get('values') or {})
+                feature_payload_values['canonical_world_binding'] = canonical_binding
+                feature_payload['values'] = feature_payload_values
                 forecast = self.signal_model.forecast(features)
                 market = markets.get(symbol) or {}
                 observation = CandidateObservation(
@@ -512,7 +534,8 @@ class ObservationSwarmAgent:
                         'fetch_latency_ms': round(latency_ms, 3),
                         'feature_complete': features.complete,
                         'feature_metadata': dict(features.values),
-                        'feature_vector': asdict(features),
+                        'feature_vector': feature_payload,
+                        'canonical_world_binding': canonical_binding,
                         'forecast': asdict(forecast),
                         'market_active': market.get('active'),
                         'market_type': market.get('type'),
@@ -606,7 +629,12 @@ class ObservationSwarmAgent:
             'observed_at': datetime.fromtimestamp(completed_ms / 1000.0, tz=timezone.utc).isoformat(),
         }
         payload['world_state_summary'] = {
-            'schema': 'market_world_state_crystal_v1',
+            'schema': 'hivenance_phase1_canonical_world_summary_v2',
+            'canonical_binding_count': sum(
+                1
+                for row in candidate_rows
+                if isinstance((row.get('values') or {}).get('canonical_world_binding'), dict)
+            ),
             'fresh_candidate_count': sum(
                 1
                 for row in candidate_rows

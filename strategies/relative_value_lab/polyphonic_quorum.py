@@ -81,7 +81,7 @@ class PolyphonicQuorum:
     and provenance-diverse. Supporting and dissenting voices may coexist.
     """
 
-    version="hivenance.polyphonic_quorum.v1"
+    version="hivenance.polyphonic_quorum.v1.1"
 
     def __init__(self,config:PolyphonicQuorumConfig|None=None)->None:
         self.config=config or PolyphonicQuorumConfig()
@@ -171,11 +171,16 @@ class PolyphonicQuorum:
         if explicit_dissent:
             reasons.append("counterpoint_preserved")
 
+        phase_gate=phase_lock>=0.35
+        call_response_gate=(not calls) or bool(responses and call_response>0.0)
+
         quorum_formed=bool(
             world_binding==1.0
             and len(roots)>=self.config.minimum_independent_roots
             and len(families)>=self.config.minimum_families
             and len(roles)>=self.config.minimum_roles
+            and phase_gate
+            and call_response_gate
             and ensemble_lock>=self.config.ensemble_lock_threshold
         )
 

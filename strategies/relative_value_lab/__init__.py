@@ -184,6 +184,12 @@ __all__ = [
     "PolyphonicQuorum",
     "PolyphonicQuorumReceipt",
     "PolyphonicQuorumConfig",
+    "settle_pollen_from_forecast",
+    "PollenProfitExperiment",
+    "PollenProfitComparison",
+    "PollenProfitBook",
+    "QueenPollenConductor",
+    "QueenPollenIssueReceipt",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -259,4 +265,12 @@ from .pollen_economy import (
     PollenSettlementReceipt,
     MetatronQuorumChamber,
     QueenPollenEconomy,
+)
+from .pollen_profit_lab import (
+    QueenPollenIssueReceipt,
+    QueenPollenConductor,
+    PollenProfitBook,
+    PollenProfitComparison,
+    PollenProfitExperiment,
+    settle_pollen_from_forecast,
 )

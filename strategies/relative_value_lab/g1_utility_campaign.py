@@ -78,7 +78,8 @@ def _stressed_delta(row:Mapping[str,Any],extra_cost_bps:float)->float:
  if bool(row.get("ablated_acted")):blind-=float(extra_cost_bps)
  return full-blind
 
-def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None)->tuple[dict[str,Any],...]:
+def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
+ campaign_id:str|None=None,target_id:str|None=None)->tuple[dict[str,Any],...]:
  if not getattr(data_store,"conn",None):return ()
  try:
   with data_store._lock:
@@ -92,6 +93,8 @@ def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None)->tuple[di
   pair=p.get("paired_outcome") if isinstance(p.get("paired_outcome"),dict) else {}
   if str(pair.get("evidence_class") or "")!="PROSPECTIVE":continue
   if organ_id and str(pair.get("organ_id") or "")!=str(organ_id):continue
+  if campaign_id and str(pair.get("research_campaign_id") or "")!=str(campaign_id):continue
+  if target_id and str(pair.get("research_target_id") or "")!=str(target_id):continue
   q=dict(pair);q["settled_ts"]=float(settled_ts);out.append(q)
  return tuple(out)
 
@@ -124,7 +127,8 @@ def evaluate_organ_utility(rows:Iterable[Mapping[str,Any]],*,organ_id:str,policy
   sum(not bool(x.get("full_acted")) and not bool(x.get("ablated_acted")) for x in xs),
   dd,cls,tuple(reasons),policy.to_dict(),_hash(body),AUTHORITY,False,False)
 
-def evaluate_store(data_store:Any,*,policy:G1CampaignPolicy|None=None)->tuple[G1OrganUtilityReport,...]:
- rows=load_prospective_outcomes(data_store)
+def evaluate_store(data_store:Any,*,policy:G1CampaignPolicy|None=None,
+ campaign_id:str|None=None,target_id:str|None=None)->tuple[G1OrganUtilityReport,...]:
+ rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
  organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
  return tuple(evaluate_organ_utility(rows,organ_id=o,policy=policy) for o in organs)

@@ -219,6 +219,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "research_attention_budget_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_pollen_profit_lab": {
+        "role": "prospective_control_vs_pollen_quorum_paper_outcome_comparator",
+        "mode": "research_evaluation_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

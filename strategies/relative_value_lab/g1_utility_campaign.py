@@ -72,11 +72,14 @@ def _ci(xs:list[float],z:float)->tuple[float,float]:
  return m-margin,m+margin
 
 def _stressed_delta(row:Mapping[str,Any],extra_cost_bps:float)->float:
- full=float(row.get("full_net_bps") or 0.0)
- blind=float(row.get("ablated_net_bps") or 0.0)
- if bool(row.get("full_acted")):full-=float(extra_cost_bps)
- if bool(row.get("ablated_acted")):blind-=float(extra_cost_bps)
- return full-blind
+ # Conservative stress is applied to the causal utility delta, not to whichever
+ # leg happened to act. Charging only the acted leg mechanically flatters a
+ # veto when FULL abstains and BLIND trades.
+ base=float(row.get("delta_bps") if row.get("delta_bps") is not None
+            else float(row.get("full_net_bps") or 0.0)-float(row.get("ablated_net_bps") or 0.0))
+ if bool(row.get("full_acted"))!=bool(row.get("ablated_acted")):
+  return base-float(extra_cost_bps)
+ return base
 
 def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
  campaign_id:str|None=None,target_id:str|None=None)->tuple[dict[str,Any],...]:
@@ -110,6 +113,10 @@ def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
   q["model_id"]=str(fi.get("model_id") or "")
   q["horizon_seconds"]=int(fi.get("horizon_seconds") or 0)
   q["symbol"]=str(fi.get("symbol") or "")
+  fs=p.get("full_settlement") if isinstance(p.get("full_settlement"),dict) else {}
+  bs=p.get("ablated_settlement") if isinstance(p.get("ablated_settlement"),dict) else {}
+  q["full_status"]=str(fs.get("status") or "")
+  q["ablated_status"]=str(bs.get("status") or "")
   out.append(q)
  return tuple(out)
 
@@ -214,3 +221,23 @@ def evaluate_store_world_clustered(data_store:Any,*,policy:G1CampaignPolicy|None
  rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
  organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
  return tuple(world_cluster_diagnostic(rows,organ_id=o,policy=policy) for o in organs)
+
+
+def settlement_status_diagnostic(rows:Iterable[Mapping[str,Any]],*,organ_id:str)->dict[str,Any]:
+ xs=[dict(x) for x in rows if str(x.get("organ_id") or "")==str(organ_id)
+     and str(x.get("evidence_class") or "")=="PROSPECTIVE"]
+ pairs={}
+ for row in xs:
+  key=f"{str(row.get('full_status') or 'UNKNOWN')} -> {str(row.get('ablated_status') or 'UNKNOWN')}"
+  pairs[key]=int(pairs.get(key) or 0)+1
+ return {
+  "organ_id":str(organ_id),"paired_n":len(xs),"status_pairs":dict(sorted(pairs.items())),
+  "authority":"POST_HOC_SETTLEMENT_STATUS_DIAGNOSTIC_ONLY",
+  "changes_frozen_classification":False,
+ }
+
+def evaluate_store_settlement_status(data_store:Any,*,campaign_id:str|None=None,
+ target_id:str|None=None)->tuple[dict[str,Any],...]:
+ rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
+ organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
+ return tuple(settlement_status_diagnostic(rows,organ_id=o) for o in organs)

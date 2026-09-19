@@ -199,6 +199,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "immutable_observed_research_context",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_vns_score_conductor": {
+        "role": "public_observation_measure_compiler_and_sensory_accent_conductor",
+        "mode": "continuous_public_market_research_listening",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
  sys.path.insert(0,str(ROOT))
 from collections import defaultdict
-from strategies.relative_value_lab.g1_campaign_freeze import get_g1_campaign_freeze,policy_from_freeze
+from strategies.relative_value_lab.g1_campaign_freeze import get_latest_g1_campaign_freeze,policy_from_freeze
 from strategies.relative_value_lab.g1_utility_campaign import evaluate_store,load_prospective_outcomes
 
 class Store:
@@ -19,7 +19,7 @@ def main()->int:
  ap.add_argument("--db",default="swarm_data.db")
  ap.add_argument("--json",action="store_true")
  args=ap.parse_args();s=Store(args.db)
- frozen=get_g1_campaign_freeze(s)
+ frozen=get_latest_g1_campaign_freeze(s)
  if frozen is None:
   print("G1: campaign not frozen yet; run one Phase-5 shadow cycle first.")
   return 0
@@ -35,7 +35,9 @@ def main()->int:
    else:counts[str(organ)]["pending"]+=int(n)
  except Exception:
   pass
- reports={r.organ_id:r for r in evaluate_store(s,policy=policy)}
+ campaign_id=str(frozen.get("campaign_id") or "") if frozen.get("research_target_id") else None
+ target_id=str(frozen.get("research_target_id") or "") or None
+ reports={r.organ_id:r for r in evaluate_store(s,policy=policy,campaign_id=campaign_id,target_id=target_id)}
  payload={"campaign_id":frozen.get("campaign_id"),"created_ts":frozen.get("created_ts"),
   "policy":policy.to_dict(),"organs":[],"execution_eligible":False,"promotion_eligible":False}
  for organ in organs:

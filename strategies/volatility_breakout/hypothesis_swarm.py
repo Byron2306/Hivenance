@@ -1208,6 +1208,18 @@ class HypothesisSwarmAgent:
                             for row in (packet.get("results") or ())
                             if isinstance(row, dict)
                         },
+                        "selected_rejected_counts": next((
+                            {
+                                "selected_n": max(
+                                    [int(v.get("selected_n") or 0) for v in (row.get("metrics") or {}).values() if isinstance(v, dict)] or [0]
+                                ),
+                                "rejected_n": max(
+                                    [int(v.get("rejected_n") or 0) for v in (row.get("metrics") or {}).values() if isinstance(v, dict)] or [0]
+                                ),
+                            }
+                            for row in (packet.get("results") or ())
+                            if isinstance(row, dict) and row.get("comparison_type") == "SELECTED_VS_REJECTED"
+                        ), {"selected_n": 0, "rejected_n": 0}),
                         "controls": packet.get("control_declarations"),
                     })
             lattice = (

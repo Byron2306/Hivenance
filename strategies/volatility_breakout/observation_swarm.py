@@ -592,9 +592,20 @@ class ObservationSwarmAgent:
         success_ratio = len(raw_candidates) / max(1, len(symbols))
         status = 'HEALTHY' if symbols and success_ratio >= self.min_success_ratio else 'DEGRADED'
 
+        selected_symbols = {item.symbol for item in ranked}
+        comparison_universe = []
+        for rank_index, item in enumerate(ranked_all, start=1):
+            row = asdict(item)
+            row['rejection_reasons'] = list(row.get('rejection_reasons') or [])
+            row['selected_for_phase2'] = item.symbol in selected_symbols
+            row['comparison_rank'] = rank_index
+            row['execution_eligible'] = False
+            comparison_universe.append(row)
+
         candidate_rows = [asdict(item) for item in ranked]
         for row in candidate_rows:
             row['rejection_reasons'] = list(row.get('rejection_reasons') or [])
+            row['selected_for_phase2'] = True
             row['execution_eligible'] = False
         summary = ObservationRunSummary(
             run_id=run_id,
@@ -627,6 +638,14 @@ class ObservationSwarmAgent:
             'execution_wired': False,
             'orders_submitted': 0,
             'candidates': candidate_rows,
+            'comparison_universe': comparison_universe,
+            'comparison_universe_summary': {
+                'observed': len(comparison_universe),
+                'selected': sum(1 for row in comparison_universe if row.get('selected_for_phase2')),
+                'rejected': sum(1 for row in comparison_universe if not row.get('selected_for_phase2')),
+                'authority': 'PUBLIC_MARKET_RESEARCH_COMPARISON_ONLY',
+                'execution_eligible': False,
+            },
             'observed_at': datetime.fromtimestamp(completed_ms / 1000.0, tz=timezone.utc).isoformat(),
         }
         payload['world_state_summary'] = {
@@ -649,6 +668,7 @@ class ObservationSwarmAgent:
         payload['dataset_hash'] = _canonical_hash({
             'run': payload['run'],
             'candidates': payload['candidates'],
+            'comparison_universe': payload['comparison_universe'],
             'timeframe': payload['timeframe'],
             'world_state_summary': payload['world_state_summary'],
         })

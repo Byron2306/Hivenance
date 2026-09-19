@@ -1162,6 +1162,16 @@ class HypothesisSwarmAgent:
         medium_trend_map = self._medium_trend_context_map()
         derivatives_trend_map = self._derivatives_trend_context_map()
         commons_candidates: list[tuple[dict[str, Any], FeatureVector]] = []
+        g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0}
+        phase_store = getattr(self.coordinator, "store", None) if self.coordinator is not None else None
+        g0_live = None
+        if phase_store is not None:
+            try:
+                from strategies.relative_value_lab.g0_live_loop import G0LiveLoop
+                g0_live = G0LiveLoop(self.cfg)
+            except Exception:
+                logging.exception("Failed to initialize G0 prospective loop")
+                g0_prospective["errors"] += 1
 
         for candidate in observation.get("candidates") or []:
             values = candidate.get("values") or {}
@@ -1182,6 +1192,22 @@ class HypothesisSwarmAgent:
                 negative_crystals=negative_crystals,
             )
             commons_candidates.append((candidate, feature))
+            if g0_live is not None:
+                try:
+                    g0_result = g0_live.process_feature(
+                        data_store=phase_store,
+                        competition=self.competition,
+                        feature=feature,
+                        venue=venue,
+                        now_ms=max(int(started_ms), int(feature.timestamp_ms)),
+                        horizons=self.horizons,
+                    )
+                    g0_prospective["features_examined"] += 1
+                    for key in ("eligible", "diverged", "frozen", "skipped", "errors"):
+                        g0_prospective[key] += int(g0_result.get(key) or 0)
+                except Exception:
+                    g0_prospective["errors"] += 1
+                    logging.exception("G0 prospective feature cycle failed")
             regime_inputs = values.get("regime_inputs") if isinstance(values.get("regime_inputs"), dict) else {}
             regime_hint = str(regime_inputs.get("regime_hint") or "unknown")
             cohort_bucket = str(values.get("cohort_bucket") or "unknown")
@@ -1366,6 +1392,12 @@ class HypothesisSwarmAgent:
             "derivatives_trend_horizons_seconds": list(self.derivatives_trend_horizons),
             "federation": self.competition.federation_manifest(),
             "walk_forward_calibration": calibration_summary,
+            "g0_prospective": {
+                **g0_prospective,
+                "authority": "SYNTHESIS_G0_PROSPECTIVE_SHADOW_ONLY",
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            },
             "forecasts": forecast_rows,
             "research_reuse": {
                 "receipts": reuse_receipts,

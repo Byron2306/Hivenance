@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass,asdict
 from typing import Any,Mapping,Sequence
 from .g0_settlement import G0PairedOutcome
+from .g0_no_trade import no_trade_settlement
 
 @dataclass(frozen=True)
 class G0ShadowTwin:
@@ -35,8 +36,8 @@ def settle_shadow_twin(*,twin:G0ShadowTwin,settler:Any,
    raise ValueError(label+"_intent_execution_authority_forbidden")
   if str(intent.get("transmission_status") or "NEVER_TRANSMITTED")!="NEVER_TRANSMITTED":
    raise ValueError(label+"_intent_was_transmitted")
- full=settler.settle(twin.full_intent,observations,settled_ts=settled_ts)
- blind=settler.settle(twin.ablated_intent,observations,settled_ts=settled_ts)
+ full=(no_trade_settlement(twin.full_intent,settled_ts=settled_ts) if twin.full_intent.get("g0_no_trade") else settler.settle(twin.full_intent,observations,settled_ts=settled_ts))
+ blind=(no_trade_settlement(twin.ablated_intent,settled_ts=settled_ts) if twin.ablated_intent.get("g0_no_trade") else settler.settle(twin.ablated_intent,observations,settled_ts=settled_ts))
  if full is None or blind is None:raise ValueError("twin_not_yet_settleable")
  fd=full.to_dict() if hasattr(full,"to_dict") else dict(full)
  bd=blind.to_dict() if hasattr(blind,"to_dict") else dict(blind)

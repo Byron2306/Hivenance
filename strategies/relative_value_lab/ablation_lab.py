@@ -67,6 +67,9 @@ class VariantBook:
     variant_id: str
     selected_count: int
     rejected_count: int
+    selection_rate: float
+    degenerate_select_none: bool
+    degenerate_select_all: bool
     winning_count: int
     losing_count: int
     cumulative_net_bps: float
@@ -110,12 +113,22 @@ class OrganUtilityFinding:
 
 
 @dataclass(frozen=True)
+class SelectorEquivalenceClass:
+    class_id: str
+    variant_ids: tuple[str, ...]
+    selected_count: int
+    selection_rate: float
+    decision_digest: str
+
+
+@dataclass(frozen=True)
 class AblationReport:
     schema: str
     report_id: str
     settled_count: int
     books: tuple[VariantBook, ...]
     organ_findings: tuple[OrganUtilityFinding, ...] = ()
+    selector_equivalence_classes: tuple[SelectorEquivalenceClass, ...] = ()
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -127,6 +140,9 @@ class AblationReport:
             "settled_count": self.settled_count,
             "books": [asdict(book) for book in self.books],
             "organ_findings": [asdict(item) for item in self.organ_findings],
+            "selector_equivalence_classes": [
+                asdict(item) for item in self.selector_equivalence_classes
+            ],
             "authority": self.authority,
             "execution_eligible": self.execution_eligible,
             "promotion_eligible": self.promotion_eligible,
@@ -135,6 +151,7 @@ class AblationReport:
 
 VARIANTS: tuple[AblationVariant, ...] = (
     AblationVariant("CONTROL_ALL", "Every candidate forecast enters.", "control"),
+    AblationVariant("REJECT_ALL", "No candidate forecast enters.", "negative_control"),
     AblationVariant("FULL_HIVE", "Canonical Queen treatment resolution.", "canonical"),
     AblationVariant("NO_QUORUM_GATE", "Ignore quorum; hold only explicit dissent.", "quorum_ablation"),
     AblationVariant("NO_COUNTERPOINT_HOLD", "Quorum admits even with dissent.", "counterpoint_ablation"),
@@ -195,6 +212,8 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
 
     if vid == "CONTROL_ALL":
         return True
+    if vid == "REJECT_ALL":
+        return False
     if vid == "FULL_HIVE":
         return s.queen_resolution == "ADMIT_RESOLVED"
     if vid == "NO_QUORUM_GATE":
@@ -357,10 +376,14 @@ class RelativeValueAblationLab:
             else:
                 current = 0
         wins = sum(v > 0 for v in values)
+        selected_count = len(values)
         return VariantBook(
             variant_id=variant_id,
-            selected_count=len(values),
-            rejected_count=max(0, settled_count - len(values)),
+            selected_count=selected_count,
+            rejected_count=max(0, settled_count - selected_count),
+            selection_rate=round(selected_count / settled_count, 6) if settled_count else 0.0,
+            degenerate_select_none=(settled_count > 0 and selected_count == 0),
+            degenerate_select_all=(settled_count > 0 and selected_count == settled_count),
             winning_count=wins,
             losing_count=len(values) - wins,
             cumulative_net_bps=round(sum(values), 6),
@@ -454,6 +477,41 @@ class RelativeValueAblationLab:
         return tuple(out)
 
 
+    def selector_equivalence_classes(self) -> tuple[SelectorEquivalenceClass, ...]:
+        """Group policies that made exactly the same admissions over settled cases.
+
+        This exposes architectural aliases: two differently named organs/policies
+        that always select the same rows have no distinguishable selection effect
+        in the observed sample.
+        """
+        groups: dict[str, list[str]] = {}
+        metadata: dict[str, tuple[int, float]] = {}
+        settled = len(self._rows)
+        for variant in self.variants:
+            vector = [
+                bool(row.decisions.get(variant.variant_id, False))
+                for row in self._rows
+            ]
+            digest = _digest(vector)
+            groups.setdefault(digest, []).append(variant.variant_id)
+            selected = sum(vector)
+            metadata[digest] = (
+                selected,
+                selected / settled if settled else 0.0,
+            )
+
+        out = []
+        for index, digest in enumerate(sorted(groups)):
+            selected, rate = metadata[digest]
+            out.append(SelectorEquivalenceClass(
+                class_id=f"selector_eq_{index+1:03d}",
+                variant_ids=tuple(sorted(groups[digest])),
+                selected_count=selected,
+                selection_rate=round(rate, 6),
+                decision_digest=digest,
+            ))
+        return tuple(out)
+
     def organ_findings(
         self,
         *,
@@ -538,6 +596,7 @@ class RelativeValueAblationLab:
             settled_count=settled_count,
             books=tuple(books),
             organ_findings=self.organ_findings(),
+            selector_equivalence_classes=self.selector_equivalence_classes(),
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,

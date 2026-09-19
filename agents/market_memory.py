@@ -219,6 +219,17 @@ class MarketMemory:
             sql+=" LIMIT ?"; args.append(max(1,int(limit)))
         return [dict(r) for r in self.conn.execute(sql,args).fetchall()]
 
+    def line(self, line_id: str) -> dict[str, Any] | None:
+        row = self.conn.execute(
+            "SELECT * FROM memory_line WHERE line_id=?",
+            (str(line_id),),
+        ).fetchone()
+        if row is None:
+            return None
+        d = dict(row)
+        d["payload"] = json.loads(d.pop("payload_json"))
+        return d
+
     def lines(self, *, symbol: str | None = None, kind: str | None = None,
               since_ms: int | None = None, limit: int = 1000) -> list[dict[str, Any]]:
         clauses=[]; args=[]

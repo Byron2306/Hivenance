@@ -116,3 +116,21 @@ def test_phase0_refuses_authority_drift(tmp_path):
     conn.close()
     assert result["valid"] is False
     assert "target_execution_authority_drift" in result["reasons"]
+
+
+def test_phase0_refuses_frozen_source_digest_drift(tmp_path):
+    root = _root(tmp_path)
+    lock_path = root / "docs/HIVENANCE_FULL_ORGANISM_PHASE0_LOCK.json"
+    lock = json.loads(lock_path.read_text())
+    lock["master_plan"] = {
+        "path": "docs/HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19.md",
+        "git_blob_sha": "definitely-not-the-real-blob",
+    }
+    lock_path.write_text(json.dumps(lock))
+    db_path = tmp_path / "evidence.db"
+    conn = _db(db_path)
+    conn.close()
+    manifest = build_phase0_evidence_manifest(root=root, db_path=db_path, git_head="head")
+    valid, reasons = validate_phase0_manifest(manifest)
+    assert valid is False
+    assert "frozen_source_digest_drift:master_plan" in reasons

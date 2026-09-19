@@ -106,7 +106,7 @@ def test_large_observed_feature_change_raises_measure_novelty():
     assert phrase.phrase_energy>0.0
 
 
-def test_scope_change_is_heard_as_modulation():
+def test_scope_change_is_heard_as_attention_churn_not_market_modulation():
     conductor=VNSScoreConductor(pulse_floor=.01)
     stream=VNSScoreStream()
     first=conductor.conduct_cycle(
@@ -117,8 +117,9 @@ def test_scope_change_is_heard_as_modulation():
     )
     stream.append(first)
     phrase=stream.append(second)
-    assert phrase.modulation>0.0
+    assert phrase.attention_churn>0.0
     assert phrase.source_churn>0.0
+    assert phrase.modulation==0.0
 
 
 def test_increasing_pulse_energy_creates_crescendo():
@@ -151,3 +152,17 @@ def test_duplicate_measure_is_idempotent():
     assert first.measure_count==1
     assert second.measure_count==1
     assert first.phrase_id==second.phrase_id
+
+def test_same_scope_feature_change_is_heard_as_modulation():
+    conductor=VNSScoreConductor(pulse_floor=.001)
+    stream=VNSScoreStream()
+    first=conductor.conduct_cycle(
+        cycle("r1",1100,[candidate(symbol="BTC/USD",ts=1000,price=100.0,spread=5.0,depth=100000)])
+    )
+    second=conductor.conduct_cycle(
+        cycle("r2",2100,[candidate(symbol="BTC/USD",ts=2000,price=108.0,spread=9.0,depth=60000)])
+    )
+    stream.append(first)
+    phrase=stream.append(second)
+    assert phrase.attention_churn==0.0
+    assert phrase.modulation>0.0

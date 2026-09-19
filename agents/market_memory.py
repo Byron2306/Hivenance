@@ -103,7 +103,7 @@ class MarketMemory:
                  "low":float(values[3]),"close":float(values[4]),"volume":float(values[5])}
         ph=_digest(payload)
         self.conn.execute(
-            """INSERT OR IGNORE INTO market_bar VALUES(?,?,?,?,?,?,?,?,?)""",
+            """INSERT OR IGNORE INTO market_bar VALUES(?,?,?,?,?,?,?,?,?,?)""",
             (symbol,timeframe,ts,payload["open"],payload["high"],payload["low"],
              payload["close"],payload["volume"],source,ph),
         )

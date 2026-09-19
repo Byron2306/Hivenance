@@ -7,14 +7,23 @@ import json,time,urllib.parse,urllib.request
 from typing import Any
 
 class KrakenPublicClient:
- def __init__(self,timeout:float=12.0)->None:
+ def __init__(self,timeout:float=12.0,progress:bool=False)->None:
   self.timeout=float(timeout)
+  self.progress=bool(progress)
   self.base="https://api.kraken.com/0/public"
   self._pairs:dict[str,dict[str,Any]]|None=None
   self._api_by_symbol:dict[str,str]={}
 
  def _get(self,path:str,params:dict[str,Any]|None=None)->dict[str,Any]:
   q=urllib.parse.urlencode(params or {})
+  if self.progress:
+   label=path
+   pair=(params or {}).get("pair")
+   if pair:
+    sample=str(pair)
+    if len(sample)>72: sample=sample[:69]+"..."
+    label+=f" pair={sample}"
+   print(f"[Kraken] GET {label}",flush=True)
   url=self.base+"/"+path+("?"+q if q else "")
   req=urllib.request.Request(url,headers={"User-Agent":"HiveNance-G1-PublicResearch/1.0"})
   with urllib.request.urlopen(req,timeout=self.timeout) as r:

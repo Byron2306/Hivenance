@@ -1126,3 +1126,49 @@ The comparison reports:
 This experiment does not claim edge and does not alter execution. It is designed
 to test whether Queen-issued incentives plus choreographed quorum improve
 prospective cost-adjusted paper outcomes relative to the untreated control hive.
+
+## V5 Minimal-Kernel Confirmation Protocol
+
+The v4 prospective sample is discovery-only.
+
+It showed that the canonical hive reduced damage relative to admitting every
+forecast, but remained net negative. It also identified
+\`FOLLOW_PLUS_LOW_COST_1\` as an exploratory positive candidate.
+
+No threshold selected from v4 is considered validated by v4.
+
+Before observing v5 outcomes, the repository freezes a confirmatory slate in
+\`CONFIRMATORY_V5_VARIANTS\`. The primary question is whether a small kernel
+built from:
+
+\`\`\`text
+structural forecast
++ independent motion FOLLOW
++ low observed pair cost
++ prospective frozen settlement
+\`\`\`
+
+survives a fresh public-market sample.
+
+The following are currently **not presumed to add selection value**:
+
+- quorum gate;
+- pollen bounty presence;
+- reputation.
+
+They remain useful for provenance, audit, incentives, and future hypotheses,
+but v4 showed zero incremental treatment-selection effect for those organs.
+
+A confirmatory selector does not survive merely because cumulative net is
+positive. The v5 report requires, at minimum:
+
+- adequate selected sample count;
+- positive cumulative and mean net basis points;
+- positive first and second halves;
+- positive result after removing the best-contributing pair;
+- more than one positive pair;
+- no exact equivalence to a deterministic data-blind hash selector.
+
+Failure of sample size is reported as \`INSUFFICIENT_N\`, not evidence against
+the hypothesis. Green v5 results remain paper-research evidence only and do not
+establish durable edge or execution authority.

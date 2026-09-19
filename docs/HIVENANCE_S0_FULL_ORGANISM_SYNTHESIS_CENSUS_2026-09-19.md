@@ -145,3 +145,139 @@ S0.4 legacy Worker/Council/Regime/Queen/SwarmGuard graph.
 S0.5 Edge Ecology/Horizon/MarketMemory overlap matrix.
 S0.6 canonical responsibility map + root-lineage independence policy.
 S0.7 freeze S0 receipt and begin S1.
+
+
+## S0.1 finding: World Score is the synthesis boundary
+
+Repository inspection confirms the user's intuition and changes the synthesis plan.
+
+There are currently TWO world representations:
+
+1. `agents/world_state.py::WorldStatePage`
+   - historical/replay-oriented;
+   - derives selector, Horizon and temporal features from MarketMemory;
+   - useful as an interpreted research view.
+
+2. `strategies/relative_value_lab/world_score.py::CanonicalScoreFrame`
+   - observed-market-only immutable frame;
+   - explicit `world_state_id` + `world_state_hash`;
+   - separates OBSERVED, INTERPRETED and SYNTHETIC namespaces;
+   - already consumed by VNSScoreConductor and ConductingQueen;
+   - explicitly forbids interpretations/synthetic material from mutating observed truth.
+
+Disposition: **CanonicalScoreFrame becomes the canonical synthesis root. WorldStatePage becomes a bound interpretation, not a competing world identity.**
+
+### World Graph
+
+The new synthesis object should be a `WorldGraph` rooted in exactly one immutable CanonicalScoreFrame.
+
+It is a graph because HiveNance needs to preserve relationships rather than flatten all cognition into one feature vector.
+
+Root:
+- CanonicalScoreFrame: immutable observed public-market truth at T.
+
+Bound interpretation nodes:
+- replay WorldStatePage;
+- Horizon;
+- RegimeOracle;
+- Temporal Participation;
+- Flow;
+- Liquidity;
+- Volatility;
+- Cross-Market;
+- Path Geometry;
+- later Derivatives/Carry;
+- later Information Arrival;
+- later slow Capital/On-chain;
+- CoinSelector selected/rejected state;
+- Worker proposals;
+- historical Comparison Engine outputs.
+
+Bound cognition nodes:
+- lawful HarmonyBeeMessages / WaggleReceipts;
+- MotifScore;
+- VNS measure/phrase;
+- harmonic/temporal/metabolic receipts;
+- Mystique synthetic challenges, explicitly in synthetic namespace;
+- hypotheses and counterpoints.
+
+Edges carry:
+- `DERIVED_FROM`;
+- `COMPARES_WITH`;
+- `CORROBORATES`;
+- `CONTRADICTS`;
+- `CHALLENGES`;
+- `SELECTED_OVER`;
+- `REJECTED_AGAINST`;
+- `SAME_ROOT_LINEAGE`;
+- `TEMPORALLY_PRECEDES`;
+- `SETTLES`;
+- `SUPERSEDES`.
+
+Every node must bind to the root world_state_id/hash or be explicitly synthetic. No interpretation may mutate the root.
+
+### Queen and World Graph
+
+The Queen does **not seed observed market truth**. Public observation + MarketMemory/VNS seed the immutable root frame.
+
+The Queen **seeds the conducted interpretation graph** around that root:
+- opens/changes the ResearchGovernanceEpoch;
+- issues notation/waggle requests;
+- asks Bees for specific evidence;
+- asks Comparison Engine for contrasts;
+- invites Workers/hypotheses;
+- requests Loki/Mystique/VNS challenge;
+- asks Michael for binding/lineage/tuning checks;
+- lets Metatron synthesize the current score.
+
+The Queen then conducts AGAINST the resulting graph. This preserves the crucial boundary: she can change attention, questions, score and epoch, but cannot change what the market observation at T was.
+
+This is stronger than a flat WorldStatePage and matches the existing `ConductingQueen.conduct_against_frame()` contract, which already makes the canonical frame own the world binding.
+
+### Revised synthesis loop
+
+```
+PUBLIC OBSERVATIONS / MARKET MEMORY
+              |
+              v
+     CANONICAL SCORE FRAME @ T
+     immutable observed root
+              |
+              v
+          WORLD GRAPH
+       /      |       \
+   Bees    Comparisons  Context
+    |          |        |
+ Horizon   controls   Regime
+    \          |       /
+     lawful evidence + proposals
+              |
+              v
+            QUEEN
+     Triune conducted synthesis
+              |
+      notation / epoch / waggle
+              |
+              +--------------------+
+              |                    |
+              v                    |
+       request new graph nodes     |
+              |                    |
+              +------> WORLD GRAPH-+
+                         |
+                      Phoenix
+                freeze / settle / learn
+```
+
+### Consequence for S1
+
+Do NOT create a standalone BeeEvidence universe.
+
+S1 must implement:
+1. a `WorldGraph` / graph-node contract over CanonicalScoreFrame;
+2. adapters from MarketMemory historical replay into canonical observed frames;
+3. specialist evidence adapters into HarmonyBeeMessage/WaggleProtocol;
+4. graph edges and lineage policy;
+5. a Queen-readable graph snapshot that can be passed to conducting cognition without mutating observed truth.
+
+This becomes the canonical synthesis seam for all subsequent phases.

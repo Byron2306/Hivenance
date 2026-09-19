@@ -16,6 +16,10 @@ class G0PairedOutcome:
  execution_eligible:bool=False; promotion_eligible:bool=False
  @property
  def delta_bps(self)->float: return float(self.full_net_bps)-float(self.ablated_net_bps)
+ def to_dict(self)->dict[str,Any]:
+  payload=asdict(self)
+  payload["delta_bps"]=self.delta_bps
+  return payload
 
 @dataclass(frozen=True)
 class G0EconomicVerdict:

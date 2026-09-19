@@ -21,6 +21,7 @@ from .polyphonic_resonance import PolyphonicResonanceReceipt
 from .mystique_variations import MystiqueFalsificationReceipt
 from .cognitive_metabolism import CognitiveMetabolismReceipt
 from .ml_challenger import LearnedChallengerReceipt
+from .world_score import CanonicalScoreFrame
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -220,6 +221,28 @@ class ConductingQueen:
 
     version = "hivenance.conducting_queen.v2"
 
+    def conduct_against_frame(
+        self,
+        *,
+        frame: CanonicalScoreFrame,
+        now_ms: int,
+        **kwargs: Any,
+    ) -> QueenPolyphonicReceipt:
+        """Conduct against one concrete canonical score page.
+
+        The wrapper owns world-state binding. Callers may not override the
+        frame's id/hash through kwargs.
+        """
+        if "world_state_id" in kwargs or "world_state_hash" in kwargs:
+            raise ValueError("queen_frame_wrapper_owns_world_binding")
+        return self.conduct(
+            **kwargs,
+            world_frame=frame,
+            now_ms=now_ms,
+            world_state_id=frame.world_state_id,
+            world_state_hash=frame.world_state_hash,
+        )
+
     def conduct(
         self,
         *,
@@ -240,18 +263,32 @@ class ConductingQueen:
         mystique: MystiqueFalsificationReceipt | None = None,
         metabolism: CognitiveMetabolismReceipt | None = None,
         learned_challengers: Sequence[LearnedChallengerReceipt] = (),
+        world_frame: CanonicalScoreFrame | None = None,
         now_ms: int,
         world_state_id: str,
         world_state_hash: str,
         scope: str = "relative_value_lab",
     ) -> QueenPolyphonicReceipt:
-        validation = ResearchGovernanceEpochService.validate(
-            epoch,
-            now_ms=now_ms,
-            world_state_id=world_state_id,
-            world_state_hash=world_state_hash,
-            scope=scope,
-        )
+        if world_frame is not None:
+            if (
+                world_state_id != world_frame.world_state_id
+                or world_state_hash != world_frame.world_state_hash
+            ):
+                raise ValueError("queen_world_frame_binding_mismatch")
+            validation = ResearchGovernanceEpochService.validate_against_frame(
+                epoch,
+                frame=world_frame,
+                now_ms=now_ms,
+                scope=scope,
+            )
+        else:
+            validation = ResearchGovernanceEpochService.validate(
+                epoch,
+                now_ms=now_ms,
+                world_state_id=world_state_id,
+                world_state_hash=world_state_hash,
+                scope=scope,
+            )
 
         epoch_consonance, world_state_tension = self._epoch_music(validation.reasons)
         acoustics = self._voice_acoustics(notes)

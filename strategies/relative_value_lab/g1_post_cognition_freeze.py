@@ -16,7 +16,7 @@ def _row(x:Any)->dict[str,Any]:
 def freeze_post_cognition_pair(*,data_store:Any,builder:Any,freeze:Any,organ_id:str,
  opportunity_id:str,frame:Any,full_forecast:Mapping[str,Any],ablated_forecast:Mapping[str,Any],
  full_observation:Mapping[str,Any],ablated_observation:Mapping[str,Any],intervention_receipt:Mapping[str,Any],
- frozen_at_ms:int)->dict[str,Any]:
+ frozen_at_ms:int,research_campaign_id:str|None=None,research_target_id:str|None=None)->dict[str,Any]:
  ff=_row(full_forecast);af=_row(ablated_forecast)
  if str(ff.get("symbol") or "")!=str(af.get("symbol") or ""):raise ValueError("paired_forecast_symbol_mismatch")
  if int(ff.get("horizon_seconds") or 0)!=int(af.get("horizon_seconds") or 0):raise ValueError("paired_forecast_horizon_mismatch")
@@ -38,7 +38,9 @@ def freeze_post_cognition_pair(*,data_store:Any,builder:Any,freeze:Any,organ_id:
   frozen_at_ms=int(frozen_at_ms),target_ts=target_ts,
   full_cycle_id="post:"+receipt_hash[-16:],ablated_cycle_id="blind:"+receipt_hash[-16:],
   full_cognition_hash=receipt_hash,ablated_cognition_hash=_hash({"blind":organ_id,"world":frame.world_state_hash}),
-  full_intent=full_intent,ablated_intent=blind_intent)
+  full_intent=full_intent,ablated_intent=blind_intent,
+  research_campaign_id=research_campaign_id,research_target_id=research_target_id)
  created=persist_frozen_twin(data_store,twin)
  return {"created":created,"twin_freeze_id":twin.twin_freeze_id,"receipt_hash":receipt_hash,
+  "research_campaign_id":research_campaign_id,"research_target_id":research_target_id,
   "execution_eligible":False,"promotion_eligible":False}

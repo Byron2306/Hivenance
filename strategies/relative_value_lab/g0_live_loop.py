@@ -18,6 +18,8 @@ from .g0_hypothesis_adapter import bind_synthesis_context
 from .g0_forecast_challenge import challenge_forecast
 from .g0_forecast_binding import freeze_forecast_pair
 from .g0_live_evidence import horizon_from_feature,temporal_from_store,latest_shadow_learning,same_hour_comparison
+from .g1_polyphonic_bridge import quorum_for_forecast,apply_quorum_gate
+from .g1_post_cognition_freeze import freeze_post_cognition_pair
 
 def _hash(x:Any)->str:
  return "sha256:"+hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
@@ -79,12 +81,13 @@ class G0LiveLoop:
   if temporal is not None:experiments.append(("temporal_participation_bee","TEMPORAL_BLIND"))
   if learning:experiments.append(("learning_memory","LEARNING_BLIND"))
   if comparison is not None:experiments.append(("comparison_engine","COMPARISON_BLIND"))
+  full_feature=bind_synthesis_context(feature,full)
   for organ_id,path_label in experiments:
    blind=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
     edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal,
     learning_receipts=learning,comparison_results=(comparison,) if comparison is not None else (),
     disabled_organs=(organ_id,))
-   full_feature=bind_synthesis_context(feature,full);blind_feature=bind_synthesis_context(feature,blind)
+   blind_feature=bind_synthesis_context(feature,blind)
    full_forecasts=competition.evaluate(full_feature,horizons)
    blind_forecasts=competition.evaluate(blind_feature,horizons)
    blind_by={(x.model_id,int(x.horizon_seconds)):x for x in blind_forecasts}
@@ -113,4 +116,29 @@ class G0LiveLoop:
      else:out["skipped"]+=1
     except Exception:
      out["errors"]+=1
+
+  # Post-cognition organ: PolyphonicQuorum may veto an existing Phoenix call,
+  # but its blind twin preserves the exact raw forecast.
+  for raw_full in competition.evaluate(full_feature,horizons):
+   if str(raw_full.model_id)!=freeze.model_id or raw_full.abstain:continue
+   if freeze.direction and str(raw_full.direction).upper()!=str(freeze.direction).upper():continue
+   out["examined"]+=1;out["eligible"]+=1
+   try:
+    receipt=quorum_for_forecast(cycle=full,forecast=raw_full,feature=full_feature)
+    gated=apply_quorum_gate(raw_full,receipt)
+    if _decision(gated)==_decision(raw_full):
+     out["skipped"]+=1;continue
+    out["diverged"]+=1
+    ff=_row(gated,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_GATED",entry_price=feature.price)
+    bf=_row(raw_full,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_BLIND",entry_price=feature.price)
+    opportunity=_hash({"world":frame.world_state_hash,"organ":"polyphonic_quorum","model":freeze.model_id,
+     "horizon":int(raw_full.horizon_seconds)})
+    r=freeze_post_cognition_pair(data_store=data_store,builder=self.builder,freeze=freeze,
+     organ_id="polyphonic_quorum",opportunity_id=opportunity,frame=frame,
+     full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
+     intervention_receipt=receipt.to_dict(),frozen_at_ms=int(now_ms))
+    if r.get("created"):out["frozen"]+=1
+    else:out["skipped"]+=1
+   except Exception:
+    out["errors"]+=1
   return out

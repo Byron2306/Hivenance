@@ -209,6 +209,16 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "continuous_research_phrase_memory",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_polyphonic_quorum": {
+        "role": "world_bound_choreographed_independent_ensemble_lock",
+        "mode": "research_alignment_not_agreement",
+        "phoenix_entry_phase": 4,
+    },
+    "relative_value_pollen_economy": {
+        "role": "queen_issued_research_incentive_and_settlement_ledger",
+        "mode": "research_attention_budget_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

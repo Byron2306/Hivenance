@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 from agents.data_store_agent import DataStoreAgent
 from strategies.volatility_breakout.observation_swarm import ObservationSwarmAgent
 from strategies.relative_value_lab.vns_score_conductor import VNSScoreConductor
+from strategies.relative_value_lab.vns_score_stream import VNSScoreStream
 
 ALLOWED_PUBLIC_VENUES = {"kraken", "coinbase", "binance", "valr", "luno"}
 
@@ -127,6 +128,12 @@ def main() -> int:
         default=ROOT / "VNS_SCORE.json",
         help="Write the latest canonical VNS measure to this path",
     )
+    parser.add_argument(
+        "--stream-output",
+        type=Path,
+        default=ROOT / "VNS_STREAM.json",
+        help="Write the recent VNS score phrase to this path",
+    )
     args = parser.parse_args()
 
     cfg = load_observer_config(args.settings, args.profile)
@@ -147,18 +154,26 @@ def main() -> int:
             int(getattr(cfg, "phase1_observation_stale_after_sec", 180) or 180) * 1000,
         )
     )
+    score_stream = VNSScoreStream()
 
     def collect() -> None:
         payload = observer.run_once()
         measure = score_conductor.conduct_cycle(payload)
+        phrase = score_stream.append(measure)
         args.score_output.parent.mkdir(parents=True, exist_ok=True)
         args.score_output.write_text(
             json.dumps(measure.to_dict(), indent=2, sort_keys=True, default=str) + "\n",
             encoding="utf-8",
         )
+        args.stream_output.parent.mkdir(parents=True, exist_ok=True)
+        args.stream_output.write_text(
+            json.dumps(phrase.to_dict(), indent=2, sort_keys=True, default=str) + "\n",
+            encoding="utf-8",
+        )
         if args.json:
             rendered = dict(payload)
             rendered["vns_measure"] = measure.to_dict()
+            rendered["vns_phrase"] = phrase.to_dict()
             print(json.dumps(rendered, indent=2, sort_keys=True, default=str))
         else:
             run = payload.get("run") or {}
@@ -169,6 +184,8 @@ def main() -> int:
                 f"quality={float(run.get('mean_data_quality') or 0):.3f} "
                 f"score={measure.frame.world_state_id} "
                 f"pulses={len(measure.pulses)} "
+                f"phrase={phrase.measure_count}bars "
+                f"energy={phrase.phrase_energy:.3f} "
                 "orders=0"
             )
 

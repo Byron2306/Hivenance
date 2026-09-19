@@ -149,9 +149,10 @@ def main()->int:
         "features_examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0,
         "by_organ":{},
     }
-    settlements={"g0_twins_examined":0,"g0_twins_settled":0,"g0_twin_errors":0,
+    settlements={"g0_twins_examined":0,"g0_twins_settled":0,"g0_twins_deferred":0,"g0_twin_errors":0,
                  "settled":0,"missed_fills":0,"adversarial_courts_created":0,
                  "adversarial_court_errors":0}
+    settlement_reasons={"errors":{},"deferred":{}}
     last_payload=None
     cycle_errors=[]
     last_cycle_runtime=None
@@ -197,6 +198,10 @@ def main()->int:
             settlement=payload.get("settlement") or {}
             for key in settlements:
                 settlements[key]+=int(settlement.get(key) or 0)
+            for reason,n in (settlement.get("g0_twin_error_reasons") or {}).items():
+                settlement_reasons["errors"][str(reason)]=int(settlement_reasons["errors"].get(str(reason)) or 0)+int(n or 0)
+            for reason,n in (settlement.get("g0_twin_deferred_reasons") or {}).items():
+                settlement_reasons["deferred"][str(reason)]=int(settlement_reasons["deferred"].get(str(reason)) or 0)+int(n or 0)
         except Exception as exc:
             cycle_errors.append(f"final_settlement:{type(exc).__name__}:{exc}")
 
@@ -213,6 +218,8 @@ def main()->int:
             "research_models":target.get("model_ids") or ([target.get("model_id")] if target.get("model_id") else []),
             "g0_cumulative":total,
             "settlement_cumulative":settlements,
+            "settlement_reasons":settlement_reasons,
+            "g1_reports":final_campaign.get("reports") or [],
             "g1_report_count":final_campaign.get("report_count"),
             "g1_utility_candidates":final_campaign.get("utility_candidates"),
             "g1_error":final_campaign.get("error"),

@@ -83,19 +83,29 @@ def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
  if not getattr(data_store,"conn",None):return ()
  try:
   with data_store._lock:
-   cur=data_store.conn.execute("SELECT settled_ts,payload FROM phase5_g0_shadow_twin_settlements ORDER BY settled_ts")
+   cur=data_store.conn.execute("""SELECT s.settled_ts,s.payload,t.payload
+    FROM phase5_g0_shadow_twin_settlements s
+    LEFT JOIN phase5_g0_shadow_twins t ON t.twin_freeze_id=s.twin_freeze_id
+    ORDER BY s.settled_ts""")
    rows=cur.fetchall()
  except Exception:return ()
  out=[]
- for settled_ts,raw in rows:
+ for settled_ts,raw,twin_raw in rows:
   try:p=json.loads(raw or "{}")
   except Exception:continue
+  try:twin=json.loads(twin_raw or "{}")
+  except Exception:twin={}
   pair=p.get("paired_outcome") if isinstance(p.get("paired_outcome"),dict) else {}
   if str(pair.get("evidence_class") or "")!="PROSPECTIVE":continue
   if organ_id and str(pair.get("organ_id") or "")!=str(organ_id):continue
   if campaign_id and str(pair.get("research_campaign_id") or "")!=str(campaign_id):continue
   if target_id and str(pair.get("research_target_id") or "")!=str(target_id):continue
-  q=dict(pair);q["settled_ts"]=float(settled_ts);out.append(q)
+  q=dict(pair);q["settled_ts"]=float(settled_ts)
+  fi=twin.get("full_intent") if isinstance(twin.get("full_intent"),dict) else {}
+  q["model_id"]=str(fi.get("model_id") or "")
+  q["horizon_seconds"]=int(fi.get("horizon_seconds") or 0)
+  q["symbol"]=str(fi.get("symbol") or "")
+  out.append(q)
  return tuple(out)
 
 def evaluate_organ_utility(rows:Iterable[Mapping[str,Any]],*,organ_id:str,policy:G1CampaignPolicy|None=None)->G1OrganUtilityReport:
@@ -132,3 +142,22 @@ def evaluate_store(data_store:Any,*,policy:G1CampaignPolicy|None=None,
  rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
  organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
  return tuple(evaluate_organ_utility(rows,organ_id=o,policy=policy) for o in organs)
+
+
+def evaluate_store_stratified(data_store:Any,*,policy:G1CampaignPolicy|None=None,
+ campaign_id:str|None=None,target_id:str|None=None)->dict[str,tuple[G1OrganUtilityReport,...]]:
+ rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
+ result={}
+ for key_fn,label in (
+  (lambda x:str(x.get("model_id") or "unknown"),"by_model"),
+  (lambda x:str(int(x.get("horizon_seconds") or 0)),"by_horizon"),
+ ):
+  groups={}
+  for row in rows:groups.setdefault(key_fn(row),[]).append(row)
+  reports=[]
+  for group,group_rows in sorted(groups.items()):
+   for organ in sorted({str(x.get("organ_id") or "") for x in group_rows if x.get("organ_id")}):
+    r=evaluate_organ_utility(group_rows,organ_id=organ,policy=policy)
+    d=r.to_dict();d["stratum"]=group;reports.append(d)
+  result[label]=tuple(reports)
+ return result

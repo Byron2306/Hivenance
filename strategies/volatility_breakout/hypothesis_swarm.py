@@ -1162,7 +1162,7 @@ class HypothesisSwarmAgent:
         medium_trend_map = self._medium_trend_context_map()
         derivatives_trend_map = self._derivatives_trend_context_map()
         commons_candidates: list[tuple[dict[str, Any], FeatureVector]] = []
-        g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0}
+        g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0, "by_organ": {}}
         phase_store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         g0_live = None
         if phase_store is not None:
@@ -1205,6 +1205,13 @@ class HypothesisSwarmAgent:
                     g0_prospective["features_examined"] += 1
                     for key in ("eligible", "diverged", "frozen", "skipped", "errors"):
                         g0_prospective[key] += int(g0_result.get(key) or 0)
+                    for organ_id, counts in (g0_result.get("by_organ") or {}).items():
+                        bucket = g0_prospective["by_organ"].setdefault(
+                            str(organ_id),
+                            {"examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0},
+                        )
+                        for key in ("examined", "eligible", "diverged", "frozen", "skipped", "errors"):
+                            bucket[key] += int((counts or {}).get(key) or 0)
                 except Exception:
                     g0_prospective["errors"] += 1
                     logging.exception("G0 prospective feature cycle failed")

@@ -14,6 +14,10 @@ def _ctx(features:Any)->dict:
  x=v.get("synthesis_context")
  return x if isinstance(x,dict) else {}
 
+_CONTINUATION=frozenset({"breakout_continuation","baseline_simple_momentum"})
+_REVERSION=frozenset({"exhaustion_mean_reversion","baseline_simple_mean_reversion"})
+_UNGROUNDED_PROBE=frozenset({"baseline_random"})
+
 def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ecology")->Forecast:
  c=_ctx(features)
  if not c or forecast.abstain:return forecast
@@ -24,23 +28,27 @@ def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ec
  def first(family):
   xs=payloads.get(family) or ()
   return xs[0] if xs and isinstance(xs[0],dict) else {}
+ hypothesis=str(forecast.hypothesis or "")
+ continuation=hypothesis in _CONTINUATION
+ reversion=hypothesis in _REVERSION
+ probe=hypothesis in _UNGROUNDED_PROBE
  if organ_scope=="edge_ecology":
-  if forecast.hypothesis=="breakout_continuation":
+  if continuation or probe:
    if features.order_flow_imbalance is not None and "FLOW" not in families:
     reasons.append("g0_flow_not_corroborated")
    if features.book_imbalance is not None and "LIQUIDITY" not in families:
     reasons.append("g0_liquidity_not_corroborated")
-  if forecast.hypothesis=="exhaustion_mean_reversion":
+  if reversion:
    if features.book_imbalance is not None and "LIQUIDITY" not in families:
     reasons.append("g0_liquidity_not_corroborated")
- elif organ_scope=="horizon_context" and forecast.hypothesis=="breakout_continuation":
+ elif organ_scope=="horizon_context" and (continuation or probe):
   if "HORIZON" not in families:
    reasons.append("g0_horizon_not_corroborated")
   else:
    h=first("HORIZON");alignment=str(h.get("alignment") or "")
    wanted="ALIGNED_UP" if forecast.direction=="UP" else "ALIGNED_DOWN"
    if alignment not in {wanted,"NEUTRAL"}:reasons.append("g0_horizon_conflict")
- elif organ_scope=="temporal_participation_bee" and forecast.hypothesis=="breakout_continuation":
+ elif organ_scope=="temporal_participation_bee" and (continuation or probe):
   if "TEMPORAL_PARTICIPATION" not in families:
    reasons.append("g0_temporal_participation_not_corroborated")
   else:
@@ -56,7 +64,7 @@ def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ec
     if isinstance(d,(int,float)) and float(d)<=0:
      reasons.append("g0_learning_prior_no_trade_superior")
      break
- elif organ_scope=="comparison_engine" and forecast.hypothesis=="breakout_continuation":
+ elif organ_scope=="comparison_engine" and (continuation or probe):
   if "COMPARISON" in families:
    cmp=first("COMPARISON")
    if int(cmp.get("matched_n") or 0)>=5:

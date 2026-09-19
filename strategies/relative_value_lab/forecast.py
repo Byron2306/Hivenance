@@ -148,6 +148,8 @@ class OUMeanReversionForecaster:
             inputs={
                 "spread": current,
                 "spread_zscore": state.spread_zscore,
+                "hedge_alpha": diagnostics.hedge_alpha,
+                "hedge_ratio": diagnostics.hedge_ratio,
                 "equilibrium": equilibrium,
                 "mean_reversion_speed_per_sec": kappa,
                 "half_life_seconds": diagnostics.half_life_seconds,

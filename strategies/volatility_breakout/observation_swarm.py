@@ -692,6 +692,10 @@ class ObservationSwarmAgent:
                     taker_fee_bps_per_side=float(
                         getattr(self.cfg, 'phase2_taker_fee_bps_per_side', 20.0) or 20.0
                     ),
+                    maturation_protocol=str(
+                        getattr(self.cfg, 'full_organism_selector_maturation_protocol', 'DYNAMIC_UNIVERSE_V1')
+                        or 'DYNAMIC_UNIVERSE_V1'
+                    ),
                 )
                 payload['selector_freeze'] = selector_freeze_summary
             except Exception as exc:

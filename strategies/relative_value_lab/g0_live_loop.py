@@ -17,6 +17,7 @@ from .synthesis_runtime import SynthesisRuntime
 from .g0_hypothesis_adapter import bind_synthesis_context
 from .g0_forecast_challenge import challenge_forecast
 from .g0_forecast_binding import freeze_forecast_pair
+from .g0_live_evidence import horizon_from_feature,temporal_from_store
 
 def _hash(x:Any)->str:
  return "sha256:"+hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
@@ -64,37 +65,46 @@ class G0LiveLoop:
   bid=total*(1.0+imb)/2.0;ask=total*(1.0-imb)/2.0
   snap=EdgeEcology().snapshot(timestamp_ms=int(feature.timestamp_ms),pair_id=str(feature.symbol),voices=(
    EdgeEcology.liquidity_voice(bid_depth=bid,ask_depth=ask,spread_bps=float(feature.spread_bps)),))
-  full=self.runtime.run(frame=frame,now_ms=int(now_ms),edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)})
-  blind=self.runtime.run(frame=frame,now_ms=int(now_ms),edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},
-   disabled_organs=("edge_ecology",))
-  full_feature=bind_synthesis_context(feature,full);blind_feature=bind_synthesis_context(feature,blind)
-  full_forecasts=competition.evaluate(full_feature,horizons)
-  blind_forecasts=competition.evaluate(blind_feature,horizons)
-  blind_by={(x.model_id,int(x.horizon_seconds)):x for x in blind_forecasts}
+  horizon=horizon_from_feature(feature)
+  temporal=temporal_from_store(data_store,feature)
+  full=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
+   edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal)
   entry={"price":feature.price,"data_quality":feature.data_quality,"spread_bps":feature.spread_bps,
    "depth_usd_25bps":feature.depth_usd_25bps}
-  for raw_full in full_forecasts:
-   if str(raw_full.model_id)!=freeze.model_id:continue
-   raw_blind=blind_by.get((raw_full.model_id,int(raw_full.horizon_seconds)))
-   if raw_blind is None:continue
-   out["examined"]+=1
-   full_fc=challenge_forecast(raw_full,full_feature);blind_fc=challenge_forecast(raw_blind,blind_feature)
-   if freeze.direction and not full_fc.abstain and str(full_fc.direction).upper()!=str(freeze.direction).upper():
-    out["skipped"]+=1;continue
-   out["eligible"]+=1
-   if _decision(full_fc)==_decision(blind_fc):
-    out["skipped"]+=1;continue
-   out["diverged"]+=1
-   try:
-    ff=_row(full_fc,venue=venue,world_hash=frame.world_state_hash,path="FULL_HIVE",entry_price=feature.price)
-    bf=_row(blind_fc,venue=venue,world_hash=frame.world_state_hash,path="EDGE_BLIND",entry_price=feature.price)
-    opportunity=_hash({"world":frame.world_state_hash,"organ":"edge_ecology","model":freeze.model_id,
-     "horizon":int(full_fc.horizon_seconds)})
-    r=freeze_forecast_pair(data_store=data_store,builder=self.builder,freeze=freeze,organ_id="edge_ecology",
-     opportunity_id=opportunity,frame=frame,full_cycle=full,ablated_cycle=blind,
-     full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,frozen_at_ms=int(now_ms))
-    if r.get("created"):out["frozen"]+=1
-    else:out["skipped"]+=1
-   except Exception:
-    out["errors"]+=1
+  experiments=[("edge_ecology","EDGE_BLIND")]
+  if horizon is not None:experiments.append(("horizon_context","HORIZON_BLIND"))
+  if temporal is not None:experiments.append(("temporal_participation_bee","TEMPORAL_BLIND"))
+  for organ_id,path_label in experiments:
+   blind=self.runtime.run(frame=frame,now_ms=int(now_ms),horizon=horizon,horizon_roots=(root,) if horizon else (),
+    edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},temporal_participation=temporal,
+    disabled_organs=(organ_id,))
+   full_feature=bind_synthesis_context(feature,full);blind_feature=bind_synthesis_context(feature,blind)
+   full_forecasts=competition.evaluate(full_feature,horizons)
+   blind_forecasts=competition.evaluate(blind_feature,horizons)
+   blind_by={(x.model_id,int(x.horizon_seconds)):x for x in blind_forecasts}
+   for raw_full in full_forecasts:
+    if str(raw_full.model_id)!=freeze.model_id:continue
+    raw_blind=blind_by.get((raw_full.model_id,int(raw_full.horizon_seconds)))
+    if raw_blind is None:continue
+    out["examined"]+=1
+    full_fc=challenge_forecast(raw_full,full_feature,organ_scope=organ_id)
+    blind_fc=challenge_forecast(raw_blind,blind_feature,organ_scope=organ_id)
+    if freeze.direction and not full_fc.abstain and str(full_fc.direction).upper()!=str(freeze.direction).upper():
+     out["skipped"]+=1;continue
+    out["eligible"]+=1
+    if _decision(full_fc)==_decision(blind_fc):
+     out["skipped"]+=1;continue
+    out["diverged"]+=1
+    try:
+     ff=_row(full_fc,venue=venue,world_hash=frame.world_state_hash,path="FULL_HIVE",entry_price=feature.price)
+     bf=_row(blind_fc,venue=venue,world_hash=frame.world_state_hash,path=path_label,entry_price=feature.price)
+     opportunity=_hash({"world":frame.world_state_hash,"organ":organ_id,"model":freeze.model_id,
+      "horizon":int(full_fc.horizon_seconds)})
+     r=freeze_forecast_pair(data_store=data_store,builder=self.builder,freeze=freeze,organ_id=organ_id,
+      opportunity_id=opportunity,frame=frame,full_cycle=full,ablated_cycle=blind,
+      full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,frozen_at_ms=int(now_ms))
+     if r.get("created"):out["frozen"]+=1
+     else:out["skipped"]+=1
+    except Exception:
+     out["errors"]+=1
   return out

@@ -165,7 +165,8 @@ def test_runtime_valid_quorum_can_be_held_out_of_treatment():
         treatment_admitted=False,
         treatment_resolution="HOLD_COUNTERPOINT",
     )
-    assert reg.quorum_formed is False or reg.quorum_id is None
+    assert reg.quorum_formed is True
+    assert reg.quorum_id is not None
     assert reg.treatment_eligible_at_registration is False
     assert reg.treatment_resolution == "HOLD_COUNTERPOINT"
 

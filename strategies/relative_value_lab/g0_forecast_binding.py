@@ -17,7 +17,8 @@ def freeze_forecast_pair(*,data_store:Any,builder:ShadowIntentBuilder,freeze:Any
  organ_id:str,opportunity_id:str,frame:Any,full_cycle:Any,ablated_cycle:Any,
  full_forecast:Mapping[str,Any],ablated_forecast:Mapping[str,Any],
  full_observation:Mapping[str,Any],ablated_observation:Mapping[str,Any],
- frozen_at_ms:int)->dict[str,Any]:
+ frozen_at_ms:int,research_campaign_id:str|None=None,
+ research_target_id:str|None=None)->dict[str,Any]:
  """Use Phoenix's existing builder on two independently produced forecasts."""
  inf=measure_influence(organ_id=organ_id,full=full_cycle,ablated=ablated_cycle)
  if not inf.cognition_changed:raise ValueError("organ_did_not_change_cognition")
@@ -29,4 +30,5 @@ def freeze_forecast_pair(*,data_store:Any,builder:ShadowIntentBuilder,freeze:Any
  blind_intent=(no_trade_intent(forecast=af,reason=str(af.get("reason") or "ABSTAIN")) if af.get("abstain") else builder.build(af,ablated_observation,freeze).to_dict())
  return freeze_prospective_opportunity(data_store=data_store,organ_id=organ_id,
   opportunity_id=opportunity_id,frame=frame,full_cycle=full_cycle,ablated_cycle=ablated_cycle,
-  full_intent=full_intent,ablated_intent=blind_intent,frozen_at_ms=frozen_at_ms)
+  full_intent=full_intent,ablated_intent=blind_intent,frozen_at_ms=frozen_at_ms,
+  research_campaign_id=research_campaign_id,research_target_id=research_target_id)

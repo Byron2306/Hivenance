@@ -172,6 +172,8 @@ __all__ = [
     "ScoreObservation",
     "VNSScoreConductor",
     "VNSMeasure",
+    "VNSScoreStream",
+    "VNSScorePhrase",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -237,3 +239,4 @@ from .world_score import (
     CanonicalWorldScore,
 )
 from .vns_score_conductor import VNSMeasure, VNSScoreConductor
+from .vns_score_stream import VNSScorePhrase, VNSScoreStream

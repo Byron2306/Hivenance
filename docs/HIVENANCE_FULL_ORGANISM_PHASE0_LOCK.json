@@ -1,0 +1,137 @@
+{
+  "schema": "hivenance_full_organism_phase0_lock_v1",
+  "phase": 0,
+  "phase_name": "Evidence Freeze and Programme Lock",
+  "frozen_at_utc": "2026-09-19T14:40:00Z",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme_base_head": "3e1376ad2e53303385a6c9755f047c2de822efce",
+  "master_plan": {
+    "path": "docs/HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19.md",
+    "git_blob_sha": "96603307f5e6cede73f9b4c924a11f04ad369b38"
+  },
+  "architecture_audit": {
+    "path": "docs/HIVENANCE_FULL_INTEGRATION_WIRING_AUDIT_2026-09-19.md",
+    "git_blob_sha": "5b7f03e85d26f38aa9115141294ac6b4971e950c"
+  },
+  "active_research_evidence": {
+    "campaign_id": "g1_1b1095a3aad7595b9218dbc0",
+    "research_target_id": "g1rt_847b425820c10697936bf63f",
+    "research_models": [
+      "baseline_simple_momentum_v1",
+      "baseline_simple_mean_reversion_v1",
+      "baseline_deterministic_random_v1"
+    ],
+    "policy": {
+      "min_pairs": 30,
+      "min_distinct_worlds": 10,
+      "confidence_z": 2.69,
+      "extra_cost_stress_bps": 5,
+      "min_mean_delta_bps": 0,
+      "max_delta_drawdown_bps": 250
+    },
+    "frozen_status_snapshot": {
+      "comparison_engine": {
+        "born": 99,
+        "pending": 70,
+        "settled": 29,
+        "classification": "INSUFFICIENT_SAMPLE",
+        "mean_delta_bps": 16.407905495379435,
+        "ci_lower_bps": 6.244826811219356,
+        "ci_upper_bps": 26.570984179539515,
+        "stressed_mean_delta_bps": 14.338871012620816,
+        "distinct_worlds": 15
+      },
+      "conducting_queen": {
+        "born": 0,
+        "pending": 0,
+        "settled": 0,
+        "classification": "INSUFFICIENT_SAMPLE"
+      },
+      "edge_ecology": {
+        "born": 173,
+        "pending": 153,
+        "settled": 20,
+        "classification": "INSUFFICIENT_SAMPLE",
+        "mean_delta_bps": 11.891316328303137,
+        "ci_lower_bps": 0.6559679502665254,
+        "ci_upper_bps": 23.12666470633975,
+        "stressed_mean_delta_bps": 10.391316328303137,
+        "distinct_worlds": 15
+      },
+      "horizon_context": {
+        "born": 216,
+        "pending": 191,
+        "settled": 25,
+        "classification": "INSUFFICIENT_SAMPLE",
+        "mean_delta_bps": 15.837609902308923,
+        "ci_lower_bps": 4.054742802258531,
+        "ci_upper_bps": 27.620477002359316,
+        "stressed_mean_delta_bps": 14.037609902308924,
+        "distinct_worlds": 18
+      },
+      "learning_memory": {
+        "born": 0,
+        "pending": 0,
+        "settled": 0,
+        "classification": "INSUFFICIENT_SAMPLE",
+        "trust_state": "WITHHELD_PENDING_APPLICABILITY_REPAIR"
+      },
+      "polyphonic_quorum": {
+        "born": 0,
+        "pending": 0,
+        "settled": 0,
+        "classification": "INSUFFICIENT_SAMPLE"
+      },
+      "temporal_participation_bee": {
+        "born": 315,
+        "pending": 284,
+        "settled": 31,
+        "classification": "PROSPECTIVE_UTILITY_CANDIDATE",
+        "mean_delta_bps": 17.928019972976227,
+        "ci_lower_bps": 7.877951421251126,
+        "ci_upper_bps": 27.978088524701327,
+        "stressed_mean_delta_bps": 15.67,
+        "distinct_worlds": 16,
+        "world_cluster_mean_delta_bps": 17.368,
+        "world_cluster_ci_lower_bps": 3.502,
+        "world_cluster_ci_upper_bps": 31.234,
+        "world_cluster_robust_positive": true
+      }
+    },
+    "horizon_scope_observed_so_far_seconds": [
+      300
+    ],
+    "interpretation_boundary": [
+      "Current G1 evidence is component-level evidence on a reduced live synthesis slice.",
+      "It is not evidence that the complete HiveNance organism has been prospectively tested.",
+      "Temporal Participation is a prospective utility candidate on the frozen 300-second baseline-proposal veto substrate.",
+      "Execution and promotion remain false."
+    ]
+  },
+  "known_integration_gaps": [
+    "MarketMemory/WorldState not composed into the current G0 live world root.",
+    "7d/30d/365d temporal context not fully fed into current G0 synthesis.",
+    "CEX multi-horizon directional oracle excluded from the current G1 target.",
+    "Comparison live adapter uses only a subset of implemented comparison modes.",
+    "Current G0 edge_ecology intervention is narrower than full Edge Ecology.",
+    "ConductingQueen receives only a reduced subset of implemented sensory/cognitive inputs.",
+    "Recursive Queen research-request loop is not active.",
+    "RegimeOracle is not independently G0/G1 prosecuted.",
+    "Selected/rejected selection-regret settlement is not live-composed.",
+    "LearningMemory applicability remains insufficiently bound."
+  ],
+  "authority": {
+    "research_only": true,
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "private_exchange_required": false,
+    "real_order_submission_authorized": false
+  },
+  "phase0_exit_requires": {
+    "machine_evidence_manifest": true,
+    "campaign_identity_validation": true,
+    "source_digest_validation": true,
+    "authority_validation": true,
+    "tests_green": true
+  }
+}

@@ -3,7 +3,10 @@ import requests
 import threading
 import time
 import logging
-from web3 import Web3
+try:
+    from web3 import Web3
+except Exception:
+    Web3 = None
 from typing import Optional, List, Dict, Any
 
 
@@ -38,6 +41,8 @@ class WalletMonitor:
         extra_token_addresses: Optional[Dict[str, Dict[str, Any]]] = None,
         multichain_watch: Optional[List[Dict[str, Any]]] = None,
     ):
+        if Web3 is None:
+            raise RuntimeError("web3_not_installed")
         # Use a short RPC timeout so UI startup can't hang on a slow/unreachable endpoint.
         self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": rpc_timeout}))
         if not self.w3.is_connected():

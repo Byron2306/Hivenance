@@ -695,6 +695,32 @@ class DataStoreAgent:
             c.execute("CREATE INDEX IF NOT EXISTS idx_observation_run ON observation_snapshots(run_id)")
             c.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_observation_run_symbol ON observation_snapshots(run_id, symbol)")
             c.execute("""
+            CREATE TABLE IF NOT EXISTS observation_universe_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id TEXT,
+                ts REAL,
+                venue TEXT,
+                symbol TEXT,
+                price REAL,
+                quote_volume_24h REAL,
+                spread_bps REAL,
+                depth_usd_25bps REAL,
+                volatility_expansion REAL,
+                volume_zscore REAL,
+                book_imbalance REAL,
+                data_quality REAL,
+                observation_eligible INTEGER,
+                selected_for_phase2 INTEGER,
+                comparison_rank INTEGER,
+                execution_eligible INTEGER DEFAULT 0,
+                rejection_reasons TEXT,
+                payload TEXT
+            )
+            """)
+            c.execute("CREATE INDEX IF NOT EXISTS idx_observation_universe_symbol_ts ON observation_universe_snapshots(symbol, ts)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_observation_universe_run ON observation_universe_snapshots(run_id)")
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_observation_universe_run_symbol ON observation_universe_snapshots(run_id, symbol)")
+            c.execute("""
             CREATE TABLE IF NOT EXISTS hypothesis_runs (
                 run_id TEXT PRIMARY KEY,
                 observation_run_id TEXT,
@@ -1919,6 +1945,38 @@ class DataStoreAgent:
                                     json.dumps(payload),
                                 ),
                             )
+                            for row in payload.get('comparison_universe') or []:
+                                values = row.get('values') or {}
+                                c.execute(
+                                    """
+                                    INSERT OR REPLACE INTO observation_universe_snapshots
+                                    (run_id, ts, venue, symbol, price, quote_volume_24h, spread_bps,
+                                     depth_usd_25bps, volatility_expansion, volume_zscore, book_imbalance,
+                                     data_quality, observation_eligible, selected_for_phase2, comparison_rank,
+                                     execution_eligible, rejection_reasons, payload)
+                                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                    """,
+                                    (
+                                        run_id,
+                                        float(row.get('timestamp_ms') or 0) / 1000.0,
+                                        row.get('venue'),
+                                        row.get('symbol'),
+                                        row.get('price'),
+                                        row.get('quote_volume_24h'),
+                                        row.get('spread_bps'),
+                                        row.get('depth_usd_25bps'),
+                                        values.get('volatility_expansion'),
+                                        values.get('volume_zscore'),
+                                        values.get('book_imbalance'),
+                                        row.get('data_quality'),
+                                        1 if row.get('observation_eligible') else 0,
+                                        1 if row.get('selected_for_phase2') else 0,
+                                        int(row.get('comparison_rank') or 0),
+                                        0,
+                                        json.dumps(row.get('rejection_reasons') or []),
+                                        json.dumps(row),
+                                    ),
+                                )
                             for row in payload.get('candidates') or []:
                                 values = row.get('values') or {}
                                 c.execute(

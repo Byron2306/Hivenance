@@ -271,7 +271,7 @@ class ShadowFlightAgent:
         try:
             from strategies.relative_value_lab.g1_utility_campaign import G1CampaignPolicy, evaluate_store
             from strategies.relative_value_lab.g1_campaign_freeze import (
-                freeze_g1_campaign, get_g1_campaign_freeze, policy_from_freeze,
+                freeze_g1_campaign, get_g1_campaign_freeze, get_latest_g1_campaign_freeze, policy_from_freeze,
             )
             requested_policy = G1CampaignPolicy(
                 min_pairs=int(getattr(self.cfg, "g1_min_pairs", 30) or 30),
@@ -281,7 +281,7 @@ class ShadowFlightAgent:
                 max_delta_drawdown_bps=float(getattr(self.cfg, "g1_max_delta_drawdown_bps", 250.0) or 250.0),
                 min_distinct_worlds=int(getattr(self.cfg, "g1_min_distinct_worlds", 10) or 10),
             )
-            frozen = get_g1_campaign_freeze(self.data_store)
+            frozen = get_latest_g1_campaign_freeze(self.data_store)
             if frozen is None:
                 frozen = freeze_g1_campaign(
                     self.data_store,
@@ -298,7 +298,11 @@ class ShadowFlightAgent:
                     created_ts=started_ts,
                 )
             g1_policy = policy_from_freeze(frozen)
-            g1_reports = [report.to_dict() for report in evaluate_store(self.data_store, policy=g1_policy)]
+            scoped_campaign = str(frozen.get("campaign_id") or "") if frozen.get("research_target_id") else None
+            scoped_target = str(frozen.get("research_target_id") or "") or None
+            g1_reports = [report.to_dict() for report in evaluate_store(
+                self.data_store, policy=g1_policy, campaign_id=scoped_campaign, target_id=scoped_target
+            )]
         except Exception as exc:
             g1_error = f"{type(exc).__name__}: {exc}"
             logging.exception("G1 prospective organ utility evaluation failed")

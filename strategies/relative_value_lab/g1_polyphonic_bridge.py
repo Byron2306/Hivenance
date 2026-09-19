@@ -7,6 +7,7 @@ that forecast. Evidence independence comes only from graph evidence roots.
 from __future__ import annotations
 import hashlib,json
 from typing import Any
+from dataclasses import replace
 from .musical_cognition import MotifNote
 from .polyphonic_quorum import PolyphonicQuorum
 from .g0_forecast_challenge import challenge_forecast
@@ -49,3 +50,16 @@ def quorum_for_forecast(*,cycle:Any,forecast:Any,feature:Any)->Any:
    evidence_root=roots[0],world_state_id=cycle.world_state_id,world_state_hash=cycle.world_state_hash,
    independent_voice=True))
  return PolyphonicQuorum().score(tuple(notes))
+
+
+def apply_quorum_gate(forecast:Any,receipt:Any)->Any:
+ if getattr(forecast,"abstain",False) or bool(receipt.quorum_formed):return forecast
+ inputs=dict(getattr(forecast,"inputs",{}) or {})
+ inputs["g1_polyphonic_quorum"]={"quorum_id":receipt.quorum_id,"quorum_formed":False,
+  "ensemble_lock":receipt.ensemble_lock,"independent_root_count":receipt.independent_root_count,
+  "family_count":receipt.family_count,"roles_present":receipt.roles_present,"reasons":receipt.reasons,
+  "authority":"RESEARCH_VETO_ONLY"}
+ return replace(forecast,direction="ABSTAIN",probability_positive_net=None,expected_move_bps=None,
+  expected_net_bps=None,abstain=True,reason="g1_polyphonic_quorum_not_formed",
+  reasons=tuple(getattr(forecast,"reasons",()))+("g1_polyphonic_quorum_not_formed",),
+  inputs=inputs,execution_eligible=False)

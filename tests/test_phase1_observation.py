@@ -46,6 +46,7 @@ class FakeConfig:
     phase1_observation_niche_min_research_richness: float = 0.35
     phase1_observation_niche_min_volatility_to_cost: float = 0.35
     phase2_taker_fee_bps_per_side: float = 80.0
+    hivenance_market_memory_path: str = ':memory:'
 
 
 class FakeClient:

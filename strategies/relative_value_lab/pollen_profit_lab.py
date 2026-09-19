@@ -190,9 +190,10 @@ class PollenProfitExperiment:
     """Prospective A/B ledger for Pollen/Quorum selection.
 
     Control records every resolved non-abstaining paper settlement.
-    Treatment records the same settlement only if quorum had already formed by
-    the forecast timestamp. No future result is visible when treatment selection
-    is made.
+    Treatment records the same settlement only when an explicit prospective
+    research-resolution gate admitted it at forecast time. Quorum may be one
+    input to that gate, but quorum itself is never synonymous with admission.
+    No future result is visible when treatment selection is made.
     """
 
     version = "hivenance.pollen_profit_experiment.v1"
@@ -206,6 +207,7 @@ class PollenProfitExperiment:
         *,
         settlement: SettledRelativeForecast,
         quorum: PolyphonicQuorumReceipt | None,
+        treatment_selected: bool | None = None,
     ) -> None:
         if settlement.forecast_id in self._seen:
             raise ValueError("pollen_profit_forecast_already_recorded")
@@ -214,11 +216,14 @@ class PollenProfitExperiment:
         if settlement.abstain or settlement.realized_directional_net_bps is None:
             return
 
-        selected = bool(
-            quorum is not None
-            and quorum.quorum_formed
-            and quorum.last_note_ms <= settlement.forecast_timestamp_ms
-        )
+        if treatment_selected is None:
+            selected = bool(
+                quorum is not None
+                and quorum.quorum_formed
+                and quorum.last_note_ms <= settlement.forecast_timestamp_ms
+            )
+        else:
+            selected = bool(treatment_selected)
         self._rows.append(_OutcomeRow(
             forecast_id=settlement.forecast_id,
             net_bps=float(settlement.realized_directional_net_bps),

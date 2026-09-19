@@ -28,14 +28,16 @@ def feature():
   100000000,.01,0,1,1,values={},complete=True,return_zscore=2,trend_slope=.001,
   momentum_consistency=.8,atr_pct=.01)
 
-def test_live_loop_freezes_trade_vs_edge_blind_abstain_before_outcome():
+def test_live_loop_keeps_edge_ablation_neutral_and_freezes_real_post_cognition_veto():
  cfg=SimpleNamespace(exchange="kraken",phase1_observation_stale_after_sec=180)
  loop=G0LiveLoop(cfg);loop.builder=Builder();s=Store()
  r=loop.process_feature(data_store=s,competition=Competition(),feature=feature(),venue="kraken",
   now_ms=10000,horizons=(60,))
- assert r["diverged"]>=2 and r["frozen"]>=2 and r["errors"]==0
+ assert r["diverged"]>=1 and r["frozen"]>=1 and r["errors"]==0
+ assert r["by_organ"]["edge_ecology"]["diverged"]==0
  rows=s.conn.execute("SELECT organ_id,status,payload FROM phase5_g0_shadow_twins ORDER BY organ_id").fetchall()
  organs={row[0] for row in rows}
- assert {"edge_ecology","polyphonic_quorum"}.issubset(organs)
+ assert "edge_ecology" not in organs
+ assert "polyphonic_quorum" in organs
  assert all(row[1]=="FROZEN" for row in rows)
  assert all('"g0_no_trade":true' in row[2] for row in rows)

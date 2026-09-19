@@ -1,0 +1,39 @@
+{
+  "schema": "hivenance_full_organism_phase1_completion_receipt_v1",
+  "phase": 1,
+  "phase_name": "Canonical Memory and World Identity",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "validated_git_head": "835fb7c44555f81bdc2818c440ec0fa5d3d20670",
+  "tests": {
+    "passed": 24,
+    "failed": 0
+  },
+  "live_verification": {
+    "run_id": "obs-1789833827236-ef4d1580",
+    "candidates": 16,
+    "persisted_bound_candidates": 16,
+    "market_memory": "data/hivenance_market_memory.db",
+    "database": "data/swarm_data.db",
+    "status": "PASS",
+    "world_identity_verified": true,
+    "reasons": []
+  },
+  "acceptance": {
+    "same_observation_same_canonical_root": true,
+    "market_memory_lineage_present": true,
+    "world_state_page_present_for_all_candidates": true,
+    "world_graph_same_world_binding": true,
+    "no_future_data_violation": true,
+    "backfill_not_relabelled_prospective": true,
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0
+  },
+  "next_phase": {
+    "phase": 2,
+    "name": "Full Temporal Lattice",
+    "gate": "No Phase 3 work until temporal lattice completeness/conflict/independence tests and live verification pass."
+  },
+  "authority": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+}

@@ -229,6 +229,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "prospective_paper_research_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_ablation_lab": {
+        "role": "parallel_counterfactual_mutation_and_organ_ablation_evaluator",
+        "mode": "prospective_research_autopsy_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

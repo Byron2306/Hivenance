@@ -17,6 +17,23 @@ class Store:
         self.conn=sqlite3.connect(":memory:")
         self._lock=threading.RLock()
         self.conn.execute("""
+        CREATE TABLE observation_runs(
+            run_id TEXT PRIMARY KEY,
+            started_ts REAL,
+            completed_ts REAL,
+            venue TEXT,
+            status TEXT,
+            symbols_attempted INTEGER,
+            symbols_successful INTEGER,
+            symbols_eligible INTEGER,
+            mean_data_quality REAL,
+            error_count INTEGER,
+            dataset_hash TEXT,
+            execution_wired INTEGER DEFAULT 0,
+            orders_submitted INTEGER DEFAULT 0,
+            payload TEXT
+        )""")
+        self.conn.execute("""
         CREATE TABLE observation_universe_snapshots(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             run_id TEXT, ts REAL, venue TEXT, symbol TEXT, price REAL,
@@ -48,6 +65,14 @@ def _row(symbol:str,rank:int,selected:bool,price:float,score:float,root_char:str
 
 
 def _future(store:Store,symbol:str,ts:float,price:float,spread:float=2.0,depth:float=100000.0):
+    run_id=f"future-{symbol}-{int(ts)}"
+    store.conn.execute(
+        """INSERT OR REPLACE INTO observation_runs
+        (run_id,started_ts,completed_ts,venue,status,symbols_attempted,symbols_successful,
+         symbols_eligible,mean_data_quality,error_count,dataset_hash,execution_wired,orders_submitted,payload)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (run_id,ts-1.0,ts,"kraken","HEALTHY",1,1,1,1.0,0,"x",0,0,"{}"),
+    )
     store.conn.execute(
         """INSERT INTO observation_universe_snapshots
         (run_id,ts,venue,symbol,price,quote_volume_24h,spread_bps,depth_usd_25bps,
@@ -55,7 +80,7 @@ def _future(store:Store,symbol:str,ts:float,price:float,spread:float=2.0,depth:f
          observation_eligible,selected_for_phase2,comparison_rank,execution_eligible,
          rejection_reasons,payload)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        ("future",ts,"kraken",symbol,price,1e8,spread,depth,1.0,0.0,0.0,1.0,1,0,0,0,"[]","{}"),
+        (run_id,ts-60.0,"kraken",symbol,price,1e8,spread,depth,1.0,0.0,0.0,1.0,1,0,0,0,"[]","{}"),
     )
     store.conn.commit()
 
@@ -147,3 +172,24 @@ def test_phase4_coinselector_has_independent_blind_selection_mask():
     assert sum(int(r[1]) for r in rows)==3
     assert sum(int(r[2]) for r in rows)==3
     assert any(int(r[1])!=int(r[2]) for r in rows)
+
+
+def test_phase4_settlement_uses_custody_clock_not_market_candle_clock():
+    store=Store()
+    universe=[_row("BTC/USD",1,True,100.0,.9,"a")]
+    freeze_selector_universe(
+        store=store,run_id="r-clock",comparison_universe=universe,
+        observed_at_ms=1_000_000,shortlist_size=1,horizon_seconds=300,
+        taker_fee_bps_per_side=20.0,
+    )
+    # Market timestamp is deliberately stale, but custody time is after target.
+    _future(store,"BTC/USD",1301.0,102.0)
+    out=settle_mature_selector_freezes(store=store,now_ts=1400.0,tolerance_sec=30)
+    assert out["settled"]==1
+    raw=store.conn.execute(
+        "SELECT payload FROM full_organism_selector_settlements_v2"
+    ).fetchone()[0]
+    payload=json.loads(raw)
+    assert payload["settlement_clock"]=="OBSERVATION_RUN_COMPLETED_TS"
+    assert payload["exit_custody_ts"]==1301.0
+    assert payload["exit_market_ts"]==1241.0

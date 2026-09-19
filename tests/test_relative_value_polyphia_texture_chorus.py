@@ -203,3 +203,16 @@ def test_queen_weaves_hunting_and_colony_correlation():
     loki=next(s for s in receipt.triune_scores if s.mind=="LOKI")
     assert "challenge_correlation_not_causation" in loki.invitations
     assert receipt.execution_eligible is False
+
+def test_temporal_texture_scales_to_slow_observer_cadence():
+    texture=TemporalTexture(
+        baseline_median_ms=120_000,
+        baseline_jitter_ms=30_000,
+        short_threshold_ms=60_000,
+    ).score([0,120_000,240_000,390_000,510_000])
+    assert texture.sample_size == 4
+    assert texture.drift_norm < 0.20
+    assert texture.jitter_norm < 1.0
+    assert texture.persistence > 0.0
+    assert texture.cadence_coherence > 0.2
+    assert 0.0 <= texture.entropy_signature <= 1.0

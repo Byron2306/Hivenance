@@ -287,7 +287,24 @@ def _ensemble(
                 # Incompatible claims remain unsubmitted rather than coerced.
                 pass
 
-    return quorum, issue, motion_bps, motion_kind
+    if not quorum.quorum_formed:
+        treatment_resolution = "HOLD_NO_QUORUM"
+        treatment_admitted = False
+    elif quorum.explicit_dissent_present:
+        treatment_resolution = "HOLD_COUNTERPOINT"
+        treatment_admitted = False
+    else:
+        treatment_resolution = "ADMIT_RESOLVED"
+        treatment_admitted = True
+
+    return (
+        quorum,
+        issue,
+        motion_bps,
+        motion_kind,
+        treatment_admitted,
+        treatment_resolution,
+    )
 
 
 def _print_summary(runtime: ProspectivePollenPaperRuntime, economy: QueenPollenEconomy) -> None:
@@ -299,9 +316,9 @@ def _print_summary(runtime: ProspectivePollenPaperRuntime, economy: QueenPollenE
         f"settled={c.selected_count} "
         f"control_net={c.cumulative_net_bps:+.3f}bps "
         f"control_streak={c.current_positive_streak}/{c.longest_positive_streak} "
-        f"quorum_n={t.selected_count} "
-        f"quorum_net={t.cumulative_net_bps:+.3f}bps "
-        f"quorum_streak={t.current_positive_streak}/{t.longest_positive_streak} "
+        f"treatment_n={t.selected_count} "
+        f"treatment_net={t.cumulative_net_bps:+.3f}bps "
+        f"treatment_streak={t.current_positive_streak}/{t.longest_positive_streak} "
         f"delta={s.cumulative_delta_bps:+.3f}bps "
         f"dd={t.max_drawdown_bps:.3f}bps"
     )
@@ -508,7 +525,14 @@ def main() -> int:
                     now_ms=now_ms,
                     feed=feed,
                 )
-                quorum, issue, motion_bps, motion_kind = _ensemble(
+                (
+                    quorum,
+                    issue,
+                    motion_bps,
+                    motion_kind,
+                    treatment_admitted,
+                    treatment_resolution,
+                ) = _ensemble(
                     forecast=forecast,
                     diagnostics=diagnostics,
                     frame=frame,
@@ -526,6 +550,8 @@ def main() -> int:
                     forecast=forecast,
                     state=state,
                     quorum=quorum,
+                    treatment_admitted=treatment_admitted,
+                    treatment_resolution=treatment_resolution,
                 )
                 last_forecast_at[pair_id] = now
                 bounties_by_forecast[forecast.forecast_id] = tuple(issue.bounty_ids)
@@ -539,6 +565,7 @@ def main() -> int:
                     f"cost={float(forecast.expected_cost_bps or 0.0):.3f}bps "
                     f"motion={motion_bps:+.3f}bps/{motion_kind.lower()} "
                     f"quorum={int(quorum.quorum_formed)} lock={quorum.ensemble_lock:.3f} "
+                    f"resolution={treatment_resolution} "
                     f"pollen={','.join(issue.bounty_types) or '-'}"
                 )
 
@@ -546,7 +573,7 @@ def main() -> int:
             print(
                 f"CYCLE {cycle} warm={warmed}/{args.min_samples} "
                 f"eligible_pairs={eligible_pairs} new={new_forecasts} "
-                f"quorum_ready={treatment_ready} settled={settled_now} "
+                f"treatment_ready={treatment_ready} settled={settled_now} "
                 f"pending={runtime.pending()} updated={meta.get('updated_pairs', 0)}"
             )
             _print_summary(runtime, economy)

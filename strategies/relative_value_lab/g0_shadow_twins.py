@@ -21,7 +21,7 @@ class G0ShadowTwinSettlement:
  full_settlement:Mapping[str,Any]; ablated_settlement:Mapping[str,Any]
  paired_outcome:G0PairedOutcome
  execution_eligible:bool=False; promotion_eligible:bool=False
- def to_dict(self):return asdict(self)
+ def to_dict(self):\n  payload=asdict(self);payload["paired_outcome"]=self.paired_outcome.to_dict();return payload
 
 def settle_shadow_twin(*,twin:G0ShadowTwin,settler:Any,
                        observations:Sequence[Mapping[str,Any]],settled_ts:float)->G0ShadowTwinSettlement:

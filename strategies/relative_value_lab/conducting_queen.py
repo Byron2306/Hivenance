@@ -22,6 +22,7 @@ from .mystique_variations import MystiqueFalsificationReceipt
 from .cognitive_metabolism import CognitiveMetabolismReceipt
 from .ml_challenger import LearnedChallengerReceipt
 from .world_score import CanonicalScoreFrame
+from .vns_score_stream import VNSScorePhrase
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -147,6 +148,11 @@ class QueenPolyphonicReceipt:
     world_state_tension: float
     vns_pulse_energy: float
     vns_syncopation: float
+    vns_phrase_energy: float
+    vns_measure_novelty: float
+    vns_echo_pressure: float
+    vns_rest_density: float
+    vns_phrase_modulation: float
     temporal_jitter: float
     temporal_drift: float
     temporal_burstiness: float
@@ -253,6 +259,7 @@ class ConductingQueen:
         entrainment: EntrainmentReceipt,
         epoch: ResearchGovernanceEpoch,
         vns_pulses: Sequence[VNSSensoryPulse] = (),
+        vns_phrase: VNSScorePhrase | None = None,
         harmonic_context: Mapping[str, float] | None = None,
         temporal_texture: TemporalTextureReceipt | None = None,
         edge_chorus: EdgeChorusHarmony | None = None,
@@ -299,6 +306,11 @@ class ConductingQueen:
         subtle_shift = self._subtle_shift_score(notes)
 
         pulse_energy, pulse_syncopation = self._vns_music(vns_pulses)
+        vns_phrase_energy = float(vns_phrase.phrase_energy) if vns_phrase else 0.0
+        vns_measure_novelty = float(vns_phrase.measure_novelty) if vns_phrase else 0.0
+        vns_echo_pressure = float(vns_phrase.echo_pressure) if vns_phrase else 0.0
+        vns_rest_density = float(vns_phrase.rest_density) if vns_phrase else 0.0
+        vns_phrase_modulation = float(vns_phrase.modulation) if vns_phrase else 0.0
 
         temporal_jitter = float(temporal_texture.jitter_norm) if temporal_texture else 0.0
         temporal_drift = float(temporal_texture.drift_norm) if temporal_texture else 0.0
@@ -352,6 +364,9 @@ class ConductingQueen:
             + 0.10 * motif.crescendo
             + 0.15 * entrainment.entrainment_strength
             + 0.10 * pulse_energy
+            + 0.05 * vns_phrase_energy
+            + 0.04 * vns_measure_novelty
+            + 0.03 * (1.0 - vns_echo_pressure)
             + 0.08 * tonal_coherence
             + 0.08 * pitch_convergence
             + 0.07 * resonance
@@ -384,6 +399,7 @@ class ConductingQueen:
             world_state_tension=world_state_tension,
             pulse_energy=pulse_energy,
             pulse_syncopation=pulse_syncopation,
+            vns_phrase=vns_phrase,
             tonal_coherence=tonal_coherence,
             timbral_diversity=timbral_diversity,
             pitch_convergence=pitch_convergence,
@@ -412,6 +428,7 @@ class ConductingQueen:
             world_state_tension=world_state_tension,
             pulse_energy=pulse_energy,
             pulse_syncopation=pulse_syncopation,
+            vns_phrase=vns_phrase,
             timbral_diversity=timbral_diversity,
             subtle_shift=subtle_shift,
             resonance=resonance,
@@ -438,6 +455,7 @@ class ConductingQueen:
             motif=motif,
             entrainment=entrainment,
             pulse_energy=pulse_energy,
+            vns_phrase=vns_phrase,
             timbral_diversity=timbral_diversity,
             subtle_shift=subtle_shift,
             temporal_texture=temporal_texture,
@@ -534,6 +552,11 @@ class ConductingQueen:
             world_state_tension=round(world_state_tension, 6),
             vns_pulse_energy=round(pulse_energy, 6),
             vns_syncopation=round(pulse_syncopation, 6),
+            vns_phrase_energy=round(vns_phrase_energy, 6),
+            vns_measure_novelty=round(vns_measure_novelty, 6),
+            vns_echo_pressure=round(vns_echo_pressure, 6),
+            vns_rest_density=round(vns_rest_density, 6),
+            vns_phrase_modulation=round(vns_phrase_modulation, 6),
             temporal_jitter=round(temporal_jitter, 6),
             temporal_drift=round(temporal_drift, 6),
             temporal_burstiness=round(temporal_burstiness, 6),
@@ -842,6 +865,7 @@ class ConductingQueen:
         world_state_tension: float,
         pulse_energy: float,
         pulse_syncopation: float,
+        vns_phrase: VNSScorePhrase | None,
         tonal_coherence: float,
         timbral_diversity: float,
         pitch_convergence: float,
@@ -869,6 +893,9 @@ class ConductingQueen:
             f"entrainment:{entrainment.entrainment_strength:.3f}",
             f"polyphonic_pressure:{polyphonic_pressure:.3f}",
             f"vns_energy:{pulse_energy:.3f}",
+            f"vns_phrase_energy:{(vns_phrase.phrase_energy if vns_phrase else 0.0):.3f}",
+            f"vns_novelty:{(vns_phrase.measure_novelty if vns_phrase else 0.0):.3f}",
+            f"vns_echo:{(vns_phrase.echo_pressure if vns_phrase else 0.0):.3f}",
             f"temporal_cadence:{(temporal_texture.cadence_coherence if temporal_texture else motif.rhythmic_regularity):.3f}",
             f"edge_chorus:{(edge_chorus.chorus_quality if edge_chorus else 0.0):.3f}",
             f"hunt_pressure:{self._hunt_pressure(hunt_matches):.3f}",
@@ -890,6 +917,10 @@ class ConductingQueen:
             metatron_dynamics.append("crescendo")
         if pulse_syncopation > 0.35:
             metatron_dynamics.append("syncopated_vns")
+        if vns_phrase and vns_phrase.crescendo > vns_phrase.decrescendo:
+            metatron_dynamics.append("vns_phrase_crescendo")
+        if vns_phrase and vns_phrase.modulation > 0.35:
+            metatron_dynamics.append("vns_scope_modulation")
         if pitch_convergence > 0.55:
             metatron_dynamics.append("pitch_converging")
         if subtle_shift > 0.4:
@@ -941,6 +972,10 @@ class ConductingQueen:
             michael_invites.append("narrow_notation")
         if timbral_diversity < 0.3:
             michael_invites.append("request_new_timbre")
+        if vns_phrase and vns_phrase.echo_pressure > 0.55:
+            michael_invites.append("discount_vns_echo")
+        if vns_phrase and vns_phrase.freshness_decay > 0.35:
+            michael_invites.append("refresh_vns_measure")
         if temporal_texture and temporal_texture.cadence_coherence < 0.55:
             michael_invites.append("retune_cadence_baseline")
         if edge_chorus and edge_chorus.chorus_quality < 0.78:
@@ -989,6 +1024,10 @@ class ConductingQueen:
         loki_invites = ["seek_countermelody", "challenge_apparent_resolution"]
         if pitch_convergence > 0.55:
             loki_invites.append("test_pitch_convergence_for_echo")
+        if vns_phrase and vns_phrase.echo_pressure > 0.55:
+            loki_invites.append("challenge_repeated_vns_accent")
+        if vns_phrase and vns_phrase.measure_novelty > 0.45:
+            loki_invites.append("challenge_vns_novelty_for_artifact")
         if motif.dissonance > 0.35:
             loki_invites.append("preserve_productive_dissonance")
         if temporal_texture and temporal_texture.burstiness > 0.35:
@@ -1080,6 +1119,7 @@ class ConductingQueen:
         world_state_tension: float,
         pulse_energy: float,
         pulse_syncopation: float,
+        vns_phrase: VNSScorePhrase | None,
         timbral_diversity: float,
         subtle_shift: float,
         resonance: float,
@@ -1102,6 +1142,14 @@ class ConductingQueen:
             gestures.append("FOLLOW_VNS_PULSE")
         if pulse_syncopation > 0.35:
             gestures.append("ACCENT_SYNCOPATION")
+        if vns_phrase and vns_phrase.crescendo > vns_phrase.decrescendo:
+            gestures.append("SHAPE_VNS_PHRASE_CRESCENDO")
+        if vns_phrase and vns_phrase.rest_density > 0.65:
+            gestures.append("HEAR_VNS_REST")
+        if vns_phrase and vns_phrase.modulation > 0.35:
+            gestures.append("FOLLOW_VNS_MODULATION")
+        if vns_phrase and vns_phrase.echo_pressure > 0.55:
+            gestures.append("THIN_VNS_ECHO")
         if entrainment.convergence_gain > 0:
             gestures.append("GUIDE_ENTRAINMENT")
         if motif.crescendo > motif.decrescendo:
@@ -1186,6 +1234,7 @@ class ConductingQueen:
         motif: MotifScore,
         entrainment: EntrainmentReceipt,
         pulse_energy: float,
+        vns_phrase: VNSScorePhrase | None,
         timbral_diversity: float,
         subtle_shift: float,
         temporal_texture: TemporalTextureReceipt | None,
@@ -1426,6 +1475,24 @@ class ConductingQueen:
                 _clamp(0.45 + 0.40 * float(learned_music["drift"])),
                 ("model_provenance", "fresh_validation"),
                 "RECALIBRATE_OR_ABSTAIN",
+            ))
+
+        if vns_phrase and vns_phrase.echo_pressure > 0.55:
+            phrases.append((
+                "loki_counterpoint",
+                "CHALLENGE_VNS_ECHO",
+                _clamp(0.40 + 0.45 * vns_phrase.echo_pressure),
+                ("vns_score_stream", "world_state_bind"),
+                "SEARCH_FRESH_OBSERVED_VARIATION",
+            ))
+
+        if vns_phrase and vns_phrase.modulation > 0.35:
+            phrases.append((
+                "vns_listener",
+                "FOLLOW_VNS_MODULATION",
+                _clamp(0.40 + 0.40 * vns_phrase.modulation),
+                ("vns_score_stream", "canonical_world_score"),
+                "LISTEN_OR_SEARCH",
             ))
 
         if epoch_consonance < 0.75 or world_state_tension > 0.25:

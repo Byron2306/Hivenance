@@ -19,7 +19,8 @@ if str(ROOT) not in sys.path:
 from collections import defaultdict
 from strategies.relative_value_lab.g1_campaign_freeze import get_latest_g1_campaign_freeze,policy_from_freeze
 from strategies.relative_value_lab.g1_utility_campaign import (
- evaluate_store,evaluate_store_stratified,evaluate_store_world_clustered,load_prospective_outcomes
+ evaluate_store,evaluate_store_stratified,evaluate_store_world_clustered,
+ evaluate_store_settlement_status,load_prospective_outcomes
 )
 from main import load_config,apply_phase0_safety_policy
 
@@ -61,8 +62,10 @@ def main()->int:
  reports={r.organ_id:r for r in evaluate_store(s,policy=policy,campaign_id=campaign_id,target_id=target_id)}
  strata=evaluate_store_stratified(s,policy=policy,campaign_id=campaign_id,target_id=target_id)
  clustered=evaluate_store_world_clustered(s,policy=policy,campaign_id=campaign_id,target_id=target_id)
+ status_diag=evaluate_store_settlement_status(s,campaign_id=campaign_id,target_id=target_id)
  payload={"campaign_id":frozen.get("campaign_id"),"created_ts":frozen.get("created_ts"),
   "policy":policy.to_dict(),"organs":[],"strata":strata,"world_cluster_diagnostics":clustered,
+  "settlement_status_diagnostics":status_diag,
   "execution_eligible":False,"promotion_eligible":False}
  for organ in organs:
   r=reports.get(organ)

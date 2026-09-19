@@ -26,7 +26,8 @@ def settle_mature_g0_twins(data_store:Any,settler:Any,*,now_ts:float,tolerance_s
      if isinstance(q,dict):x.update(q)
     except Exception:pass
     obs.append(x)
-   twin=G0ShadowTwin(p["organ_id"],p["opportunity_id"],p["world_state_hash"],fi,bi)
+   twin=G0ShadowTwin(p["organ_id"],p["opportunity_id"],p["world_state_hash"],fi,bi,
+    p.get("research_campaign_id"),p.get("research_target_id"))
    s=settle_shadow_twin(twin=twin,settler=settler,observations=obs,settled_ts=now_ts)
    if persist_twin_settlement(data_store,twin_freeze_id=p["twin_freeze_id"],payload=s.to_dict(),settled_ts=now_ts):out["settled"]+=1
   except Exception:out["errors"]+=1

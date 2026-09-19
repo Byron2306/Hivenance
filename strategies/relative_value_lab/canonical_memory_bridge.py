@@ -16,6 +16,7 @@ from agents.market_memory import MarketMemory
 from agents.world_state import WorldStateBuilder
 from .world_score import CanonicalScoreFrame, ScoreObservation, CanonicalWorldScore
 from .world_graph import WorldGraph, WorldGraphNode
+from .contracts import RELATIVE_VALUE_AUTHORITY
 
 AUTHORITY = "PUBLIC_MARKET_RESEARCH_CANONICAL_WORLD_BINDING_ONLY"
 
@@ -66,7 +67,7 @@ def frame_from_binding(binding: Mapping[str, Any]) -> CanonicalScoreFrame:
         observed_digest=str(raw["observed_digest"]),
         observations=observations,
         namespace=str(raw.get("namespace") or "observed_market"),
-        authority=str(raw.get("authority") or observations[0].namespace if observations else ""),
+        authority=str(raw.get("authority") or RELATIVE_VALUE_AUTHORITY),
         execution_eligible=bool(raw.get("execution_eligible", False)),
         promotion_eligible=bool(raw.get("promotion_eligible", False)),
     )

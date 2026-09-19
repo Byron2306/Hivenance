@@ -4,6 +4,7 @@ import json
 from typing import Any
 from agents.horizon_context import HorizonContext
 from .temporal_participation_bee import TemporalParticipationBee,ParticipationObservation
+from .comparison_engine import ComparisonEngine,ComparisonReference
 
 def _ret(closes:list[float],n:int)->float|None:
  if len(closes)<=n:return None
@@ -66,3 +67,48 @@ def temporal_from_store(data_store:Any,feature:Any)->Any|None:
  if not history:return None
  return TemporalParticipationBee(min_same_hour_samples=5).observe(
   observed_at_ms=int(feature.timestamp_ms),volume=current,history=history,realized_move_bps=None)
+
+
+def latest_shadow_learning(data_store:Any)->tuple[dict[str,Any],...]:
+ try:
+  rows=data_store.get_phase5_adversarial_shadow_receipts(limit=50)
+ except Exception:
+  return ()
+ out=[]
+ for row in rows:
+  try:
+   p=json.loads(row.get("payload") or "{}") if isinstance(row.get("payload"),str) else dict(row.get("payload") or {})
+  except Exception:
+   continue
+  learning=p.get("learning") if isinstance(p.get("learning"),dict) else None
+  if not learning or learning.get("authority")!="PROSPECTIVE_SHADOW_RESEARCH_ONLY":continue
+  q=dict(learning);digest=str(row.get("payload_sha256") or "")
+  if digest:q["source_artifacts"]=[{"sha256":digest}]
+  out.append(q)
+ return tuple(out)
+
+def same_hour_comparison(data_store:Any,feature:Any)->Any|None:
+ current_values={"volume_zscore":feature.volume_zscore,"volatility_expansion":feature.volatility_expansion,
+  "spread_bps":feature.spread_bps,"book_imbalance":feature.book_imbalance}
+ refs=[]
+ try:
+  with data_store._lock:
+   cur=data_store.conn.execute("SELECT ts,payload FROM observation_snapshots WHERE symbol=? AND ts<? ORDER BY ts DESC LIMIT 500",
+    (str(feature.symbol),float(feature.timestamp_ms)/1000.0));rows=cur.fetchall()
+ except Exception:return None
+ from datetime import datetime,timezone
+ for i,(ts,raw) in enumerate(rows):
+  try:p=json.loads(raw or "{}")
+  except Exception:continue
+  fv=((p.get("values") or {}).get("feature_vector") if isinstance(p.get("values"),dict) else None)
+  if not isinstance(fv,dict):continue
+  root="sha256:"+__import__("hashlib").sha256((raw or "").encode()).hexdigest()
+  refs.append(ComparisonReference(f"obs:{i}",int(float(ts)*1000),str(feature.symbol),
+   datetime.fromtimestamp(float(ts),tz=timezone.utc).hour,
+   {"volume_zscore":fv.get("volume_zscore"),"volatility_expansion":fv.get("volatility_expansion"),
+    "spread_bps":fv.get("spread_bps"),"book_imbalance":fv.get("book_imbalance")},(root,)))
+ if not refs:return None
+ hour=datetime.fromtimestamp(float(feature.timestamp_ms)/1000.0,tz=timezone.utc).hour
+ return ComparisonEngine().same_utc_hour_baseline(observed_at_ms=int(feature.timestamp_ms),
+  symbol=str(feature.symbol),utc_hour=hour,current_features=current_values,references=refs,
+  feature_names=("volume_zscore","volatility_expansion","spread_bps","book_imbalance"))

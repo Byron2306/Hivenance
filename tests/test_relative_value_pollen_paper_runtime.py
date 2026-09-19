@@ -155,3 +155,20 @@ def test_runtime_settles_raw_prices_with_frozen_relationship():
     assert len(batch.settlements)==1
     assert batch.comparison.control.selected_count==1
     assert batch.comparison.treatment.selected_count==1
+
+def test_runtime_valid_quorum_can_be_held_out_of_treatment():
+    runtime=ProspectivePollenPaperRuntime()
+    reg=runtime.register(
+        forecast=forecast(),
+        state=state(1000,-0.01),
+        quorum=quorum(last_note=900),
+        treatment_admitted=False,
+        treatment_resolution="HOLD_COUNTERPOINT",
+    )
+    assert reg.quorum_formed is False or reg.quorum_id is None
+    assert reg.treatment_eligible_at_registration is False
+    assert reg.treatment_resolution == "HOLD_COUNTERPOINT"
+
+    batch=runtime.settle(state(11000,-0.009))
+    assert batch.comparison.control.selected_count==1
+    assert batch.comparison.treatment.selected_count==0

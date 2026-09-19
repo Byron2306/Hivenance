@@ -37,7 +37,8 @@ class LearningAttentionRouter:
  }
  def route(self,o:ResearchAttentionObligation)->OrganResearchRequest:
   low=o.target.lower()
-  key=next((k for k in self.routes if k.replace("_"," ") in low),None)
+  normalized=low.replace("_"," ")
+  key=next((k for k in self.routes if k.replace("_"," ") in normalized),None)
   if key is None: return OrganResearchRequest("hypothesis_swarm","HYPOTHESIS",o.action,o.target,o.reason,("world_graph","learning_brief"),o.source_learning_ids)
   organ,family,inputs=self.routes[key]
   return OrganResearchRequest(organ,family,o.action,o.target,o.reason,inputs,o.source_learning_ids)

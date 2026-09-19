@@ -20,6 +20,18 @@ from main import load_config,apply_phase0_safety_policy
 from agents.coordinator import SwarmCoordinator
 from agents.kraken_public_client import KrakenPublicClient
 
+def _find_key(value,key):
+ if isinstance(value,dict):
+  if key in value:return value[key]
+  for child in value.values():
+   found=_find_key(child,key)
+   if found is not None:return found
+ elif isinstance(value,(list,tuple)):
+  for child in value:
+   found=_find_key(child,key)
+   if found is not None:return found
+ return None
+
 def main()->int:
  print("[G1] loading research config...",flush=True)
  cfg=apply_phase0_safety_policy(load_config())
@@ -48,12 +60,12 @@ def main()->int:
  payload=shadow.run_once(drive_upstream=True)
  print("[G1] Phase-5 cycle returned",flush=True)
  g1=payload.get("g1_organ_utility") or {}
- phase2=((payload.get("upstream_cycle") or {}).get("phase2_cycle") or {})
+ g0_prospective=_find_key(payload.get("upstream_cycle") or {},"g0_prospective")
  print("G1_PHASE5_ONCE")
  print(json.dumps({
   "status":payload.get("status"),
   "run_id":payload.get("run_id"),
-  "g0_prospective":phase2.get("g0_prospective"),
+  "g0_prospective":g0_prospective,
   "settlement":payload.get("settlement"),
   "g1_campaign_freeze":g1.get("campaign_freeze"),
   "g1_report_count":g1.get("report_count"),

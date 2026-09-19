@@ -63,14 +63,37 @@ def main()->int:
     )
 
     print("\nMUTATIONS THAT IMPROVED THIS SAMPLE")
-    winners=[d for d in changed if float(d.get("cumulative_net_delta_bps") or 0)>0]
+    winners=[]
+    degenerate=[]
+    for d in changed:
+        if float(d.get("cumulative_net_delta_bps") or 0)<=0:
+            continue
+        book=books.get(d.get("variant_id"))
+        if book and book.get("degenerate_select_none"):
+            degenerate.append(d)
+        else:
+            winners.append(d)
     if not winners:
         print("none yet")
     for row in winners[:max(1,args.top)]:
+        book=books.get(row["variant_id"],{})
         print(
             f"{row['variant_id']:30s} "
             f"Δ={row['cumulative_net_delta_bps']:+.3f}bps "
-            f"changed={row['changed_decisions']}"
+            f"changed={row['changed_decisions']} "
+            f"n={book.get('selected_count',0)} "
+            f"select={float(book.get('selection_rate') or 0.0):.3f}"
+        )
+
+    print("\nDEGENERATE SELECT-NONE RESULTS")
+    if not degenerate:
+        print("none")
+    for row in degenerate[:max(1,args.top)]:
+        print(
+            f"{row['variant_id']:30s} "
+            f"Δ={row['cumulative_net_delta_bps']:+.3f}bps "
+            f"changed={row['changed_decisions']} "
+            "reason=selected_zero_trades"
         )
 
     print("\nMUTATIONS THAT HURT THIS SAMPLE")
@@ -78,10 +101,27 @@ def main()->int:
     if not losers:
         print("none yet")
     for row in sorted(losers,key=lambda d:float(d.get("cumulative_net_delta_bps") or 0.0))[:max(1,args.top)]:
+        book=books.get(row["variant_id"],{})
         print(
             f"{row['variant_id']:30s} "
             f"Δ={row['cumulative_net_delta_bps']:+.3f}bps "
-            f"changed={row['changed_decisions']}"
+            f"changed={row['changed_decisions']} "
+            f"n={book.get('selected_count',0)} "
+            f"select={float(book.get('selection_rate') or 0.0):.3f}"
+        )
+
+    print("\nSELECTOR EQUIVALENCE CLASSES")
+    eq=payload.get("selector_equivalence_classes",[])
+    aliases=[row for row in eq if len(row.get("variant_ids",[]))>1]
+    aliases.sort(key=lambda row:(-len(row.get("variant_ids",[])),row.get("class_id","")))
+    if not aliases:
+        print("no exact aliases in settled sample")
+    for row in aliases[:max(1,args.top)]:
+        variants=",".join(row.get("variant_ids",[]))
+        print(
+            f"{row['class_id']:18s} n={row.get('selected_count',0):4d} "
+            f"select={float(row.get('selection_rate') or 0.0):.3f} "
+            f"variants={variants}"
         )
 
     print("\nNOTE")

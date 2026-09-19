@@ -14,11 +14,15 @@ def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
  if str(getattr(cycle,"world_state_id",""))!=str(feature.values.get("world_state_id") or getattr(cycle,"world_state_id","")):
   raise ValueError("feature_world_state_mismatch")
  values=dict(feature.values or {})
+ family_payloads={}
+ for node in getattr(cycle.queen_view,"nodes",()):
+  family_payloads.setdefault(str(node.family),[]).append(dict(node.payload))
  values["synthesis_context"]={
   "cycle_id":cycle.cycle_id,
   "world_state_id":cycle.world_state_id,
   "world_state_hash":cycle.world_state_hash,
   "families":tuple(cycle.queen_view.families),
+  "family_payloads":{k:tuple(v) for k,v in family_payloads.items()},
   "learning":dict(cycle.learning),
   "attention_obligations":tuple(cycle.attention_obligations),
   "organ_requests":tuple(cycle.organ_requests),

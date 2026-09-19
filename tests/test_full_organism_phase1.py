@@ -11,6 +11,7 @@ from strategies.relative_value_lab.canonical_memory_bridge import (
     CanonicalMemoryWorldBridge,
     frame_from_binding,
     validate_binding,
+    world_graph_root_from_binding,
 )
 from strategies.volatility_breakout.models import FeatureVector
 
@@ -146,3 +147,22 @@ def test_phase1_binding_round_trip_reproduces_canonical_frame(tmp_path: Path):
     assert frame.world_state_id == binding["canonical_world_state_id"]
     assert frame.world_state_hash == binding["canonical_world_state_hash"]
     assert frame.observations[0].evidence_root == binding["feature_memory_line_id"]
+
+
+def test_phase1_world_state_page_binds_to_same_world_graph_root(tmp_path: Path):
+    asof = 1_800_000_000_000
+    binding = CanonicalMemoryWorldBridge(tmp_path / "memory.db").ingest(
+        venue="kraken", symbol="BTC/USD", observed_at_ms=asof,
+        timeframe="1m", ohlcv=_rows(asof), orderbook=_book(),
+        feature_payload=asdict(_feature(asof)),
+    )
+    frame = frame_from_binding(binding)
+    graph, node = world_graph_root_from_binding(binding)
+
+    assert graph.frame.world_state_id == frame.world_state_id
+    assert node.world_state_id == frame.world_state_id
+    assert node.world_state_hash == frame.world_state_hash
+    assert node.evidence_roots == (binding["feature_memory_line_id"],)
+    assert node.family == "WORLD_STATE"
+    assert node.execution_eligible is False
+    assert node.promotion_eligible is False

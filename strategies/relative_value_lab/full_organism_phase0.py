@@ -34,6 +34,12 @@ def sha256_file(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def git_blob_sha(path: Path) -> str:
+    data = path.read_bytes()
+    header = f"blob {len(data)}\0".encode("utf-8")
+    return hashlib.sha1(header + data).hexdigest()
+
+
 def load_programme_lock(root: Path) -> dict[str, Any]:
     payload = json.loads((root / LOCK_PATH).read_text())
     if payload.get("schema") != "hivenance_full_organism_phase0_lock_v1":
@@ -150,14 +156,34 @@ def build_phase0_evidence_manifest(
         conn.close()
 
     sources = {
-        "programme_lock": sha256_file(root / LOCK_PATH),
-        "master_plan": sha256_file(root / MASTER_PLAN_PATH),
-        "integration_audit": sha256_file(root / AUDIT_PATH),
+        "programme_lock": {
+            "sha256": sha256_file(root / LOCK_PATH),
+            "git_blob_sha": git_blob_sha(root / LOCK_PATH),
+        },
+        "master_plan": {
+            "sha256": sha256_file(root / MASTER_PLAN_PATH),
+            "git_blob_sha": git_blob_sha(root / MASTER_PLAN_PATH),
+            "expected_git_blob_sha": str((lock.get("master_plan") or {}).get("git_blob_sha") or ""),
+        },
+        "integration_audit": {
+            "sha256": sha256_file(root / AUDIT_PATH),
+            "git_blob_sha": git_blob_sha(root / AUDIT_PATH),
+            "expected_git_blob_sha": str((lock.get("architecture_audit") or {}).get("git_blob_sha") or ""),
+        },
+    }
+    source_validation = {
+        key: (
+            True if not value.get("expected_git_blob_sha")
+            else value.get("git_blob_sha") == value.get("expected_git_blob_sha")
+        )
+        for key, value in sources.items()
+        if key != "programme_lock"
     }
     evidence_root = sha256_text(canonical_json({
         "tables": tables,
         "identity": identity,
         "sources": sources,
+        "source_validation": source_validation,
     }))
     return {
         "schema": "hivenance_full_organism_phase0_evidence_manifest_v1",
@@ -168,7 +194,8 @@ def build_phase0_evidence_manifest(
         "programme_base_head": lock.get("programme_base_head"),
         "campaign_identity": identity,
         "tables": tables,
-        "source_sha256": sources,
+        "sources": sources,
+        "source_validation": source_validation,
         "evidence_root": evidence_root,
         "execution_eligible": False,
         "promotion_eligible": False,
@@ -189,6 +216,9 @@ def validate_phase0_manifest(manifest: Mapping[str, Any]) -> tuple[bool, tuple[s
     identity = manifest.get("campaign_identity") or {}
     if not bool(identity.get("valid")):
         reasons.extend(str(x) for x in identity.get("reasons") or ("campaign_identity_invalid",))
+    for source_name, passed in dict(manifest.get("source_validation") or {}).items():
+        if not bool(passed):
+            reasons.append(f"frozen_source_digest_drift:{source_name}")
     for table in manifest.get("tables") or ():
         if table.get("table") in {"g1_campaign_freeze", "g1_research_target_freeze"} and not table.get("exists"):
             reasons.append(f"required_table_missing:{table.get('table')}")

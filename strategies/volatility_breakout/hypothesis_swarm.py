@@ -14,6 +14,7 @@ from .hypothesis_competition import HypothesisCompetition
 from .models import FeatureVector, HypothesisRunSummary
 from .research_reuse import ResearchReuseGovernor
 from .walk_forward_calibration import WalkForwardForecastCalibrator
+from strategies.relative_value_lab.temporal_lattice import attach_temporal_lattice
 
 
 def _canonical_hash(payload: Any) -> str:
@@ -1183,6 +1184,7 @@ class HypothesisSwarmAgent:
             feature = self._feature_with_regime_suppression(feature, suppression_map)
             feature = self._feature_with_worker_signal_memory(feature, worker_signal_memory_map)
             feature = self._feature_with_cex_market_oracle(feature, venue)
+            feature = attach_temporal_lattice(feature)
             feature = self._feature_with_medium_trend_context(feature, medium_trend_map)
             feature = self._feature_with_derivatives_trend_context(feature, derivatives_trend_map)
             thesis_crystals, negative_crystals = self._crystal_context(feature)

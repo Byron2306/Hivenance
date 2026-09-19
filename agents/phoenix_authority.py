@@ -224,6 +224,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "research_evaluation_only",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_pollen_paper_runtime": {
+        "role": "frozen_forecast_quorum_and_future_price_settlement_spine",
+        "mode": "prospective_paper_research_only",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

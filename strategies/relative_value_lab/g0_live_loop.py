@@ -53,8 +53,12 @@ class G0LiveLoop:
                      horizons:tuple[int,...])->dict[str,int]:
   out={"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0}
   record=data_store.get_phase5_active_freeze() if hasattr(data_store,"get_phase5_active_freeze") else {}
-  if not record:return out
-  freeze=_freeze(record)
+  if record:
+   freeze=_freeze(record)
+  else:
+   from .g1_research_target import ensure_g1_research_target,shadow_freeze_from_research_target
+   target=ensure_g1_research_target(data_store,self.cfg,created_ts=float(now_ms)/1000.0)
+   freeze=shadow_freeze_from_research_target(target)
   if freeze.status!="ACTIVE":return out
   if freeze.symbol and str(feature.symbol)!=freeze.symbol:return out
   if feature.book_imbalance is None or feature.depth_usd_25bps is None or feature.spread_bps is None:return out

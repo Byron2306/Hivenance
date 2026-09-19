@@ -204,6 +204,11 @@ COMPONENT_ROLES: Dict[str, Dict[str, Any]] = {
         "mode": "continuous_public_market_research_listening",
         "phoenix_entry_phase": 4,
     },
+    "relative_value_vns_score_stream": {
+        "role": "canonical_measure_phrase_memory_and_temporal_listening",
+        "mode": "continuous_research_phrase_memory",
+        "phoenix_entry_phase": 4,
+    },
     "relative_value_graph": {
         "role": "pair_graph_research",
         "mode": "research_only",

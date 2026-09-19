@@ -196,7 +196,7 @@ def _future_observations(store:Any, symbol:str, created_ts:float, target_ts:floa
     with store._lock:
         cur=store.conn.execute(
             """SELECT ts,price,spread_bps,depth_usd_25bps,data_quality,payload
-               FROM observation_snapshots
+               FROM observation_universe_snapshots
                WHERE symbol=? AND ts>? AND ts<=?
                ORDER BY ts ASC""",
             (symbol,float(created_ts),float(target_ts+tolerance_sec)),

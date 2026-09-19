@@ -111,6 +111,49 @@ class MarketMemory:
                          effective_ts_ms=ts,symbol=symbol)
         return line
 
+    def append_trade_flow(
+        self, *, symbol: str, trades: Iterable[dict[str, Any]],
+        source: str = "kraken_public_trades", observed_ts_ms: int | None = None,
+    ) -> str:
+        rows = sorted(
+            [
+                {"timestamp": int(t["timestamp"]), "price": float(t["price"]),
+                 "amount": float(t["amount"]), "side": str(t["side"]).lower()}
+                for t in trades if str(t.get("side", "")).lower() in {"buy", "sell"}
+            ],
+            key=lambda x: (x["timestamp"], x["price"], x["amount"], x["side"]),
+        )
+        if not rows:
+            raise ValueError("PUBLIC_TRADE_FLOW requires at least one normalized trade")
+        buy = sum(t["amount"] for t in rows if t["side"] == "buy")
+        sell = sum(t["amount"] for t in rows if t["side"] == "sell")
+        payload = {"trades": rows, "trade_count": len(rows), "taker_buy_volume": buy,
+                   "taker_sell_volume": sell, "first_trade_ts_ms": rows[0]["timestamp"],
+                   "last_trade_ts_ms": rows[-1]["timestamp"]}
+        return self.append(source=source, kind="PUBLIC_TRADE_FLOW", payload=payload,
+                           effective_ts_ms=rows[-1]["timestamp"],
+                           observed_ts_ms=observed_ts_ms, symbol=symbol)
+
+    def append_order_book(
+        self, *, symbol: str, book: dict[str, Any],
+        effective_ts_ms: int, source: str = "kraken_public_order_book",
+        observed_ts_ms: int | None = None,
+    ) -> str:
+        bids = [[float(x[0]), float(x[1])] for x in (book.get("bids") or []) if len(x) >= 2]
+        asks = [[float(x[0]), float(x[1])] for x in (book.get("asks") or []) if len(x) >= 2]
+        if not bids or not asks:
+            raise ValueError("PUBLIC_ORDER_BOOK requires bids and asks")
+        best_bid=max(x[0] for x in bids); best_ask=min(x[0] for x in asks)
+        if best_bid <= 0 or best_ask <= 0 or best_ask < best_bid:
+            raise ValueError("invalid public order book")
+        mid=(best_bid+best_ask)/2.0
+        payload={"bids":bids,"asks":asks,"best_bid":best_bid,"best_ask":best_ask,
+                 "mid":mid,"spread_bps":((best_ask-best_bid)/mid)*10000.0,
+                 "bid_depth":sum(x[1] for x in bids),"ask_depth":sum(x[1] for x in asks)}
+        return self.append(source=source, kind="PUBLIC_ORDER_BOOK", payload=payload,
+                           effective_ts_ms=int(effective_ts_ms),
+                           observed_ts_ms=observed_ts_ms, symbol=symbol)
+
     def bars(self, symbol: str, timeframe: str, *, since_ms: int | None = None,
              limit: int | None = None) -> list[dict[str, Any]]:
         sql="SELECT * FROM market_bar WHERE symbol=? AND timeframe=?"

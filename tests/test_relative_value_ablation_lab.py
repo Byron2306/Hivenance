@@ -305,3 +305,16 @@ def test_v5_negative_control_separates_dissent_from_follow():
     assert admit("DISSENT_LOW_COST_100",follow) is False
     assert admit("FOLLOW_LOW_COST_100",dissent) is False
     assert admit("DISSENT_LOW_COST_100",dissent) is True
+
+def test_v5_follow_low_cost_compound_parser_is_safe():
+    s=snapshot("parse",motion_kind="FOLLOW",motion_bps=1.2,edge=1.1,cost=.8,stability=.60)
+    assert admit("FOLLOW_LOW_COST_100_EDGE100",s) is True
+    assert admit("FOLLOW_LOW_COST_100_EDGE_100",s) is True
+    assert admit("FOLLOW_LOW_COST_100_STAB055",s) is True
+    assert admit("FOLLOW_LOW_COST_100_MOTION100",s) is True
+
+    import pytest
+    with pytest.raises(KeyError, match="malformed_follow_low_cost_qualifier"):
+        admit("FOLLOW_LOW_COST_100_EDGE",s)
+    with pytest.raises(KeyError, match="unknown_follow_low_cost_qualifier"):
+        admit("FOLLOW_LOW_COST_100_BOGUS100",s)

@@ -9,6 +9,10 @@ from strategies.relative_value_lab.selection_regret import (
     freeze_selector_universe,
     settle_mature_selector_freezes,
     selector_regret_report,
+    FROZEN_FOLLOW_PROTOCOL,
+    collect_frozen_selector_follow_tape,
+    settle_selector_follow_cohort,
+    selector_regret_report_v3,
 )
 
 
@@ -193,3 +197,43 @@ def test_phase4_settlement_uses_custody_clock_not_market_candle_clock():
     assert payload["settlement_clock"]=="OBSERVATION_RUN_COMPLETED_TS"
     assert payload["exit_custody_ts"]==1301.0
     assert payload["exit_market_ts"]==1241.0
+
+
+class FollowClient:
+    def __init__(self):
+        self.prices={"BTC/USD":101.0,"ETH/USD":103.0}
+    def fetch_tickers(self):
+        return {s:{"last":p} for s,p in self.prices.items()}
+    def fetch_ticker(self,symbol):
+        return {"last":self.prices[symbol]}
+    def fetch_order_book(self,symbol,limit=50):
+        p=self.prices[symbol]
+        return {"bids":[[p-.01,1000.0]],"asks":[[p+.01,1000.0]]}
+
+
+def test_phase4_frozen_follow_protocol_settles_exact_original_symbols():
+    store=Store()
+    universe=[
+        _row("BTC/USD",1,True,100.0,.9,"a"),
+        _row("ETH/USD",2,False,100.0,.4,"b"),
+    ]
+    freeze_selector_universe(
+        store=store,run_id="follow1",comparison_universe=universe,
+        observed_at_ms=1_000_000,shortlist_size=1,horizon_seconds=300,
+        taker_fee_bps_per_side=20.0,maturation_protocol=FROZEN_FOLLOW_PROTOCOL,
+    )
+    follow=collect_frozen_selector_follow_tape(
+        store=store,client=FollowClient(),cohort_run_id="follow1",now_ts=1301.0,
+    )
+    assert follow["symbols_attempted"]==2
+    assert follow["symbols_successful"]==2
+    settled=settle_selector_follow_cohort(
+        store=store,cohort_run_id="follow1",now_ts=1302.0,tolerance_sec=30.0,
+    )
+    assert settled["settled"]==2
+    assert settled["deferred"]==0
+    report=selector_regret_report_v3(store,run_id="follow1")
+    assert report["settled_n"]==2
+    assert report["selected_n"]==1
+    assert report["rejected_n"]==1
+    assert report["maturation_protocol"]==FROZEN_FOLLOW_PROTOCOL

@@ -35,6 +35,18 @@ class AblationSnapshot:
     pollen_dissent_bounty: bool
     structural_reputation: float
     motion_reputation: float
+    motif_consonance: float
+    motif_dissonance: float
+    motif_tension: float
+    motif_cadence_strength: float
+    motif_counterpoint_diversity: float
+    entrainment_strength: float
+    false_unison_risk: float
+    queen_polyphonic_pressure: float
+    queen_tonal_coherence: float
+    queen_timbral_diversity: float
+    queen_pitch_convergence: float
+    queen_subtle_shift: float
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -143,6 +155,18 @@ VARIANTS: tuple[AblationVariant, ...] = (
     AblationVariant("HASH_25", "Deterministic 25% data-blind selector.", "negative_control"),
     AblationVariant("HASH_50", "Deterministic 50% data-blind selector.", "negative_control"),
     AblationVariant("HASH_75", "Deterministic 75% data-blind selector.", "negative_control"),
+    AblationVariant("QUEEN_PRESSURE_GT_040", "Queen polyphonic pressure >= 0.40.", "queen_metric"),
+    AblationVariant("QUEEN_PRESSURE_GT_055", "Queen polyphonic pressure >= 0.55.", "queen_metric"),
+    AblationVariant("QUEEN_TONAL_GT_050", "Queen tonal coherence >= 0.50.", "queen_metric"),
+    AblationVariant("QUEEN_PITCH_GT_050", "Queen pitch convergence >= 0.50.", "queen_metric"),
+    AblationVariant("CADENCE_GT_050", "Motif cadence strength >= 0.50.", "motif_metric"),
+    AblationVariant("CADENCE_GT_065", "Motif cadence strength >= 0.65.", "motif_metric"),
+    AblationVariant("DISSONANCE_LT_025", "Motif dissonance < 0.25.", "motif_metric"),
+    AblationVariant("TENSION_LT_025", "Motif tension < 0.25.", "motif_metric"),
+    AblationVariant("COUNTERPOINT_GT_040", "Counterpoint diversity >= 0.40.", "motif_metric"),
+    AblationVariant("ENTRAINMENT_GT_040", "Entrainment >= 0.40.", "entrainment_metric"),
+    AblationVariant("ENTRAINMENT_GT_060", "Entrainment >= 0.60.", "entrainment_metric"),
+    AblationVariant("FALSE_UNISON_LT_025", "False-unison risk < 0.25.", "entrainment_metric"),
 )
 
 
@@ -202,6 +226,24 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
         pct = int(vid.rsplit("_", 1)[1])
         bucket = int(hashlib.sha256(s.forecast_id.encode("utf-8")).hexdigest()[:8], 16) % 100
         return bucket < pct
+    if vid.startswith("QUEEN_PRESSURE_GT_"):
+        return s.queen_polyphonic_pressure >= float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("QUEEN_TONAL_GT_"):
+        return s.queen_tonal_coherence >= float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("QUEEN_PITCH_GT_"):
+        return s.queen_pitch_convergence >= float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("CADENCE_GT_"):
+        return s.motif_cadence_strength >= float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("DISSONANCE_LT_"):
+        return s.motif_dissonance < float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("TENSION_LT_"):
+        return s.motif_tension < float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("COUNTERPOINT_GT_"):
+        return s.motif_counterpoint_diversity >= float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("ENTRAINMENT_GT_"):
+        return s.entrainment_strength >= float(vid.rsplit("_",1)[1]) / 100.0
+    if vid.startswith("FALSE_UNISON_LT_"):
+        return s.false_unison_risk < float(vid.rsplit("_",1)[1]) / 100.0
 
     raise KeyError(f"unknown_ablation_variant:{variant_id}")
 

@@ -54,3 +54,40 @@ def get_g1_campaign_freeze(data_store:Any)->dict[str,Any]|None:
 def policy_from_freeze(payload:dict[str,Any])->G1CampaignPolicy:
  p=dict(payload.get("policy") or {})
  return G1CampaignPolicy(**{k:p[k] for k in G1CampaignPolicy.__dataclass_fields__ if k in p})
+
+
+def get_g1_campaign(data_store:Any,campaign_id:str)->dict[str,Any]|None:
+ ensure_g1_campaign_schema(data_store)
+ with data_store._lock:
+  row=data_store.conn.execute("SELECT payload FROM g1_campaign_freeze WHERE campaign_id=?",(str(campaign_id),)).fetchone()
+ return json.loads(row[0]) if row else None
+
+def get_latest_g1_campaign_freeze(data_store:Any)->dict[str,Any]|None:
+ ensure_g1_campaign_schema(data_store)
+ with data_store._lock:
+  row=data_store.conn.execute("SELECT payload FROM g1_campaign_freeze ORDER BY created_ts DESC LIMIT 1").fetchone()
+ return json.loads(row[0]) if row else None
+
+def freeze_g1_campaign_successor(data_store:Any,*,policy:G1CampaignPolicy,organs:tuple[str,...],
+ research_target_id:str,predecessor_campaign_id:str,created_ts:float|None=None)->dict[str,Any]:
+ """Create an explicit successor campaign without mutating the predecessor."""
+ ensure_g1_campaign_schema(data_store)
+ predecessor=get_g1_campaign(data_store,predecessor_campaign_id)
+ if predecessor is None:raise ValueError("g1_predecessor_campaign_not_found")
+ target=str(research_target_id or "").strip()
+ if not target:raise ValueError("g1_successor_research_target_required")
+ ts=float(created_ts if created_ts is not None else time.time())
+ body={"schema":"hivenance_g1_campaign_freeze_v2","created_ts":ts,
+  "organs":tuple(sorted(set(str(x) for x in organs))),"policy":policy.to_dict(),
+  "research_target_id":target,"predecessor_campaign_id":str(predecessor_campaign_id),
+  "authority":AUTHORITY,"execution_eligible":False,"promotion_eligible":False}
+ campaign_id="g1_"+_hash({"organs":body["organs"],"policy":body["policy"],
+  "research_target_id":target,"predecessor_campaign_id":body["predecessor_campaign_id"]}).split(":",1)[1][:24]
+ body["campaign_id"]=campaign_id
+ raw=_json(body);digest=_hash(body["policy"])
+ with data_store._lock:
+  row=data_store.conn.execute("SELECT payload FROM g1_campaign_freeze WHERE campaign_id=?",(campaign_id,)).fetchone()
+  if row:return {"created":False,**json.loads(row[0])}
+  data_store.conn.execute("INSERT INTO g1_campaign_freeze VALUES(?,?,?,?,?,?,?)",
+   (campaign_id,ts,digest,AUTHORITY,0,0,raw));data_store.conn.commit()
+ return {"created":True,**body}

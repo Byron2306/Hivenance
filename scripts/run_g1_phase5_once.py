@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
 
 from main import load_config,apply_phase0_safety_policy
 from agents.coordinator import SwarmCoordinator
+from agents.kraken_public_client import KrakenPublicClient
 
 def main()->int:
  cfg=apply_phase0_safety_policy(load_config())
@@ -33,7 +34,7 @@ def main()->int:
  cfg.kraken_api_secret=""
  cfg.binance_api_key=""
  cfg.binance_api_secret=""
- client=None
+ client=KrakenPublicClient() if str(cfg.exchange).lower()=="kraken" else None
  coordinator=SwarmCoordinator(cfg)
  coordinator.initialize(client)
  shadow=coordinator.agents.get("shadow_flight")

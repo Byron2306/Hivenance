@@ -21,6 +21,7 @@ from agents.coordinator import SwarmCoordinator
 from agents.kraken_public_client import KrakenPublicClient
 
 def main()->int:
+ print("[G1] loading research config...",flush=True)
  cfg=apply_phase0_safety_policy(load_config())
  # This launcher is intentionally stricter than the ordinary research coordinator.
  cfg.live_mode=False
@@ -34,13 +35,18 @@ def main()->int:
  cfg.kraken_api_secret=""
  cfg.binance_api_key=""
  cfg.binance_api_secret=""
- client=KrakenPublicClient() if str(cfg.exchange).lower()=="kraken" else None
+ print(f"[G1] mode exchange={cfg.exchange} dry_run={cfg.dry_run} phase5={cfg.phase5_shadow_enabled}",flush=True)
+ client=KrakenPublicClient(progress=True) if str(cfg.exchange).lower()=="kraken" else None
+ print("[G1] initializing coordinator...",flush=True)
  coordinator=SwarmCoordinator(cfg)
  coordinator.initialize(client)
+ print("[G1] coordinator initialized",flush=True)
  shadow=coordinator.agents.get("shadow_flight")
  if shadow is None:
   raise RuntimeError("shadow_flight_agent_unavailable")
+ print("[G1] starting one Phase-5 shadow cycle with upstream public observation...",flush=True)
  payload=shadow.run_once(drive_upstream=True)
+ print("[G1] Phase-5 cycle returned",flush=True)
  g1=payload.get("g1_organ_utility") or {}
  phase2=((payload.get("upstream_cycle") or {}).get("phase2_cycle") or {})
  print("G1_PHASE5_ONCE")

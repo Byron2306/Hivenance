@@ -9,6 +9,7 @@ import statistics
 import sys
 import time
 from collections import deque
+from dataclasses import asdict
 from itertools import combinations
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,10 @@ from strategies.relative_value_lab.polyphonic_entrainment import PolyphonicEntra
 from strategies.relative_value_lab.polyphonic_quorum import PolyphonicQuorum, PolyphonicQuorumConfig
 from strategies.relative_value_lab.waggle_protocol import BeeLineage, LineageRegistry, WaggleProtocol
 from strategies.relative_value_lab.world_score import CanonicalWorldScore, ScoreObservation
+from strategies.relative_value_lab.ablation_lab import (
+    AblationSnapshot,
+    RelativeValueAblationLab,
+)
 
 
 AUTHORITY = "PUBLIC_MARKET_PAPER_ONLY_NO_PRIVATE_KEYS_NO_ORDERS"
@@ -307,7 +312,11 @@ def _ensemble(
     )
 
 
-def _print_summary(runtime: ProspectivePollenPaperRuntime, economy: QueenPollenEconomy) -> None:
+def _print_summary(
+    runtime: ProspectivePollenPaperRuntime,
+    economy: QueenPollenEconomy,
+    ablation: RelativeValueAblationLab | None = None,
+) -> None:
     s = runtime.summary()
     c = s.control
     t = s.treatment
@@ -322,6 +331,31 @@ def _print_summary(runtime: ProspectivePollenPaperRuntime, economy: QueenPollenE
         f"delta={s.cumulative_delta_bps:+.3f}bps "
         f"dd={t.max_drawdown_bps:.3f}bps"
     )
+    if ablation is not None:
+        report = ablation.report()
+        by_id = {book.variant_id: book for book in report.books}
+        full = by_id.get("FULL_HIVE")
+        control = by_id.get("CONTROL_ALL")
+        if full is not None and control is not None:
+            print(
+                "ABLATE "
+                f"full={full.cumulative_net_bps:+.3f}bps/{full.selected_count} "
+                f"control={control.cumulative_net_bps:+.3f}bps/{control.selected_count} "
+                f"full_dd={full.max_drawdown_bps:.3f}bps"
+            )
+        changed = sorted(
+            [d for d in ablation.deltas() if d.changed_decisions > 0],
+            key=lambda d: (-abs(d.cumulative_net_delta_bps), -d.changed_decisions, d.variant_id),
+        )[:6]
+        if changed:
+            print(
+                "MUTATION "
+                + " | ".join(
+                    f"{d.variant_id}:Δ={d.cumulative_net_delta_bps:+.2f}bps,n={d.changed_decisions}"
+                    for d in changed
+                )
+            )
+
     leaders = economy.leaderboard()
     if leaders:
         print(
@@ -360,6 +394,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("data/pollen_paper_summary.json"),
     )
+    p.add_argument(
+        "--ablation-output",
+        type=Path,
+        default=Path("data/pollen_paper_ablation.json"),
+    )
     args = p.parse_args()
     if args.interval_sec < 2.0:
         p.error("--interval-sec must be >= 2")
@@ -381,6 +420,7 @@ def main() -> int:
     }
     runtime = ProspectivePollenPaperRuntime(ledger_path=args.ledger)
     economy = QueenPollenEconomy(initial_pollen=20.0)
+    ablation = RelativeValueAblationLab()
     pair_lab = PairRelationshipLab(
         min_samples=args.min_samples,
         min_return_correlation=0.10,
@@ -448,6 +488,7 @@ def main() -> int:
                 for settlement in batch.settlements:
                     settled_now += 1
                     quorum = quorum_by_forecast.get(settlement.forecast_id)
+                    ablation.settle(settlement)
                     for bounty_id in bounties_by_forecast.get(settlement.forecast_id, ()):
                         try:
                             settle_pollen_from_forecast(
@@ -553,6 +594,27 @@ def main() -> int:
                     treatment_admitted=treatment_admitted,
                     treatment_resolution=treatment_resolution,
                 )
+                ablation.freeze(AblationSnapshot(
+                    forecast_id=forecast.forecast_id,
+                    pair_id=forecast.pair_id,
+                    forecast_timestamp_ms=forecast.timestamp_ms,
+                    expected_net_bps=float(forecast.expected_net_bps or 0.0),
+                    expected_cost_bps=float(forecast.expected_cost_bps or 0.0),
+                    stability_score=float(diagnostics.stability_score),
+                    quorum_formed=bool(quorum.quorum_formed),
+                    ensemble_lock=float(quorum.ensemble_lock),
+                    explicit_dissent=bool(quorum.explicit_dissent_present),
+                    motion_kind=str(motion_kind),
+                    motion_bps=float(motion_bps),
+                    queen_resolution=str(treatment_resolution),
+                    pollen_bounty_count=len(issue.bounty_ids),
+                    pollen_dissent_bounty=any(
+                        economy.bounty(bid).bounty_type in {"POLLEN_DISSENT","POLLEN_FALSIFY"}
+                        for bid in issue.bounty_ids
+                    ),
+                    structural_reputation=float(economy.reputation("structural-bee")),
+                    motion_reputation=float(economy.reputation("motion-bee")),
+                ))
                 last_forecast_at[pair_id] = now
                 bounties_by_forecast[forecast.forecast_id] = tuple(issue.bounty_ids)
                 quorum_by_forecast[forecast.forecast_id] = quorum
@@ -576,7 +638,7 @@ def main() -> int:
                 f"treatment_ready={treatment_ready} settled={settled_now} "
                 f"pending={runtime.pending()} updated={meta.get('updated_pairs', 0)}"
             )
-            _print_summary(runtime, economy)
+            _print_summary(runtime, economy, ablation)
 
             args.summary_output.parent.mkdir(parents=True, exist_ok=True)
             args.summary_output.write_text(
@@ -593,15 +655,25 @@ def main() -> int:
                 encoding="utf-8",
             )
 
+            args.ablation_output.parent.mkdir(parents=True, exist_ok=True)
+            args.ablation_output.write_text(
+                json.dumps({
+                    **ablation.report().to_dict(),
+                    "deltas_vs_full_hive": [asdict(d) for d in ablation.deltas()],
+                }, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
             elapsed = time.monotonic() - started
             time.sleep(max(0.0, args.interval_sec - elapsed))
     except KeyboardInterrupt:
         status = "INTERRUPTED"
 
     print(f"status={status}")
-    _print_summary(runtime, economy)
+    _print_summary(runtime, economy, ablation)
     print(f"ledger={args.ledger}")
     print(f"summary={args.summary_output}")
+    print(f"ablation={args.ablation_output}")
     print("PRIVATE KEYS: 0 | ORDERS: 0 | EXECUTION AUTHORITY: none")
     return 0
 

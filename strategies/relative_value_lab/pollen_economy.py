@@ -8,6 +8,12 @@ from typing import Any, Mapping, Sequence
 from .contracts import RELATIVE_VALUE_AUTHORITY
 from .settlement import SettledRelativeForecast
 from .waggle_protocol import WaggleReceipt
+from .musical_cognition import MotifNote
+from .polyphonic_quorum import (
+    PolyphonicQuorum,
+    PolyphonicQuorumConfig,
+    PolyphonicQuorumReceipt,
+)
 
 
 def _clamp(v: float) -> float:
@@ -63,6 +69,7 @@ class PollenClaim:
     bee_id: str
     hypothesis_id: str
     stance: str
+    message_type: str
     confidence: float
     stake: float
     information_gain_claim: float
@@ -75,36 +82,6 @@ class PollenClaim:
     world_state_hash: str
     independent: bool
     submitted_at_ms: int
-    authority: str = RELATIVE_VALUE_AUTHORITY
-    execution_eligible: bool = False
-    promotion_eligible: bool = False
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass(frozen=True)
-class QuorumReceipt:
-    schema: str
-    quorum_id: str
-    bounty_id: str
-    hypothesis_id: str
-    independent_roots: tuple[str, ...]
-    families: tuple[str, ...]
-    evidence_roots: tuple[str, ...]
-    support_roots: tuple[str, ...]
-    challenge_roots: tuple[str, ...]
-    root_count: int
-    family_count: int
-    evidence_root_count: int
-    challenge_present: bool
-    challenge_survived: bool
-    clone_claims_collapsed: int
-    weighted_support: float
-    weighted_challenge: float
-    research_quorum_reached: bool
-    quorum_state: str
-    reasons: tuple[str, ...]
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -209,22 +186,35 @@ class PollenSettlementReceipt:
 
 
 class MetatronQuorumChamber:
-    """Contextual research quorum, never a majority-vote truth machine."""
+    """Adapter from lawful Pollen claims into canonical Polyphonic Quorum.
 
-    version = "hivenance.metatron_quorum_chamber.v1"
+    Quorum means synchronized, choreographed ensemble participation around one
+    world-bound motif. It never means majority agreement and it never requires
+    support to outweigh dissent.
+    """
+
+    version = "hivenance.metatron_quorum_chamber.v2"
 
     def __init__(
         self,
         *,
-        min_independent_roots: int = 3,
+        min_independent_roots: int = 2,
         min_families: int = 2,
-        min_evidence_roots: int = 3,
-        require_challenge: bool = True,
+        min_roles: int = 2,
+        phase_window_ms: int = 15_000,
+        call_response_window_ms: int = 30_000,
+        ensemble_lock_threshold: float = 0.58,
     ) -> None:
-        self.min_independent_roots = max(1, int(min_independent_roots))
-        self.min_families = max(1, int(min_families))
-        self.min_evidence_roots = max(1, int(min_evidence_roots))
-        self.require_challenge = bool(require_challenge)
+        self.engine = PolyphonicQuorum(
+            PolyphonicQuorumConfig(
+                minimum_independent_roots=max(1, int(min_independent_roots)),
+                minimum_families=max(1, int(min_families)),
+                minimum_roles=max(1, int(min_roles)),
+                phase_window_ms=max(1, int(phase_window_ms)),
+                call_response_window_ms=max(1, int(call_response_window_ms)),
+                ensemble_lock_threshold=_clamp(ensemble_lock_threshold),
+            )
+        )
 
     def assess(
         self,
@@ -232,9 +222,12 @@ class MetatronQuorumChamber:
         bounty: PollenBounty,
         claims: Sequence[PollenClaim],
         reputations: Mapping[str, float] | None = None,
-        challenge_survived: bool = True,
-    ) -> QuorumReceipt:
-        reputations = dict(reputations or {})
+        challenge_survived: bool | None = None,
+    ) -> PolyphonicQuorumReceipt:
+        # reputations and challenge_survived are accepted for backward call-site
+        # compatibility, but neither can manufacture quorum.
+        del reputations, challenge_survived
+
         eligible = [
             claim for claim in claims
             if claim.bounty_id == bounty.bounty_id
@@ -244,89 +237,34 @@ class MetatronQuorumChamber:
             and claim.independent
         ]
 
+        # Collapse clones/descendants to one representative per independent root.
         by_root: dict[str, PollenClaim] = {}
-        for claim in sorted(eligible, key=lambda c: (c.submitted_at_ms, c.claim_id)):
-            current = by_root.get(claim.root_lineage_digest)
-            if current is None or claim.confidence > current.confidence:
-                by_root[claim.root_lineage_digest] = claim
+        for claim in sorted(eligible, key=lambda row: (row.submitted_at_ms, row.claim_id)):
+            by_root.setdefault(claim.root_lineage_digest, claim)
 
-        canonical = tuple(by_root[root] for root in sorted(by_root))
-        roots = tuple(sorted(by_root))
-        families = tuple(sorted({c.family for c in canonical}))
-        evidence_roots = tuple(sorted({c.evidence_root for c in canonical}))
-        support_roots = tuple(sorted(
-            c.root_lineage_digest for c in canonical if c.stance in SUPPORT_STANCES
-        ))
-        challenge_roots = tuple(sorted(
-            c.root_lineage_digest for c in canonical if c.stance in CHALLENGE_STANCES
-        ))
-        challenge_present = bool(challenge_roots)
-
-        def weight(claim: PollenClaim) -> float:
-            rep = _clamp(reputations.get(claim.bee_id, 0.5))
-            return _clamp(claim.confidence) * (0.5 + 0.5 * rep)
-
-        weighted_support = sum(weight(c) for c in canonical if c.stance in SUPPORT_STANCES)
-        weighted_challenge = sum(weight(c) for c in canonical if c.stance in CHALLENGE_STANCES)
-
-        reasons: list[str] = []
-        if len(roots) < self.min_independent_roots:
-            reasons.append("insufficient_independent_roots")
-        if len(families) < self.min_families:
-            reasons.append("insufficient_family_diversity")
-        if len(evidence_roots) < self.min_evidence_roots:
-            reasons.append("insufficient_evidence_root_diversity")
-        if not support_roots:
-            reasons.append("no_supporting_independent_voice")
-        if self.require_challenge and not challenge_present:
-            reasons.append("adversarial_challenge_missing")
-        if challenge_present and not challenge_survived:
-            reasons.append("quorum_did_not_survive_challenge")
-
-        reached = not reasons
-        if reached and weighted_challenge > weighted_support:
-            state = "CONTESTED_QUORUM"
-        elif reached:
-            state = "CHALLENGED_QUORUM"
-        elif challenge_present:
-            state = "CONTESTED_INSUFFICIENT"
-        else:
-            state = "INSUFFICIENT"
-
-        body = {
-            "bounty_id": bounty.bounty_id,
-            "roots": roots,
-            "families": families,
-            "evidence_roots": evidence_roots,
-            "challenge_survived": challenge_survived,
-            "state": state,
-            "reasons": reasons,
-        }
-        return QuorumReceipt(
-            schema="hivenance_metatron_quorum_v1",
-            quorum_id="quorum_" + _digest(body).split(":", 1)[1][:24],
-            bounty_id=bounty.bounty_id,
-            hypothesis_id=bounty.hypothesis_id,
-            independent_roots=roots,
-            families=families,
-            evidence_roots=evidence_roots,
-            support_roots=support_roots,
-            challenge_roots=challenge_roots,
-            root_count=len(roots),
-            family_count=len(families),
-            evidence_root_count=len(evidence_roots),
-            challenge_present=challenge_present,
-            challenge_survived=bool(challenge_survived),
-            clone_claims_collapsed=max(0, len(eligible) - len(canonical)),
-            weighted_support=round(weighted_support, 6),
-            weighted_challenge=round(weighted_challenge, 6),
-            research_quorum_reached=reached,
-            quorum_state=state,
-            reasons=tuple(reasons),
-            authority=RELATIVE_VALUE_AUTHORITY,
-            execution_eligible=False,
-            promotion_eligible=False,
-        )
+        notes = []
+        for claim in by_root.values():
+            notes.append(MotifNote(
+                message_id=claim.claim_id,
+                receipt_id=claim.waggle_receipt_id,
+                hypothesis_id=claim.hypothesis_id,
+                bee_id=claim.bee_id,
+                family=claim.family,
+                lineage_digest=claim.lineage_digest,
+                root_lineage_digest=claim.root_lineage_digest,
+                message_type=claim.message_type,
+                observed_at_ms=claim.submitted_at_ms,
+                horizon_band=bounty.horizon_band,
+                direction="ABSTAIN",
+                expected_move_bps=None,
+                uncertainty=1.0-_clamp(claim.confidence),
+                pulse_type=None,
+                evidence_root=claim.evidence_root,
+                world_state_id=claim.world_state_id,
+                world_state_hash=claim.world_state_hash,
+                independent_voice=True,
+            ))
+        return self.engine.score(notes)
 
 
 class QueenPollenEconomy:
@@ -463,6 +401,7 @@ class QueenPollenEconomy:
             bee_id=bee_id,
             hypothesis_id=bounty.hypothesis_id,
             stance=stance,
+            message_type=receipt.message_type,
             confidence=round(confidence, 6),
             stake=round(stake, 6),
             information_gain_claim=round(info_claim, 6),
@@ -501,7 +440,7 @@ class QueenPollenEconomy:
         *,
         bounty: PollenBounty,
         outcome: ProspectivePollenOutcome,
-        quorum: QuorumReceipt | None = None,
+        quorum: PolyphonicQuorumReceipt | None = None,
     ) -> PollenSettlementReceipt:
         if bounty.bounty_id in self._settled_bounties:
             raise ValueError("pollen_bounty_already_settled")

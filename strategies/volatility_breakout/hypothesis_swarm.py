@@ -1208,10 +1208,13 @@ class HypothesisSwarmAgent:
                     for organ_id, counts in (g0_result.get("by_organ") or {}).items():
                         bucket = g0_prospective["by_organ"].setdefault(
                             str(organ_id),
-                            {"examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0},
+                            {"examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0,
+                             "raw_non_abstain": 0, "raw_abstain": 0, "raw_abstain_reasons": {}},
                         )
-                        for key in ("examined", "eligible", "diverged", "frozen", "skipped", "errors"):
+                        for key in ("examined", "eligible", "diverged", "frozen", "skipped", "errors", "raw_non_abstain", "raw_abstain"):
                             bucket[key] += int((counts or {}).get(key) or 0)
+                        for reason, n in ((counts or {}).get("raw_abstain_reasons") or {}).items():
+                            bucket["raw_abstain_reasons"][str(reason)] = int(bucket["raw_abstain_reasons"].get(str(reason)) or 0) + int(n or 0)
                 except Exception:
                     g0_prospective["errors"] += 1
                     logging.exception("G0 prospective feature cycle failed")

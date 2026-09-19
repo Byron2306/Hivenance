@@ -98,15 +98,20 @@ class G0LiveLoop:
   payload=asdict(feature)
   values=feature.values if isinstance(getattr(feature,"values",None),dict) else {}
   binding=values.get("canonical_world_binding") if isinstance(values.get("canonical_world_binding"),dict) else None
+  binding_required=bool(values.get("phase1_canonical_world_required"))
   frame=None;root=None
+  binding_valid=False
   if binding is not None:
-   valid,_binding_reasons=validate_binding(binding,symbol=str(feature.symbol),observed_at_ms=int(feature.timestamp_ms))
-   if valid:
+   binding_valid,_binding_reasons=validate_binding(binding,symbol=str(feature.symbol),observed_at_ms=int(feature.timestamp_ms))
+   if binding_valid:
     try:
      frame=frame_from_binding(binding)
      root=str(frame.observations[0].evidence_root) if frame.observations else None
     except Exception:
-     frame=None;root=None
+     frame=None;root=None;binding_valid=False
+  if binding_required and not binding_valid:
+   out["errors"]+=1
+   return out
   if frame is None:
    # Compatibility fallback for historical fixtures/older stored observations.
    # Live Phase-1 observations produced after Phase 1 must carry the canonical binding.

@@ -140,6 +140,42 @@ class ProspectivePollenPaperRuntime:
             promotion_eligible=False,
         )
 
+
+    def settle_prices(
+        self,
+        *,
+        pair_id: str,
+        timestamp_ms: int,
+        price_a: float,
+        price_b: float,
+    ) -> PaperSettlementBatch:
+        rows = self.settler.settle_prices(
+            pair_id=pair_id,
+            timestamp_ms=timestamp_ms,
+            price_a=price_a,
+            price_b=price_b,
+        )
+        for row in rows:
+            self.experiment.record(
+                settlement=row,
+                quorum=self._quorum_by_forecast.get(row.forecast_id),
+            )
+            self._append_ledger("SETTLE", row.to_dict())
+
+        comparison = self.experiment.summary()
+        if rows:
+            self._append_ledger("SUMMARY", comparison.to_dict())
+        return PaperSettlementBatch(
+            schema="hivenance_pollen_paper_settlement_batch_v1",
+            state_timestamp_ms=int(timestamp_ms),
+            pair_id=str(pair_id),
+            settlements=tuple(rows),
+            comparison=comparison,
+            authority=RELATIVE_VALUE_AUTHORITY,
+            execution_eligible=False,
+            promotion_eligible=False,
+        )
+
     def pending(self) -> int:
         return self.settler.pending()
 

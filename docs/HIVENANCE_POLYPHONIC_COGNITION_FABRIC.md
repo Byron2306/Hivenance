@@ -821,3 +821,70 @@ Interpretation may change.
 Synthetic variation may branch.
 
 The observed bars do not mutate.
+
+## VNS Score Conductor — measure-by-measure listening
+
+**Implemented v1.**
+
+Current implementation:
+
+- \`strategies/relative_value_lab/vns_score_conductor.py\`;
+- \`scripts/run_phase1_observer.py\` now compiles each public observation cycle
+  into a canonical VNS measure and writes \`VNS_SCORE.json\`;
+- source remains the existing public-only Phase-1 observer;
+- no private exchange endpoint, wallet, order or execution path is introduced.
+
+The VNS Score Conductor translates one observation cycle into:
+
+1. a **Canonical Score Frame** containing observation-safe public-market fields;
+2. zero or more **VNS sensory accents** caused only by observed change from the
+   prior measure.
+
+The first measure creates no change pulse because there is no prior bar to
+compare against.
+
+### Contamination boundary
+
+The Phase-1 observer payload already contains both market observations and
+research interpretation fields. The conductor therefore admits only a bounded
+observation projection into \`observed_market\`.
+
+Embedded fields such as forecast direction, hypothesis interpretation and
+regime labels are not permitted to leak into the observed score page.
+
+They may later bind as \`interpreted_research\`, but cannot rewrite the observed
+measure.
+
+### Musical semantics
+
+\`\`\`text
+public market observation cycle
+        ↓
+Canonical Score Frame
+        ↓
+same immutable bar for every voice
+        ↕
+VNS change listener
+  price / spread / depth / freshness / continuity
+        ↓
+sensory accents
+        ↓
+Conducting Queen
+\`\`\`
+
+A VNS sensory accent carries the exact new frame's
+\`world_state_id/world_state_hash\`.
+
+The Queen now exposes \`conduct_against_frame(...)\`, which owns world binding so
+callers cannot silently substitute arbitrary score IDs/hashes.
+
+If the frame becomes stale, the Queen remains listening, but the stale score is
+heard as world-state / epoch tension rather than being treated as current.
+
+The distinction is constitutional:
+
+- **Canonical World Score** = what was observed on this page;
+- **VNS Score Conductor** = how the observed page changes from measure to measure;
+- **Conducting Queen** = how the organism listens and responds to the composition.
+
+No VNS measure or sensory pulse creates execution or promotion authority.

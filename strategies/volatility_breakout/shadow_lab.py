@@ -266,6 +266,22 @@ class ShadowFlightAgent:
             now_ts=time.time(),
             tolerance_sec=int(getattr(self.cfg, "phase5_shadow_settlement_tolerance_sec", 900) or 900),
         )
+        g1_reports = []
+        g1_error = None
+        try:
+            from strategies.relative_value_lab.g1_utility_campaign import G1CampaignPolicy, evaluate_store
+            g1_policy = G1CampaignPolicy(
+                min_pairs=int(getattr(self.cfg, "g1_min_pairs", 30) or 30),
+                confidence_z=float(getattr(self.cfg, "g1_confidence_z", 1.96) or 1.96),
+                extra_cost_stress_bps=float(getattr(self.cfg, "g1_extra_cost_stress_bps", 5.0) or 5.0),
+                min_mean_delta_bps=float(getattr(self.cfg, "g1_min_mean_delta_bps", 0.0) or 0.0),
+                max_delta_drawdown_bps=float(getattr(self.cfg, "g1_max_delta_drawdown_bps", 250.0) or 250.0),
+                min_distinct_worlds=int(getattr(self.cfg, "g1_min_distinct_worlds", 10) or 10),
+            )
+            g1_reports = [report.to_dict() for report in evaluate_store(self.data_store, policy=g1_policy)]
+        except Exception as exc:
+            g1_error = f"{type(exc).__name__}: {exc}"
+            logging.exception("G1 prospective organ utility evaluation failed")
         freeze_record = self.data_store.get_phase5_active_freeze()
         status = "LOCKED_AWAITING_HUMAN_APPROVAL"
         reasons: list[str] = []
@@ -425,6 +441,15 @@ class ShadowFlightAgent:
             "intents_created": intents_created,
             "intents_skipped": skipped,
             "settlement": settlement,
+            "g1_organ_utility": {
+                "reports": g1_reports,
+                "report_count": len(g1_reports),
+                "utility_candidates": sum(1 for row in g1_reports if row.get("classification") == "PROSPECTIVE_UTILITY_CANDIDATE"),
+                "error": g1_error,
+                "authority": "SYNTHESIS_G1_PROSPECTIVE_RESEARCH_ONLY",
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            },
             "readiness": readiness,
             "reasons": reasons,
             "commons_verifier_pool": readiness.get("commons_verifier_pool") or {},
@@ -440,6 +465,7 @@ class ShadowFlightAgent:
                 "freeze": payload["freeze"],
                 "intents_created": intents_created,
                 "settlement": settlement,
+                "g1_organ_utility": payload.get("g1_organ_utility"),
                 "readiness": readiness,
                 "commons_verifier_pool": payload.get("commons_verifier_pool"),
             }, sort_keys=True, default=str).encode("utf-8")
@@ -455,6 +481,8 @@ class ShadowFlightAgent:
             "run_id": run_id,
             "intents_created": intents_created,
             "settled": settlement.get("settled", 0),
+            "g1_report_count": len(g1_reports),
+            "g1_utility_candidates": sum(1 for row in g1_reports if row.get("classification") == "PROSPECTIVE_UTILITY_CANDIDATE"),
             "ready_for_phase6_review": bool(readiness.get("ready_for_phase6_review")),
             "execution_wired": False,
             "real_orders_submitted": 0,

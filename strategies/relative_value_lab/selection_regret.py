@@ -18,6 +18,7 @@ FREEZE_SCHEMA="hivenance_selector_opportunity_freeze_v1"
 SETTLEMENT_SCHEMA="hivenance_selector_opportunity_settlement_v2"
 REPORT_SCHEMA="hivenance_selector_regret_report_v2"
 DEFAULT_HORIZON_SECONDS=300
+FROZEN_FOLLOW_PROTOCOL="FROZEN_SYMBOL_FOLLOW_V1"
 
 
 def _json(v:Any)->str:
@@ -106,6 +107,31 @@ def ensure_tables(store:Any)->None:
             payload TEXT
         )""")
         store.conn.execute("CREATE INDEX IF NOT EXISTS idx_selector_settle_v2_symbol ON full_organism_selector_settlements_v2(symbol,settled_ts)")
+        store.conn.execute("""
+        CREATE TABLE IF NOT EXISTS full_organism_selector_follow_snapshots(
+            snapshot_id TEXT PRIMARY KEY,
+            cohort_run_id TEXT,
+            custody_ts REAL,
+            symbol TEXT,
+            price REAL,
+            spread_bps REAL,
+            depth_usd_25bps REAL,
+            data_quality REAL,
+            payload TEXT
+        )""")
+        store.conn.execute("CREATE INDEX IF NOT EXISTS idx_selector_follow_lookup ON full_organism_selector_follow_snapshots(cohort_run_id,symbol,custody_ts)")
+        store.conn.execute("""
+        CREATE TABLE IF NOT EXISTS full_organism_selector_settlements_v3(
+            settlement_id TEXT PRIMARY KEY,
+            freeze_id TEXT UNIQUE,
+            settled_ts REAL,
+            symbol TEXT,
+            selected INTEGER,
+            selector_rank INTEGER,
+            regime TEXT,
+            payload TEXT
+        )""")
+        store.conn.execute("CREATE INDEX IF NOT EXISTS idx_selector_settle_v3_symbol ON full_organism_selector_settlements_v3(symbol,settled_ts)")
         store.conn.commit()
 
 
@@ -118,6 +144,7 @@ def freeze_selector_universe(
     shortlist_size:int,
     horizon_seconds:int=DEFAULT_HORIZON_SECONDS,
     taker_fee_bps_per_side:float=20.0,
+    maturation_protocol:str="DYNAMIC_UNIVERSE_V1",
 )->dict[str,Any]:
     ensure_tables(store)
     observed_ts=float(observed_at_ms)/1000.0
@@ -158,6 +185,7 @@ def freeze_selector_universe(
                 "observed_ts":observed_ts,
                 "target_ts":target_ts,
                 "horizon_seconds":int(horizon_seconds),
+                "maturation_protocol":str(maturation_protocol),
                 "reference_price":_num(row.get("price")),
                 "spread_bps":_num(row.get("spread_bps"),0.0),
                 "depth_usd_25bps":_num(row.get("depth_usd_25bps"),0.0),
@@ -203,6 +231,7 @@ def freeze_selector_universe(
         "run_id":str(run_id),"created":created,"universe_n":len(rows),
         "selected_n":selected_count,"rejected_n":rejected_count,
         "horizon_seconds":int(horizon_seconds),
+        "maturation_protocol":str(maturation_protocol),
         "authority":AUTHORITY,"execution_eligible":False,"promotion_eligible":False,
     }
 
@@ -401,6 +430,261 @@ def selector_regret_report(store:Any, *, run_id:str|None=None)->dict[str,Any]:
         "ranking_regret_bps":ranking_regret,
         "selector_topk_mean_bps":selector_topk,
         "oracle_topk_mean_bps":oracle_topk,
+        "regime_specific":regimes,
+        "execution_eligible":False,"promotion_eligible":False,
+    }
+
+
+def _book_metrics_for_follow(book:Mapping[str,Any], band_bps:float=25.0)->tuple[float|None,float|None]:
+    bids=book.get("bids") or []
+    asks=book.get("asks") or []
+    if not bids or not asks:return None,None
+    try:
+        bid=float(bids[0][0]);ask=float(asks[0][0])
+    except Exception:return None,None
+    if bid<=0 or ask<=bid:return None,None
+    mid=(bid+ask)/2.0
+    spread=((ask-bid)/mid)*10000.0
+    band=float(band_bps)/10000.0
+    depth=0.0
+    for row in bids:
+        try:p=float(row[0]);q=float(row[1])
+        except Exception:continue
+        if p>=mid*(1.0-band):depth+=p*q
+    for row in asks:
+        try:p=float(row[0]);q=float(row[1])
+        except Exception:continue
+        if p<=mid*(1.0+band):depth+=p*q
+    return spread,depth
+
+
+def collect_frozen_selector_follow_tape(
+    *,
+    store:Any,
+    client:Any,
+    cohort_run_id:str,
+    now_ts:float,
+    orderbook_depth:int=50,
+)->dict[str,Any]:
+    """Collect future public tape for the exact frozen cohort, not a reranked universe."""
+    ensure_tables(store)
+    with store._lock:
+        rows=store.conn.execute(
+            "SELECT symbol,payload FROM full_organism_selector_freezes WHERE run_id=? ORDER BY selector_rank",
+            (str(cohort_run_id),),
+        ).fetchall()
+    symbols=[]
+    for symbol,raw in rows:
+        try:p=json.loads(raw or "{}")
+        except Exception:p={}
+        if str(p.get("maturation_protocol") or "")!=FROZEN_FOLLOW_PROTOCOL:
+            continue
+        symbols.append(str(symbol))
+    symbols=tuple(dict.fromkeys(symbols))
+    attempted=len(symbols);successful=0;errors=[]
+    try:
+        tickers=client.fetch_tickers() if hasattr(client,"fetch_tickers") else {}
+    except Exception as exc:
+        tickers={}
+        errors.append(f"fetch_tickers:{type(exc).__name__}:{exc}")
+    custody=float(now_ts)
+    for symbol in symbols:
+        try:
+            ticker=(tickers.get(symbol) if isinstance(tickers,dict) else None) or client.fetch_ticker(symbol)
+            price=_num((ticker or {}).get("last"))
+            book=client.fetch_order_book(symbol,limit=int(orderbook_depth))
+            spread,depth=_book_metrics_for_follow(book)
+            quality=1.0 if price is not None and spread is not None and depth is not None else 0.0
+            if price is None:
+                raise ValueError("price_unavailable")
+            payload={
+                "schema":"hivenance_selector_frozen_follow_snapshot_v1",
+                "authority":AUTHORITY,
+                "maturation_protocol":FROZEN_FOLLOW_PROTOCOL,
+                "cohort_run_id":str(cohort_run_id),
+                "custody_ts":custody,
+                "symbol":symbol,
+                "price":price,
+                "spread_bps":spread,
+                "depth_usd_25bps":depth,
+                "data_quality":quality,
+                "execution_eligible":False,
+                "promotion_eligible":False,
+            }
+            sid=_digest({"cohort":cohort_run_id,"symbol":symbol,"custody_ts":custody,"schema":payload["schema"]})
+            with store._lock:
+                store.conn.execute(
+                    """INSERT OR IGNORE INTO full_organism_selector_follow_snapshots
+                    (snapshot_id,cohort_run_id,custody_ts,symbol,price,spread_bps,depth_usd_25bps,data_quality,payload)
+                    VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (sid,str(cohort_run_id),custody,symbol,float(price),spread,depth,quality,_json(payload)),
+                )
+                store.conn.commit()
+            successful+=1
+        except Exception as exc:
+            errors.append(f"{symbol}:{type(exc).__name__}:{exc}")
+    return {
+        "schema":"hivenance_selector_frozen_follow_collection_v1",
+        "cohort_run_id":str(cohort_run_id),
+        "custody_ts":custody,
+        "symbols_attempted":attempted,
+        "symbols_successful":successful,
+        "errors":errors,
+        "authority":AUTHORITY,
+        "execution_eligible":False,
+        "promotion_eligible":False,
+    }
+
+
+def settle_selector_follow_cohort(
+    *,
+    store:Any,
+    cohort_run_id:str,
+    now_ts:float,
+    tolerance_sec:float=120.0,
+)->dict[str,Any]:
+    """Settle one frozen cohort only from its dedicated follow tape."""
+    ensure_tables(store)
+    with store._lock:
+        rows=store.conn.execute(
+            """SELECT f.payload FROM full_organism_selector_freezes f
+               LEFT JOIN full_organism_selector_settlements_v3 s ON s.freeze_id=f.freeze_id
+               WHERE f.run_id=? AND s.freeze_id IS NULL
+               ORDER BY f.selector_rank""",
+            (str(cohort_run_id),),
+        ).fetchall()
+    examined=settled=deferred=0
+    status_counts={}
+    for (raw,) in rows:
+        examined+=1
+        try:p=json.loads(raw or "{}")
+        except Exception:
+            deferred+=1;status_counts["invalid_freeze_payload"]=status_counts.get("invalid_freeze_payload",0)+1;continue
+        if str(p.get("maturation_protocol") or "")!=FROZEN_FOLLOW_PROTOCOL:
+            deferred+=1;status_counts["wrong_maturation_protocol"]=status_counts.get("wrong_maturation_protocol",0)+1;continue
+        target=float(p.get("target_ts") or 0.0)
+        symbol=str(p.get("symbol") or "")
+        with store._lock:
+            row=store.conn.execute(
+                """SELECT custody_ts,price,spread_bps,depth_usd_25bps,data_quality,payload
+                   FROM full_organism_selector_follow_snapshots
+                   WHERE cohort_run_id=? AND symbol=? AND custody_ts>=? AND custody_ts<=?
+                   ORDER BY custody_ts ASC LIMIT 1""",
+                (str(cohort_run_id),symbol,target,target+float(tolerance_sec)),
+            ).fetchone()
+        if row is None:
+            deferred+=1
+            reason="follow_tape_window_open" if float(now_ts)<=target+float(tolerance_sec) else "follow_tape_window_missed"
+            status_counts[reason]=status_counts.get(reason,0)+1
+            continue
+        custody_ts,exit_price,exit_spread,exit_depth,quality,_raw=row
+        entry=float(_num(p.get("reference_price"),0.0) or 0.0)
+        exit_price=float(_num(exit_price,0.0) or 0.0)
+        if entry<=0 or exit_price<=0:
+            deferred+=1;status_counts["invalid_price"]=status_counts.get("invalid_price",0)+1;continue
+        gross_abs=abs((exit_price/entry)-1.0)*10000.0
+        predicted_cost=float(_num(p.get("predicted_roundtrip_cost_bps"),0.0) or 0.0)
+        entry_spread=float(_num(p.get("spread_bps"),0.0) or 0.0)
+        entry_depth=max(0.0,float(_num(p.get("depth_usd_25bps"),0.0) or 0.0))
+        exit_spread=float(_num(exit_spread,0.0) or 0.0)
+        exit_depth=max(0.0,float(_num(exit_depth,0.0) or 0.0))
+        notional=10.0
+        entry_impact=25.0*math.sqrt(min(1.0,notional/max(entry_depth,notional,1e-9)))
+        exit_impact=25.0*math.sqrt(min(1.0,notional/max(exit_depth,notional,1e-9)))
+        entry_variable=entry_spread+2.0*entry_impact
+        fixed_fee=max(0.0,predicted_cost-entry_variable)
+        realized_cost=entry_spread+exit_spread+entry_impact+exit_impact+fixed_fee
+        net_opportunity=gross_abs-realized_cost
+        settlement={
+            "schema":"hivenance_selector_opportunity_settlement_v3",
+            "authority":AUTHORITY,
+            "maturation_protocol":FROZEN_FOLLOW_PROTOCOL,
+            "freeze_id":p["freeze_id"],"run_id":p["run_id"],"symbol":symbol,
+            "selected":bool(p.get("selected")),"selector_rank":int(p.get("selector_rank") or 0),
+            "selector_score":float(p.get("selector_score") or 0.0),
+            "blind_rank":int(p.get("blind_rank") or 0),"blind_selected":bool(p.get("blind_selected")),
+            "regime":str(p.get("regime") or "unknown"),
+            "observed_ts":float(p.get("observed_ts") or 0),"target_ts":target,
+            "exit_custody_ts":float(custody_ts),
+            "settlement_clock":"FROZEN_COHORT_FOLLOW_CUSTODY_TS",
+            "entry_price":entry,"exit_price":exit_price,
+            "gross_absolute_move_bps":gross_abs,
+            "realized_roundtrip_cost_bps":realized_cost,
+            "net_opportunity_bps":net_opportunity,
+            "profitable_opportunity":net_opportunity>0,
+            "follow_data_quality":float(_num(quality,0.0) or 0.0),
+            "canonical_world_state_id":p.get("canonical_world_state_id"),
+            "canonical_world_state_hash":p.get("canonical_world_state_hash"),
+            "evidence_root":p.get("evidence_root"),
+            "execution_eligible":False,"promotion_eligible":False,
+        }
+        sid=_digest({"freeze_id":p["freeze_id"],"exit_custody_ts":custody_ts,"schema":settlement["schema"]})
+        settlement["settlement_id"]=sid
+        with store._lock:
+            store.conn.execute(
+                """INSERT OR IGNORE INTO full_organism_selector_settlements_v3
+                (settlement_id,freeze_id,settled_ts,symbol,selected,selector_rank,regime,payload)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                (sid,p["freeze_id"],float(now_ts),symbol,1 if p.get("selected") else 0,
+                 int(p.get("selector_rank") or 0),str(p.get("regime") or "unknown"),_json(settlement)),
+            )
+            store.conn.commit()
+        settled+=1
+        status_counts["settled"]=status_counts.get("settled",0)+1
+    return {
+        "cohort_run_id":str(cohort_run_id),"examined":examined,"settled":settled,"deferred":deferred,
+        "status_counts":status_counts,"execution_eligible":False,"promotion_eligible":False,
+    }
+
+
+def selector_regret_report_v3(store:Any, *, run_id:str)->dict[str,Any]:
+    ensure_tables(store)
+    with store._lock:
+        rows=store.conn.execute(
+            """SELECT s.payload FROM full_organism_selector_settlements_v3 s
+               JOIN full_organism_selector_freezes f ON f.freeze_id=s.freeze_id
+               WHERE f.run_id=?""",(str(run_id),)
+        ).fetchall()
+    settled=[]
+    for (raw,) in rows:
+        try:settled.append(json.loads(raw or "{}"))
+        except Exception:pass
+    selected=[x for x in settled if x.get("selected") is True]
+    rejected=[x for x in settled if x.get("selected") is False]
+    blind=[x for x in settled if x.get("blind_selected") is True]
+    def mean(xs,key):
+        vals=[float(x.get(key) or 0.0) for x in xs]
+        return sum(vals)/len(vals) if vals else 0.0
+    sm=mean(selected,"net_opportunity_bps");rm=mean(rejected,"net_opportunity_bps");bm=mean(blind,"net_opportunity_bps")
+    k=len(selected)
+    ranked=sorted(settled,key=lambda x:int(x.get("selector_rank") or 10**9))
+    oracle=sorted(settled,key=lambda x:float(x.get("net_opportunity_bps") or 0.0),reverse=True)[:k] if k else []
+    positive_all=[x for x in settled if float(x.get("net_opportunity_bps") or 0.0)>0]
+    positive_rej=[x for x in rejected if float(x.get("net_opportunity_bps") or 0.0)>0]
+    captured=sum(1 for x in selected if float(x.get("net_opportunity_bps") or 0.0)>0)
+    regimes={}
+    for rg in sorted({str(x.get("regime") or "unknown") for x in settled}):
+        a=[x for x in selected if str(x.get("regime") or "unknown")==rg]
+        b=[x for x in rejected if str(x.get("regime") or "unknown")==rg]
+        regimes[rg]={
+            "selected_n":len(a),"rejected_n":len(b),
+            "selected_mean_net_opportunity_bps":mean(a,"net_opportunity_bps"),
+            "rejected_mean_net_opportunity_bps":mean(b,"net_opportunity_bps"),
+            "selector_delta_bps":(mean(a,"net_opportunity_bps")-mean(b,"net_opportunity_bps")) if a and b else None,
+        }
+    return {
+        "schema":"hivenance_selector_regret_report_v3",
+        "authority":AUTHORITY,"run_id":str(run_id),
+        "maturation_protocol":FROZEN_FOLLOW_PROTOCOL,
+        "settled_n":len(settled),"selected_n":len(selected),"rejected_n":len(rejected),
+        "selected_mean_net_opportunity_bps":sm,
+        "rejected_mean_net_opportunity_bps":rm,
+        "selected_minus_rejected_bps":sm-rm if selected and rejected else None,
+        "blind_selected_mean_net_opportunity_bps":bm,
+        "selector_minus_blind_bps":sm-bm if selected and blind else None,
+        "opportunity_capture_rate":captured/len(positive_all) if positive_all else 0.0,
+        "missed_opportunity_rate":len(positive_rej)/len(positive_all) if positive_all else 0.0,
+        "ranking_regret_bps":max(0.0,mean(oracle,"net_opportunity_bps")-mean(ranked[:k],"net_opportunity_bps")) if k else 0.0,
         "regime_specific":regimes,
         "execution_eligible":False,"promotion_eligible":False,
     }

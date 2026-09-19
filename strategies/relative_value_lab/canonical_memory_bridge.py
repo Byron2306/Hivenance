@@ -15,6 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence
 from agents.market_memory import MarketMemory
 from agents.world_state import WorldStateBuilder
 from .world_score import CanonicalScoreFrame, ScoreObservation, CanonicalWorldScore
+from .world_graph import WorldGraph, WorldGraphNode
 
 AUTHORITY = "PUBLIC_MARKET_RESEARCH_CANONICAL_WORLD_BINDING_ONLY"
 
@@ -254,3 +255,38 @@ def validate_binding(
     except Exception as exc:
         reasons.append(f"canonical_binding_frame_invalid:{type(exc).__name__}")
     return not reasons, tuple(reasons)
+
+
+def world_graph_root_from_binding(
+    binding: Mapping[str, Any],
+    *,
+    created_at_ms: int | None = None,
+) -> tuple[WorldGraph, WorldGraphNode]:
+    """Create the first interpreted WorldGraph node bound to the canonical frame."""
+    frame = frame_from_binding(binding)
+    page = binding.get("world_state_page")
+    if not isinstance(page, Mapping):
+        raise ValueError("canonical_binding_world_state_page_missing")
+    feature_root = str(binding.get("feature_memory_line_id") or "")
+    if not feature_root.startswith("sha256:"):
+        raise ValueError("canonical_binding_feature_root_invalid")
+    at = int(created_at_ms if created_at_ms is not None else binding.get("observed_at_ms") or frame.assembled_at_ms)
+    graph = WorldGraph(frame)
+    node = graph.add_node(
+        organ_id="world_state_builder",
+        family="WORLD_STATE",
+        created_at_ms=at,
+        evidence_roots=(feature_root,),
+        lineage_id="hivenance.world_state_builder.v1",
+        transformation_id="market_memory_to_world_state_page.v1",
+        payload={
+            "world_state_page": dict(page),
+            "canonical_world_state_id": frame.world_state_id,
+            "canonical_world_state_hash": frame.world_state_hash,
+            "lineage_digest": binding.get("lineage_digest"),
+        },
+        freshness=1.0 if frame.is_fresh(at) else 0.0,
+        uncertainty=0.0,
+        synthetic=False,
+    )
+    return graph, node

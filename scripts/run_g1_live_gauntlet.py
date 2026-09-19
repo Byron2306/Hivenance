@@ -163,7 +163,11 @@ def main()->int:
             remaining=max(0.0,deadline-cycle_start)
             minimum_budget=max(30.0,(last_cycle_runtime or 0.0)*1.10)
             if cycles>0 and remaining<minimum_budget:
-                print(f"[GAUNTLET] no new observation cycle: remaining={remaining:.1f}s budget={minimum_budget:.1f}s",flush=True)
+                print(f"[GAUNTLET] no new full observation cycle: remaining={remaining:.1f}s budget={minimum_budget:.1f}s",flush=True)
+                while not STOP and time.monotonic()<deadline:
+                    sleep_for=min(5.0,max(0.0,deadline-time.monotonic()))
+                    if sleep_for<=0:break
+                    time.sleep(sleep_for)
                 break
             cycles+=1
             print(f"[GAUNTLET] cycle={cycles} start remaining={remaining:.1f}s",flush=True)

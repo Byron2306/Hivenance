@@ -2,6 +2,7 @@ import time
 import statistics
 import json
 import os
+import math
 from typing import Any, Dict, List, Optional
 
 from agents.dex_margin_oracle import DexMarginOracle
@@ -53,6 +54,58 @@ class CoinSelector:
             return 0.0
         return float(statistics.pstdev(rets))
 
+    @staticmethod
+    def _return_bps(closes: List[float], bars: int) -> Optional[float]:
+        if bars <= 0 or len(closes) <= bars:
+            return None
+        p0=float(closes[-bars-1]); p1=float(closes[-1])
+        if p0 <= 0 or p1 <= 0:
+            return None
+        return (p1 / p0 - 1.0) * 10000.0
+
+    @staticmethod
+    def _trend_efficiency(closes: List[float], bars: int) -> float:
+        if bars <= 1 or len(closes) <= bars:
+            return 0.0
+        xs=[float(x) for x in closes[-bars-1:] if float(x)>0]
+        if len(xs) < 3:
+            return 0.0
+        displacement=abs(xs[-1]-xs[0])
+        path=sum(abs(xs[i]-xs[i-1]) for i in range(1,len(xs)))
+        return max(0.0,min(1.0,displacement/path)) if path>0 else 0.0
+
+    def _temporal_profile(self, closes: List[float], timeframe: str) -> Dict[str, Any]:
+        # Convert a bar timeframe into approximate minute coverage. The selector
+        # remains useful on non-minute timeframes by reporting what is actually
+        # available instead of inventing history.
+        raw=str(timeframe or "1m").lower()
+        unit=raw[-1:] if raw else "m"
+        try: amount=max(1,int(raw[:-1] or "1"))
+        except Exception: amount=1
+        minutes_per_bar=amount * (60 if unit=="h" else 1440 if unit=="d" else 1)
+        def bars_for(minutes:int)->int:
+            return max(1,int(round(minutes/max(1,minutes_per_bar))))
+        horizons={"15m":15,"1h":60,"4h":240,"24h":1440,"7d":10080}
+        returns={}
+        readiness={}
+        for name,minutes in horizons.items():
+            bars=bars_for(minutes)
+            value=self._return_bps(closes,bars)
+            returns[name]=round(value,6) if value is not None else None
+            readiness[name]=value is not None
+        signs=[1 if v>0 else -1 if v<0 else 0 for v in returns.values() if v is not None]
+        alignment=abs(sum(signs))/len(signs) if signs else 0.0
+        trend_eff=self._trend_efficiency(closes,min(len(closes)-1,bars_for(240))) if len(closes)>2 else 0.0
+        return {
+            "timeframe":raw,
+            "bars":len(closes),
+            "coverage_minutes":int(max(0,len(closes)-1)*minutes_per_bar),
+            "returns_bps":returns,
+            "readiness":readiness,
+            "directional_alignment":round(alignment,6),
+            "trend_efficiency":round(trend_eff,6),
+        }
+
     def _load_symbol_memory(self) -> Dict[str, Any]:
         path = getattr(self.cfg, "symbol_memory_path", "data/symbol_memory.json")
         try:
@@ -76,6 +129,7 @@ class CoinSelector:
         vol = max(0.0, float(c.get("quote_volume") or 0.0))
         spread = max(0.0, float(c.get("spread_pct") or 0.0))
         volatility = max(0.0, float(c.get("volatility") or 0.0))
+        temporal = c.get("temporal_profile") if isinstance(c.get("temporal_profile"), dict) else {}
         win_rate = float(mem.get("win_rate", 0.5) if mem.get("win_rate") is not None else 0.5)
         avg_slippage = max(0.0, float(mem.get("avg_slippage_pct") or 0.0))
         max_dd = max(0.0, float(mem.get("max_drawdown_pct") or 0.0))
@@ -111,6 +165,13 @@ class CoinSelector:
         else:
             dex_quality_score = 0.0
         memory_score = max(0.0, min(1.0, 0.55 * win_rate + 0.25 * (1.0 - min(1.0, avg_slippage / max_spread)) + 0.20 * (1.0 - min(1.0, max_dd / 20.0))))
+        # Temporal context is deliberately descriptive, not a directional alpha
+        # oracle. Reward coherent movement only slightly and keep liquidity,
+        # spread and realized memory dominant.
+        temporal_score=max(0.0,min(1.0,
+            0.55*float(temporal.get("directional_alignment") or 0.0)
+            +0.45*float(temporal.get("trend_efficiency") or 0.0)
+        ))
         reject_penalty = min(0.35, rejects * 0.03)
         core_bonus = 0.12 if base in core_assets else 0.0
         experimental_penalty = 0.10 if base in experimental_assets else 0.0
@@ -132,7 +193,8 @@ class CoinSelector:
                 0.30 * liquidity_score
                 + 0.25 * spread_score
                 + 0.20 * volatility_score
-                + 0.20 * memory_score
+                + 0.17 * memory_score
+                + 0.03 * temporal_score
                 + core_bonus
                 - experimental_penalty
                 - reject_penalty
@@ -154,6 +216,7 @@ class CoinSelector:
                 "dex_quality": round(dex_quality_score, 4),
                 "exit": round(exit_score, 4),
                 "memory": round(memory_score, 4),
+                "temporal_context": round(temporal_score, 4),
                 "core_bonus": core_bonus,
                 "experimental_penalty": experimental_penalty,
                 "reject_penalty": reject_penalty,
@@ -264,8 +327,10 @@ class CoinSelector:
                 ohlcv = client.fetch_ohlcv(c["symbol"], timeframe=tf, limit=lookback)
                 closes = [float(r[4]) for r in ohlcv]
                 c["volatility"] = self._volatility(closes)
+                c["temporal_profile"] = self._temporal_profile(closes, tf)
             except Exception:
                 c["volatility"] = 0.0
+                c["temporal_profile"] = {"timeframe": str(tf), "bars": 0, "coverage_minutes": 0, "returns_bps": {}, "readiness": {}, "directional_alignment": 0.0, "trend_efficiency": 0.0}
             if max_volatility and c["volatility"] > max_volatility and not harvest_mode:
                 c["too_volatile"] = True
 

@@ -39,6 +39,7 @@ class VNSScorePhrase:
     measure_novelty:float
     echo_pressure:float
     source_churn:float
+    attention_churn:float
     freshness_decay:float
     crescendo:float
     decrescendo:float
@@ -97,6 +98,40 @@ class VNSScoreStream:
         return {(p.scope,p.pulse_class) for p in measure.pulses}
 
     @staticmethod
+    def _observed_by_scope(measure:VNSMeasure)->dict[str,dict[str,float]]:
+        keys=("price","spread_bps","depth_usd_25bps","data_quality","freshness_sec","continuity_ratio")
+        out={}
+        for obs in measure.frame.observations:
+            payload=obs.payload if isinstance(obs.payload,dict) else dict(obs.payload)
+            out[obs.scope]={
+                key:float(payload[key])
+                for key in keys
+                if isinstance(payload.get(key),(int,float))
+            }
+        return out
+
+    @staticmethod
+    def _shared_scope_modulation(left:VNSMeasure,right:VNSMeasure)->float:
+        a=VNSScoreStream._observed_by_scope(left)
+        b=VNSScoreStream._observed_by_scope(right)
+        shared=set(a)&set(b)
+        if not shared:
+            return 0.0
+        per_scope=[]
+        for scope in shared:
+            keys=set(a[scope])&set(b[scope])
+            if not keys:
+                continue
+            distances=[]
+            for key in keys:
+                av=float(a[scope][key]); bv=float(b[scope][key])
+                scale=max(abs(av),abs(bv),1e-9)
+                distances.append(min(1.0,abs(bv-av)/scale))
+            if distances:
+                per_scope.append(statistics.fmean(distances))
+        return _clamp(statistics.fmean(per_scope) if per_scope else 0.0)
+
+    @staticmethod
     def _observed_vector(measure:VNSMeasure)->dict[str,float]:
         keys=("price","spread_bps","depth_usd_25bps","data_quality","freshness_sec","continuity_ratio")
         buckets={key:[] for key in keys}
@@ -141,7 +176,7 @@ class VNSScoreStream:
                 temporal_texture=texture,
                 mean_pulse_energy=0.0,pulse_density=0.0,pulse_recurrence=0.0,
                 rest_density=1.0,measure_novelty=0.0,echo_pressure=0.0,
-                source_churn=0.0,freshness_decay=0.0,crescendo=0.0,
+                source_churn=0.0,attention_churn=0.0,freshness_decay=0.0,crescendo=0.0,
                 decrescendo=0.0,modulation=0.0,phrase_energy=0.0,
                 recent_measure_ids=(),
             )
@@ -156,6 +191,7 @@ class VNSScoreStream:
         novelty_vals=[]
         source_churn_vals=[]
         freshness_vals=[]
+        attention_churn_vals=[]
         modulation_vals=[]
         for prev,curr in zip(rows,rows[1:]):
             ps=self._pulse_signature(prev)
@@ -169,19 +205,21 @@ class VNSScoreStream:
             prev_fresh=prev.fresh_candidate_count/max(1,prev.candidate_count)
             curr_fresh=curr.fresh_candidate_count/max(1,curr.candidate_count)
             freshness_vals.append(max(0.0,prev_fresh-curr_fresh))
-            modulation_vals.append(self._jaccard_distance(
+            attention_churn_vals.append(self._jaccard_distance(
                 self._scope_signature(prev),self._scope_signature(curr)
             ))
+            modulation_vals.append(self._shared_scope_modulation(prev,curr))
 
         feature_novelty=statistics.fmean(novelty_vals) if novelty_vals else 0.0
         measure_novelty=_clamp(
             .65*feature_novelty
             +.20*(statistics.fmean(source_churn_vals) if source_churn_vals else 0.0)
-            +.15*(statistics.fmean(modulation_vals) if modulation_vals else 0.0)
+            +.15*(statistics.fmean(attention_churn_vals) if attention_churn_vals else 0.0)
         )
         pulse_recurrence=statistics.fmean(pulse_recurrence_vals) if pulse_recurrence_vals else 0.0
         echo_pressure=_clamp(pulse_recurrence*(1.0-measure_novelty))
         source_churn=statistics.fmean(source_churn_vals) if source_churn_vals else 0.0
+        attention_churn=statistics.fmean(attention_churn_vals) if attention_churn_vals else 0.0
         freshness_decay=statistics.fmean(freshness_vals) if freshness_vals else 0.0
         modulation=statistics.fmean(modulation_vals) if modulation_vals else 0.0
 
@@ -224,6 +262,7 @@ class VNSScoreStream:
             measure_novelty=round(measure_novelty,6),
             echo_pressure=round(echo_pressure,6),
             source_churn=round(source_churn,6),
+            attention_churn=round(attention_churn,6),
             freshness_decay=round(freshness_decay,6),
             crescendo=round(crescendo,6),
             decrescendo=round(decrescendo,6),

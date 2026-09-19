@@ -121,6 +121,10 @@ def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
   bs=p.get("ablated_settlement") if isinstance(p.get("ablated_settlement"),dict) else {}
   q["full_status"]=str(fs.get("status") or "")
   q["ablated_status"]=str(bs.get("status") or "")
+  q["full_gross_bps"]=float(fs.get("gross_directional_return_bps") or fs.get("gross_return_bps") or 0.0)
+  q["ablated_gross_bps"]=float(bs.get("gross_directional_return_bps") or bs.get("gross_return_bps") or 0.0)
+  q["full_cost_bps"]=float(fs.get("observed_total_cost_bps") or fs.get("realized_cost_bps") or 0.0)
+  q["ablated_cost_bps"]=float(bs.get("observed_total_cost_bps") or bs.get("realized_cost_bps") or 0.0)
   out.append(q)
  return tuple(out)
 
@@ -245,3 +249,30 @@ def evaluate_store_settlement_status(data_store:Any,*,campaign_id:str|None=None,
  rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
  organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
  return tuple(settlement_status_diagnostic(rows,organ_id=o) for o in organs)
+
+
+def veto_economics_diagnostic(rows:Iterable[Mapping[str,Any]],*,organ_id:str)->dict[str,Any]:
+ xs=[dict(x) for x in rows if str(x.get("organ_id") or "")==str(organ_id)
+     and str(x.get("evidence_class") or "")=="PROSPECTIVE"]
+ filled=[x for x in xs if str(x.get("ablated_status") or "")=="SETTLED"]
+ gross=[float(x.get("ablated_gross_bps") or 0.0) for x in filled]
+ cost=[float(x.get("ablated_cost_bps") or 0.0) for x in filled]
+ net=[float(x.get("ablated_net_bps") or 0.0) for x in filled]
+ return {
+  "organ_id":str(organ_id),"paired_n":len(xs),"blind_filled_n":len(filled),
+  "blind_fill_rate":(len(filled)/len(xs)) if xs else 0.0,
+  "blind_mean_gross_bps":mean(gross) if gross else 0.0,
+  "blind_mean_cost_bps":mean(cost) if cost else 0.0,
+  "blind_mean_net_bps":mean(net) if net else 0.0,
+  "blind_gross_positive":sum(x>0 for x in gross),
+  "blind_net_positive":sum(x>0 for x in net),
+  "blind_net_negative":sum(x<0 for x in net),
+  "authority":"POST_HOC_VETO_ECONOMICS_DIAGNOSTIC_ONLY",
+  "changes_frozen_classification":False,
+ }
+
+def evaluate_store_veto_economics(data_store:Any,*,campaign_id:str|None=None,
+ target_id:str|None=None)->tuple[dict[str,Any],...]:
+ rows=load_prospective_outcomes(data_store,campaign_id=campaign_id,target_id=target_id)
+ organs=sorted({str(x.get("organ_id") or "") for x in rows if x.get("organ_id")})
+ return tuple(veto_economics_diagnostic(rows,organ_id=o) for o in organs)

@@ -20,11 +20,27 @@ def challenge_forecast(forecast:Forecast,features:Any)->Forecast:
  families=set(c.get("families") or ())
  reasons=[]
  # Only evidence-semantic challenge gates. No directional bonus is created.
+ payloads=c.get("family_payloads") if isinstance(c.get("family_payloads"),dict) else {}
+ def first(family):
+  xs=payloads.get(family) or ()
+  return xs[0] if xs and isinstance(xs[0],dict) else {}
  if forecast.hypothesis=="breakout_continuation":
   if features.order_flow_imbalance is not None and "FLOW" not in families:
    reasons.append("g0_flow_not_corroborated")
   if features.book_imbalance is not None and "LIQUIDITY" not in families:
    reasons.append("g0_liquidity_not_corroborated")
+  if "HORIZON" not in families:
+   reasons.append("g0_horizon_not_corroborated")
+  else:
+   h=first("HORIZON");alignment=str(h.get("alignment") or "")
+   wanted="ALIGNED_UP" if forecast.direction=="UP" else "ALIGNED_DOWN"
+   if alignment not in {wanted,"NEUTRAL"}:reasons.append("g0_horizon_conflict")
+  if "TEMPORAL_PARTICIPATION" not in families:
+   reasons.append("g0_temporal_participation_not_corroborated")
+  else:
+   t=first("TEMPORAL_PARTICIPATION");state=str(t.get("activity_state") or "")
+   if state not in {"PARTICIPATION_NORMAL","PARTICIPATION_ELEVATED"}:
+    reasons.append("g0_temporal_participation_weak")
  if forecast.hypothesis=="exhaustion_mean_reversion":
   if features.book_imbalance is not None and "LIQUIDITY" not in families:
    reasons.append("g0_liquidity_not_corroborated")

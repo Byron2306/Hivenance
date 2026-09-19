@@ -5,7 +5,10 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Optional, List
-from binance.client import Client
+try:
+    from binance.client import Client
+except Exception:
+    Client = None
 from agents.coordinator import SwarmCoordinator
 from agents.tracing import setup_tracing
 from agents.logging_analytics import setup_logging
@@ -1039,15 +1042,19 @@ def main():
             client = None
     elif cfg.exchange == "binance":
         if cfg.binance_api_key and cfg.binance_api_secret:
-            try:
-                client = Client(cfg.binance_api_key, cfg.binance_api_secret)
-                # Testnet routing
-                if cfg.binance_testnet:
-                    client.API_URL = "https://testnet.binance.vision/api"
-                logging.info("Binance client initialized successfully")
-            except Exception as e:
-                logging.warning(f"Failed to initialize Binance client: {e}")
+            if Client is None:
+                logging.warning("python-binance is not installed; Binance client disabled")
                 client = None
+            else:
+                try:
+                    client = Client(cfg.binance_api_key, cfg.binance_api_secret)
+                # Testnet routing
+                    if cfg.binance_testnet:
+                        client.API_URL = "https://testnet.binance.vision/api"
+                    logging.info("Binance client initialized successfully")
+                except Exception as e:
+                    logging.warning(f"Failed to initialize Binance client: {e}")
+                    client = None
         else:
             logging.info("No Binance API keys provided - trading agents will be disabled")
     else:  # Defensive: apply_phase0_safety_policy should already reject this.

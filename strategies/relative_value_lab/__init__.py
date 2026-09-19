@@ -190,6 +190,9 @@ __all__ = [
     "PollenProfitBook",
     "QueenPollenConductor",
     "QueenPollenIssueReceipt",
+    "ProspectivePollenPaperRuntime",
+    "PaperSettlementBatch",
+    "RegisteredPaperHypothesis",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -273,4 +276,9 @@ from .pollen_profit_lab import (
     PollenProfitComparison,
     PollenProfitExperiment,
     settle_pollen_from_forecast,
+)
+from .pollen_paper_runtime import (
+    RegisteredPaperHypothesis,
+    PaperSettlementBatch,
+    ProspectivePollenPaperRuntime,
 )

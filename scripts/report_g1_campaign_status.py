@@ -111,6 +111,14 @@ def main()->int:
   if r.get("paired_n"):
    print(f"  {int(r['stratum']):5d}s {r['organ_id']:28s} n={r['paired_n']:4d} mean={r['mean_delta_bps']:+.3f} "
          f"CI=[{r['ci_lower_bps']:+.3f},{r['ci_upper_bps']:+.3f}] stress={r['stressed_mean_delta_bps']:+.3f} {r['classification']}")
+ print("WORLD-CLUSTER ROBUSTNESS")
+ for r in payload.get("world_cluster_diagnostics",()):
+  print(f"  {r['organ_id']:28s} worlds={r['world_n']:3d} pairs={r['pair_n']:4d} "
+        f"mean_world={r['mean_world_delta_bps']:+.3f} CI=[{r['ci_lower_bps']:+.3f},{r['ci_upper_bps']:+.3f}] "
+        f"stress={r['stressed_mean_world_delta_bps']:+.3f} robust_positive={r['robust_positive']}")
+ print("SETTLEMENT STATUS PAIRS")
+ for r in payload.get("settlement_status_diagnostics",()):
+  print(f"  {r['organ_id']:28s} n={r['paired_n']:4d} {json.dumps(r['status_pairs'],sort_keys=True)}")
  return 0
 
 if __name__=="__main__":raise SystemExit(main())

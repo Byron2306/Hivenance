@@ -41,6 +41,7 @@ def forecast(fid="f1",ts=1000):
         calibration_state="TEST",
         abstain=False,
         reason="test",
+        inputs={"hedge_alpha": 0.0, "hedge_ratio": 1.0},
         direction="LONG_A_SHORT_B",
         authority=RELATIVE_VALUE_AUTHORITY,
         execution_eligible=False,
@@ -137,3 +138,20 @@ def test_runtime_ledger_remains_research_only(tmp_path: Path):
     assert "execution_eligible" in text
     assert '"execution_eligible": false' in text
     assert '"promotion_eligible": false' in text
+
+def test_runtime_settles_raw_prices_with_frozen_relationship():
+    runtime=ProspectivePollenPaperRuntime()
+    runtime.register(
+        forecast=forecast(),
+        state=state(1000,0.0),
+        quorum=quorum(last_note=900),
+    )
+    batch=runtime.settle_prices(
+        pair_id="A__B",
+        timestamp_ms=11000,
+        price_a=101.0,
+        price_b=100.0,
+    )
+    assert len(batch.settlements)==1
+    assert batch.comparison.control.selected_count==1
+    assert batch.comparison.treatment.selected_count==1

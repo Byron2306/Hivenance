@@ -33,27 +33,38 @@ def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ec
  reversion=hypothesis in _REVERSION
  probe=hypothesis in _UNGROUNDED_PROBE
  if organ_scope=="edge_ecology":
-  if continuation or probe:
-   if features.order_flow_imbalance is not None and "FLOW" not in families:
-    reasons.append("g0_flow_not_corroborated")
-   if features.book_imbalance is not None and "LIQUIDITY" not in families:
-    reasons.append("g0_liquidity_not_corroborated")
-  if reversion:
-   if features.book_imbalance is not None and "LIQUIDITY" not in families:
-    reasons.append("g0_liquidity_not_corroborated")
+  # Veto-only semantics: absence of Edge evidence is not itself a veto.
+  # Only evidence actually present in the FULL_HIVE path may contradict the proposal.
+  if "LIQUIDITY" in families:
+   liq=first("LIQUIDITY")
+   imbalance=liq.get("imbalance")
+   if not isinstance(imbalance,(int,float)):
+    imbalance=features.book_imbalance
+   if isinstance(imbalance,(int,float)) and forecast.direction in {"UP","DOWN"}:
+    signed=float(imbalance) if forecast.direction=="UP" else -float(imbalance)
+    if signed < -0.10:
+     reasons.append("g0_liquidity_direction_conflict")
+  if "FLOW" in families:
+   flow=first("FLOW")
+   flow_imbalance=flow.get("imbalance")
+   if not isinstance(flow_imbalance,(int,float)):
+    flow_imbalance=features.order_flow_imbalance
+   if isinstance(flow_imbalance,(int,float)) and forecast.direction in {"UP","DOWN"}:
+    signed=float(flow_imbalance) if forecast.direction=="UP" else -float(flow_imbalance)
+    if signed < -0.10:
+     reasons.append("g0_flow_direction_conflict")
  elif organ_scope=="horizon_context" and (continuation or probe):
-  if "HORIZON" not in families:
-   reasons.append("g0_horizon_not_corroborated")
-  else:
+  # Missing horizon evidence is neutral in an ablation. Present contradictory
+  # horizon evidence may veto.
+  if "HORIZON" in families:
    h=first("HORIZON");alignment=str(h.get("alignment") or "")
    wanted="ALIGNED_UP" if forecast.direction=="UP" else "ALIGNED_DOWN"
-   if alignment not in {wanted,"NEUTRAL"}:reasons.append("g0_horizon_conflict")
+   if alignment and alignment not in {wanted,"NEUTRAL"}:reasons.append("g0_horizon_conflict")
  elif organ_scope=="temporal_participation_bee" and (continuation or probe):
-  if "TEMPORAL_PARTICIPATION" not in families:
-   reasons.append("g0_temporal_participation_not_corroborated")
-  else:
+  # Again, missing organ evidence is neutral; only an observed weak state vetoes.
+  if "TEMPORAL_PARTICIPATION" in families:
    t=first("TEMPORAL_PARTICIPATION");state=str(t.get("activity_state") or "")
-   if state not in {"PARTICIPATION_NORMAL","PARTICIPATION_ELEVATED"}:
+   if state and state not in {"PARTICIPATION_NORMAL","PARTICIPATION_ELEVATED"}:
     reasons.append("g0_temporal_participation_weak")
  elif organ_scope=="learning_memory":
   if "LEARNING" in families:

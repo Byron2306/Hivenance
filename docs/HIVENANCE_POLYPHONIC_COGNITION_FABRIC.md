@@ -987,3 +987,100 @@ same instrument changes its line
 The distinction matters because selector rotation can be high even when the
 underlying market feature trajectory for persistent symbols is comparatively
 stable.
+
+## Queen Pollen Economy + Metatron Polyphonic Quorum
+
+**Implemented v1.**
+
+HiveNance quorum does **not** mean majority agreement.
+
+Canonical definition:
+
+> Quorum is a world-bound, temporally synchronized, independently sourced,
+> choreographed ensemble performing the same research phrase.
+
+A valid quorum may contain:
+
+- support;
+- dissent;
+- falsification;
+- abstention;
+- settlement voices;
+
+at the same time.
+
+Quorum listens for:
+
+- exact canonical world-state binding;
+- phase lock;
+- call / response timing;
+- role coverage;
+- independent root lineages;
+- family diversity;
+- evidence-root diversity;
+- preserved counterpoint;
+- ensemble lock.
+
+There is deliberately no agreement percentage or vote tally in the canonical
+Polyphonic Quorum receipt.
+
+\`\`\`text
+AGREEMENT     = compatible claims
+QUORUM        = coordinated ensemble participation
+ENTRAINMENT   = increasing rhythmic / phase alignment
+COUNTERPOINT  = useful independent disagreement
+FALSE UNISON  = duplicated evidence pretending to be many voices
+\`\`\`
+
+Current implementation:
+
+- \`strategies/relative_value_lab/polyphonic_quorum.py\`;
+- \`strategies/relative_value_lab/pollen_economy.py\`.
+
+The historical majority-style support-vs-challenge interpretation of
+Metatron quorum is retired. \`MetatronQuorumChamber\` now adapts lawful Pollen
+claims into the canonical Polyphonic Quorum engine.
+
+### Pollen
+
+Pollen is Queen-issued research incentive currency.
+
+It may influence:
+
+- research attention;
+- challenge priority;
+- research budget;
+- future participation opportunities.
+
+It cannot create:
+
+- evidence;
+- independence;
+- world-state truth;
+- execution authority;
+- promotion authority;
+- prospective edge.
+
+Pollen settlement remains prospective. Support and dissent can both earn pollen
+when they add useful, calibrated information. A dissenting or falsifying bee may
+outperform a supporting bee when later settlement shows that its counterpoint
+was more useful.
+
+The constitutional relation is:
+
+\`\`\`text
+Queen issues bounty
+        ↓
+independent bees enter the phrase
+        ↓
+Polyphonic Quorum measures choreography
+        ↓
+support / dissent / falsification coexist
+        ↓
+prospective settlement
+        ↓
+pollen + reputation redistribution
+        ↺
+\`\`\`
+
+Pollen rewards usefulness to the hive, not conformity.

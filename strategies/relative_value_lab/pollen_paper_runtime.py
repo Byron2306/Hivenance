@@ -106,9 +106,10 @@ class ProspectivePollenPaperRuntime:
             or ("ADMIT" if treatment_eligible else "HOLD")
         )
 
-        # Freeze a non-qualifying quorum to None. This means a later quorum can
-        # never retroactively upgrade the forecast after registration.
-        frozen_quorum = quorum if treatment_eligible else None
+        # Freeze the pre-forecast quorum independently of treatment admission.
+        # A valid ensemble may be held by the Queen without ceasing to be quorum.
+        # Later quorum changes can never retroactively alter either fact.
+        frozen_quorum = quorum if quorum_preforecast else None
 
         self.settler.register(forecast=forecast, state=state)
         self._quorum_by_forecast[forecast.forecast_id] = frozen_quorum

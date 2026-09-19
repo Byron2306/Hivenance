@@ -1165,6 +1165,7 @@ class HypothesisSwarmAgent:
         derivatives_trend_map = self._derivatives_trend_context_map()
         commons_candidates: list[tuple[dict[str, Any], FeatureVector]] = []
         temporal_lattice_rows: list[dict[str, Any]] = []
+        comparison_packet_rows: list[dict[str, Any]] = []
         g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0, "by_organ": {}}
         phase_store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         g0_live = None
@@ -1189,6 +1190,26 @@ class HypothesisSwarmAgent:
             feature = attach_temporal_lattice(feature)
             if phase_store is not None:
                 feature = attach_full_comparison_packet(feature, phase_store)
+                packet = (
+                    (feature.values or {}).get("full_comparison_packet")
+                    if isinstance(feature.values, dict)
+                    else None
+                )
+                if isinstance(packet, dict):
+                    comparison_packet_rows.append({
+                        "symbol": feature.symbol,
+                        "packet_id": packet.get("packet_id"),
+                        "comparison_types": packet.get("comparison_types"),
+                        "current_reference_n": packet.get("current_reference_n"),
+                        "prior_reference_n": packet.get("prior_reference_n"),
+                        "selected_rejected_history_runs": packet.get("selected_rejected_history_runs"),
+                        "matched_n_by_type": {
+                            str(row.get("comparison_type") or ""): int(row.get("matched_n") or 0)
+                            for row in (packet.get("results") or ())
+                            if isinstance(row, dict)
+                        },
+                        "controls": packet.get("control_declarations"),
+                    })
             lattice = (
                 (feature.values or {}).get("full_temporal_lattice")
                 if isinstance(feature.values, dict)
@@ -1432,6 +1453,14 @@ class HypothesisSwarmAgent:
                 "symbols_evaluated": evaluated_symbols,
                 "lattices_built": len(temporal_lattice_rows),
                 "rows": temporal_lattice_rows,
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            },
+            "full_comparison": {
+                "schema": "hivenance_full_comparison_run_summary_v1",
+                "symbols_evaluated": evaluated_symbols,
+                "packets_built": len(comparison_packet_rows),
+                "rows": comparison_packet_rows,
                 "execution_eligible": False,
                 "promotion_eligible": False,
             },

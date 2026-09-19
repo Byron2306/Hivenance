@@ -78,6 +78,16 @@ class AblationDelta:
 
 
 @dataclass(frozen=True)
+class AblationFinding:
+    variant_id: str
+    family: str
+    changed_decisions: int
+    cumulative_net_delta_bps: float
+    status: str
+    interpretation: str
+
+
+@dataclass(frozen=True)
 class AblationReport:
     schema: str
     report_id: str
@@ -299,6 +309,56 @@ class RelativeValueAblationLab:
                 variant_only_count=len(variant_only),
                 cumulative_net_delta_bps=round(delta, 6),
                 mean_net_delta_bps=round(statistics.fmean(changed_values), 6) if changed_values else 0.0,
+            ))
+        return tuple(out)
+
+    def findings(
+        self,
+        *,
+        baseline_id: str = "FULL_HIVE",
+        minimum_changed_cases: int = 5,
+    ) -> tuple[AblationFinding, ...]:
+        variants = {variant.variant_id: variant for variant in self.variants}
+        out = []
+        for delta in self.deltas(baseline_id=baseline_id):
+            variant = variants[delta.variant_id]
+            if delta.changed_decisions == 0:
+                status = "NO_OBSERVED_SELECTION_EFFECT"
+                interpretation = (
+                    "Removing or mutating this component did not change any "
+                    "treatment admissions in the observed sample."
+                )
+            elif delta.changed_decisions < int(minimum_changed_cases):
+                status = "INSUFFICIENT_CHANGED_CASES"
+                interpretation = (
+                    "The mutation changed admissions, but too few changed cases "
+                    "have settled for a useful directional conclusion."
+                )
+            elif delta.cumulative_net_delta_bps > 0:
+                status = "REMOVAL_IMPROVED_THIS_SAMPLE"
+                interpretation = (
+                    "The mutated policy produced higher cumulative net bps than "
+                    "FULL_HIVE over decisions that differed in this sample."
+                )
+            elif delta.cumulative_net_delta_bps < 0:
+                status = "REMOVAL_HURT_THIS_SAMPLE"
+                interpretation = (
+                    "The mutated policy produced lower cumulative net bps than "
+                    "FULL_HIVE over decisions that differed in this sample."
+                )
+            else:
+                status = "NO_NET_DIFFERENCE_THIS_SAMPLE"
+                interpretation = (
+                    "The mutation changed admissions but produced no cumulative "
+                    "net difference in this sample."
+                )
+            out.append(AblationFinding(
+                variant_id=delta.variant_id,
+                family=variant.family,
+                changed_decisions=delta.changed_decisions,
+                cumulative_net_delta_bps=delta.cumulative_net_delta_bps,
+                status=status,
+                interpretation=interpretation,
             ))
         return tuple(out)
 

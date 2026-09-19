@@ -302,6 +302,21 @@ def _ensemble(
         treatment_resolution = "ADMIT_RESOLVED"
         treatment_admitted = True
 
+    music_metrics = {
+        "motif_consonance": float(motif.consonance),
+        "motif_dissonance": float(motif.dissonance),
+        "motif_tension": float(motif.tension),
+        "motif_cadence_strength": float(motif.cadence_strength),
+        "motif_counterpoint_diversity": float(motif.counterpoint_diversity),
+        "entrainment_strength": float(entrainment.entrainment_strength),
+        "false_unison_risk": float(entrainment.false_unison_risk),
+        "queen_polyphonic_pressure": float(queen.polyphonic_pressure),
+        "queen_tonal_coherence": float(queen.tonal_coherence),
+        "queen_timbral_diversity": float(queen.timbral_diversity),
+        "queen_pitch_convergence": float(queen.pitch_convergence),
+        "queen_subtle_shift": float(queen.subtle_shift_score),
+    }
+
     return (
         quorum,
         issue,
@@ -309,6 +324,7 @@ def _ensemble(
         motion_kind,
         treatment_admitted,
         treatment_resolution,
+        music_metrics,
     )
 
 
@@ -573,6 +589,7 @@ def main() -> int:
                     motion_kind,
                     treatment_admitted,
                     treatment_resolution,
+                    music_metrics,
                 ) = _ensemble(
                     forecast=forecast,
                     diagnostics=diagnostics,
@@ -614,6 +631,18 @@ def main() -> int:
                     ),
                     structural_reputation=float(economy.reputation("structural-bee")),
                     motion_reputation=float(economy.reputation("motion-bee")),
+                    motif_consonance=music_metrics["motif_consonance"],
+                    motif_dissonance=music_metrics["motif_dissonance"],
+                    motif_tension=music_metrics["motif_tension"],
+                    motif_cadence_strength=music_metrics["motif_cadence_strength"],
+                    motif_counterpoint_diversity=music_metrics["motif_counterpoint_diversity"],
+                    entrainment_strength=music_metrics["entrainment_strength"],
+                    false_unison_risk=music_metrics["false_unison_risk"],
+                    queen_polyphonic_pressure=music_metrics["queen_polyphonic_pressure"],
+                    queen_tonal_coherence=music_metrics["queen_tonal_coherence"],
+                    queen_timbral_diversity=music_metrics["queen_timbral_diversity"],
+                    queen_pitch_convergence=music_metrics["queen_pitch_convergence"],
+                    queen_subtle_shift=music_metrics["queen_subtle_shift"],
                 ))
                 last_forecast_at[pair_id] = now
                 bounties_by_forecast[forecast.forecast_id] = tuple(issue.bounty_ids)
@@ -628,6 +657,9 @@ def main() -> int:
                     f"motion={motion_bps:+.3f}bps/{motion_kind.lower()} "
                     f"quorum={int(quorum.quorum_formed)} lock={quorum.ensemble_lock:.3f} "
                     f"resolution={treatment_resolution} "
+                    f"qpress={music_metrics['queen_polyphonic_pressure']:.3f} "
+                    f"entrain={music_metrics['entrainment_strength']:.3f} "
+                    f"cadence={music_metrics['motif_cadence_strength']:.3f} "
                     f"pollen={','.join(issue.bounty_types) or '-'}"
                 )
 

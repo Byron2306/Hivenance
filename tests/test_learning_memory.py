@@ -14,7 +14,7 @@ def test_learning_receipt_is_interpreted_and_non_authoritative():
  "execution_eligible":False,"promotion_eligible":False,"status":"HISTORICAL_STATE_CONDITIONAL_CANDIDATE"}
  n=add_learning_receipt(graph,r)
  assert n.family=="LEARNING"
- assert n.namespace=="INTERPRETED"
+ assert n.namespace=="interpreted_research"
  assert n.evidence_roots==("sha256:"+"b"*64,)
  assert not n.execution_eligible and not n.promotion_eligible
  v=graph.queen_view(created_at_ms=1004,expected_families=("LEARNING",))

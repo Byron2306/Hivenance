@@ -1,3 +1,6 @@
 # Minimal dependencies for scripts/run_phase1_observer.py
-ccxt>=4.4,<5
+# Kraken uses the stdlib-only public REST adapter when CCXT is unavailable.
 PyYAML>=6,<7
+
+# Optional: required only for non-Kraken venues or if you prefer CCXT.
+# ccxt>=4.4,<5

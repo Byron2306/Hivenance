@@ -41,6 +41,18 @@ def snapshot(
         pollen_dissent_bounty=pollen_dissent,
         structural_reputation=srep,
         motion_reputation=mrep,
+        motif_consonance=.7,
+        motif_dissonance=.2,
+        motif_tension=.2,
+        motif_cadence_strength=.7,
+        motif_counterpoint_diversity=.5,
+        entrainment_strength=.65,
+        false_unison_risk=.2,
+        queen_polyphonic_pressure=.6,
+        queen_tonal_coherence=.7,
+        queen_timbral_diversity=.6,
+        queen_pitch_convergence=.7,
+        queen_subtle_shift=.3,
     )
 
 
@@ -140,3 +152,12 @@ def test_no_pollen_and_no_reputation_expose_current_selection_non_effect():
     assert admit("FULL_HIVE",s) is True
     assert admit("NO_POLLEN",s) is True
     assert admit("NO_REPUTATION",s) is True
+
+def test_queen_motif_entrainment_mutations_are_distinct():
+    s=snapshot("f-music")
+    assert admit("QUEEN_PRESSURE_GT_055",s) is True
+    assert admit("QUEEN_TONAL_GT_050",s) is True
+    assert admit("CADENCE_GT_065",s) is True
+    assert admit("DISSONANCE_LT_025",s) is True
+    assert admit("ENTRAINMENT_GT_060",s) is True
+    assert admit("FALSE_UNISON_LT_025",s) is True

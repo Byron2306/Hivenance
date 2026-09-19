@@ -70,6 +70,7 @@ def test_live_ensemble_can_form_with_counterpoint_without_agreement():
         motion_kind,
         treatment_admitted,
         treatment_resolution,
+        music_metrics,
     )=_ensemble(
         forecast=forecast,
         diagnostics=diagnostics,
@@ -124,6 +125,7 @@ def test_live_ensemble_follow_can_be_resolved_for_treatment():
         motion_kind,
         treatment_admitted,
         treatment_resolution,
+        music_metrics,
     )=_ensemble(
         forecast=forecast,
         diagnostics=diagnostics,

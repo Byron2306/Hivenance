@@ -95,3 +95,127 @@ HiveNance should not ask only "what happens next?"
 It should ask: "What world are we in, what changed, compared with what, which explanations survive contradiction, and what did each organ actually contribute?"
 
 That is the synthesis: broad perception, simultaneous comparison, narrow hypotheses, adversarial resolution and evidence that accumulates without silently becoming authority.
+
+
+## Queen correction: Conductor, Triune Mind, and Epoch authority
+
+The Queen is not merely the final resolver in this architecture. She is the conductor of the polyphonic research organism.
+
+Her Triune Mind remains explicit:
+- **Metatron** synthesizes the composition: what voices are present, how evidence relates, where motifs repeat, and what the current score is trying to express.
+- **Michael** guards tuning, provenance, epoch discipline and world-state binding: whether the ensemble is playing the right score at the right time with admissible evidence.
+- **Loki** supplies adversarial counterpoint: contradiction, false-unison detection, alternative explanations and pressure against premature harmony.
+
+The Queen conducts rather than majority-votes. Existing polyphonic quorum semantics already model WAGGLE/SEARCH as CALL, FOLLOW as RESPONSE, DISSENT/ALARM as COUNTERPOINT, and ABANDON/SETTLE as RESOLUTION. Quorum therefore means synchronized, independently rooted choreography, not agreement.
+
+### Waggle / notation loop
+
+The Queen publishes bounded notation to the colony. Notation can request challenge cadence, independent corroboration, fresh timbre, search amplification, modulation/temporal/propagation traces, edge-resolution rehearsal, open coda or thinner orchestration. The existing QueenPollenConductor can translate these score tokens into bounded Pollen research bounties.
+
+Evidence Bees do not simply push everything upward. They listen for the current score and answer with independent evidence. The Queen may intensify, thin, redirect or hold the orchestration while preserving dissent.
+
+### Epoch changes
+
+An epoch is the Queen's research-attention regime, not a trading permission.
+
+An epoch change may alter:
+- which evidence families receive attention;
+- cadence and sampling density;
+- which comparisons are requested;
+- which hypotheses are invited to challenge or corroborate;
+- how much independent evidence is required;
+- which historical analogues are rehearsed;
+- whether the score is exploring, challenging, settling or observing.
+
+An epoch change must never rewrite historical evidence, expose future information, promote a hypothesis, or authorize execution. It changes the **questions and choreography**, not truth.
+
+Proposed typed epochs:
+1. LISTEN: broad sensing, low commitment.
+2. SEARCH: Queen issues waggle/search calls for missing or novel evidence.
+3. CHALLENGE: Loki/counterpoint/VNS pressure dominant explanations.
+4. CORROBORATE: Michael demands independent roots, provenance and world binding.
+5. REHEARSE: compare candidate explanations against historical analogues and controls.
+6. OBSERVE: freeze admitted hypotheses for prospective shadow observation.
+7. SETTLE: close matured forecasts and update causal ledgers.
+8. RETUNE: detected drift/decay causes notation and attention to change without erasing prior knowledge.
+
+Transitions must be receipt-bound and explainable: prior_epoch, next_epoch, trigger evidence, Triune votes/roles, notation issued, world_state_id and authority boundary.
+
+### Harmonic governance
+
+Harmonic governance belongs between evidence production and Queen notation. It measures ensemble properties such as cadence, drift, jitter, burstiness, entropy, resonance/discord and confidence. It is descriptive pressure, not truth and not execution authority.
+
+Its job is to tell the Queen whether the colony is:
+- in healthy independent harmony;
+- preserving useful counterpoint;
+- drifting out of phase;
+- exhibiting duplicated evidence / false unison;
+- becoming overconfident;
+- missing an expected voice;
+- changing faster than the current epoch can safely interpret.
+
+The Queen can then change the waggle, cadence or epoch.
+
+## Revised simultaneous cognition loop
+
+The system is not a simple linear pipeline. It is a conducted recurrent loop:
+
+PUBLIC FACTS -> MARKET MEMORY -> Evidence Bees / Horizon / Regime / Comparison -> WORLD STATE PAGE.
+
+The Queen's current epoch and notation simultaneously influence what the colony inspects next. Evidence and comparisons return as polyphonic notes. Triune cognition synthesizes, validates and attacks the score. Harmonic governance measures ensemble health. Quorum checks synchronized independent choreography. The Queen then changes notation, requests new Bee work, changes epoch, admits/holds/rejects a research hypothesis, or waits.
+
+Workers remain proposal/strategy engines inside this conducted loop. They do not replace Bees, and Bees do not become Workers.
+
+Phoenix remains the canonical experiment authority: hypothesis identity, freeze, prospective forecast, settlement, ablation and promotion evidence. The Queen conducts **which research should happen next**; Phoenix ensures that the research cannot quietly move its goalposts.
+
+## Full synthesis programme
+
+### Phase S0: Preserve and census
+Freeze current historical evidence and current positive/negative findings. Inventory Queen notation, Triune semantics, VNS/TRY reasoning, harmonic inputs, Pollen, quorum, Horizon, RegimeOracle, workers, crystals, Edge voices and Phoenix authority. Produce responsibility/overlap map before rewiring.
+
+### Phase S1: Common Evidence Contract
+Implement BeeEvidence with world_state_id, family, claim, value/features, observed_at, source timestamps, freshness, lineage/evidence roots, confidence, abstention, authority and transformation version. Add registry and deterministic receipts.
+
+### Phase S2: Temporal Participation Bee
+Build the first new Bee from Market Memory: 24-hour UTC topology, weekday/weekend, broad session overlap labels, and actual activity normalized against the same UTC interval. Test all 24 hours before any interval optimization. Bind to the frozen 1h-vs-24h mechanism as a descriptive challenge, not a promoted filter.
+
+### Phase S3: Comparison Engine
+Make comparison simultaneous and first-class: self-at-same-hour, cross-sectional peers, selected/rejected, nearest prior world states, conflict/non-conflict, event/matched non-event, random/no-trade/time-shift controls. Every comparison is timestamp-safe and world-bound.
+
+### Phase S4: Adapt existing Edge voices
+Wrap Flow, Liquidity and Volatility as BeeEvidence rather than rewriting them. Correct semantics remain explicit. Add Path Geometry and Cross-Market Bees. Add derivatives/carry only when public timestamp-correct history is available. Slower on-chain evidence stays in its own latency class.
+
+### Phase S5: Queen Conducting Runtime
+Implement QueenScorePage and QueenEpochReceipt. Wire the Triune Mind, waggle/notation calls, harmonic health and epoch transitions to Bee attention and Comparison requests. Preserve dissent and independent lineages. Quorum remains choreography, never majority agreement.
+
+### Phase S6: Hypothesis Envelope
+Bind world state, declared small variable set, comparisons, Bee evidence, Worker proposal, counterpoint, Triune interpretation, Queen notation/epoch and controls into one immutable envelope. No undeclared feature may influence settlement analysis.
+
+### Phase S7: Causal Prosecution
+Replay historical pages with deterministic organ masks. For every organ measure AVAILABLE -> INVOKED -> INFLUENTIAL -> HISTORICALLY_USEFUL. Run removal, shuffle, delayed-evidence, duplicate-lineage and false-unison attacks. Settle rejected candidates too.
+
+### Phase S8: Learning and memory
+Update Learning Ledger and crystals with regime-qualified knowledge: supported, contradicted, decayed, superseded, regime-dependent. Execution evidence cannot directly modify production authority. Pollen/reputation reward challenge, novelty, timing, falsification and settlement usefulness rather than agreement.
+
+### Phase S9: Prospective Shadow Hive
+Freeze surviving hypotheses, Queen epoch rules and evidence transforms. Observe genuinely unseen data. No retrospective threshold edits. Compare against primitive, random, no-trade and simpler nested controls. Apply realistic cost assumptions.
+
+### Phase S10: Economic gate
+Only after sufficient prospective evidence ask whether any mechanism remains positive after costs, dependence controls, selection regret and regime drift. This phase still does not imply live execution authority.
+
+## Acceptance tests for the synthesis
+
+The programme is not complete merely because every organ runs. It must prove:
+- one canonical Market Memory and world_state_id;
+- no future-data access;
+- Bees have distinct evidence families and lineage;
+- Workers remain proposal engines;
+- Queen demonstrably changes research choreography/epoch;
+- Triune roles are visible in receipts;
+- harmonic state can change notation without becoming a verdict;
+- quorum preserves dissent and rejects false unison;
+- Comparison is simultaneous with hypothesis formation;
+- selected and rejected candidates both settle;
+- each organ has causal ablation evidence;
+- historical and prospective authority remain separate;
+- execution and promotion remain false throughout the research programme.

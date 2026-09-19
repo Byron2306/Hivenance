@@ -33,7 +33,9 @@ def test_live_loop_freezes_trade_vs_edge_blind_abstain_before_outcome():
  loop=G0LiveLoop(cfg);loop.builder=Builder();s=Store()
  r=loop.process_feature(data_store=s,competition=Competition(),feature=feature(),venue="kraken",
   now_ms=10000,horizons=(60,))
- assert r["diverged"]==1 and r["frozen"]==1 and r["errors"]==0
- row=s.conn.execute("SELECT status,payload FROM phase5_g0_shadow_twins").fetchone()
- assert row[0]=="FROZEN"
- assert '"g0_no_trade":true' in row[1]
+ assert r["diverged"]>=2 and r["frozen"]>=2 and r["errors"]==0
+ rows=s.conn.execute("SELECT organ_id,status,payload FROM phase5_g0_shadow_twins ORDER BY organ_id").fetchall()
+ organs={row[0] for row in rows}
+ assert {"edge_ecology","polyphonic_quorum"}.issubset(organs)
+ assert all(row[1]=="FROZEN" for row in rows)
+ assert all('"g0_no_trade":true' in row[2] for row in rows)

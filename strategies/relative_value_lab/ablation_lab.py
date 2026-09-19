@@ -67,6 +67,17 @@ class VariantBook:
 
 
 @dataclass(frozen=True)
+class AblationDelta:
+    variant_id: str
+    baseline_id: str
+    changed_decisions: int
+    baseline_only_count: int
+    variant_only_count: int
+    cumulative_net_delta_bps: float
+    mean_net_delta_bps: float
+
+
+@dataclass(frozen=True)
 class AblationReport:
     schema: str
     report_id: str
@@ -119,6 +130,9 @@ VARIANTS: tuple[AblationVariant, ...] = (
     AblationVariant("DISSENT_STRONG_HOLD", "Hold dissent only if |motion| >= 2.0 bps.", "dissent_strength"),
     AblationVariant("FOLLOW_STRONG_ONLY", "Require FOLLOW with |motion| >= 1 bps.", "motion_strength"),
     AblationVariant("FOLLOW_VERY_STRONG_ONLY", "Require FOLLOW with |motion| >= 2 bps.", "motion_strength"),
+    AblationVariant("HASH_25", "Deterministic 25% data-blind selector.", "negative_control"),
+    AblationVariant("HASH_50", "Deterministic 50% data-blind selector.", "negative_control"),
+    AblationVariant("HASH_75", "Deterministic 75% data-blind selector.", "negative_control"),
 )
 
 
@@ -174,6 +188,10 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
         return s.motion_kind == "FOLLOW" and abs(s.motion_bps) >= 1.0
     if vid == "FOLLOW_VERY_STRONG_ONLY":
         return s.motion_kind == "FOLLOW" and abs(s.motion_bps) >= 2.0
+    if vid.startswith("HASH_"):
+        pct = int(vid.rsplit("_", 1)[1])
+        bucket = int(hashlib.sha256(s.forecast_id.encode("utf-8")).hexdigest()[:8], 16) % 100
+        return bucket < pct
 
     raise KeyError(f"unknown_ablation_variant:{variant_id}")
 
@@ -252,6 +270,37 @@ class RelativeValueAblationLab:
             longest_positive_streak=longest,
             max_drawdown_bps=round(max_dd, 6),
         )
+
+    def deltas(self, baseline_id: str = "FULL_HIVE") -> tuple[AblationDelta, ...]:
+        out = []
+        for variant in self.variants:
+            if variant.variant_id == baseline_id:
+                continue
+            changed = 0
+            base_only = []
+            variant_only = []
+            for row in self._rows:
+                base = bool(row.decisions.get(baseline_id, False))
+                alt = bool(row.decisions.get(variant.variant_id, False))
+                if base == alt:
+                    continue
+                changed += 1
+                if base:
+                    base_only.append(row.net_bps)
+                else:
+                    variant_only.append(row.net_bps)
+            delta = sum(variant_only) - sum(base_only)
+            changed_values = variant_only + [-v for v in base_only]
+            out.append(AblationDelta(
+                variant_id=variant.variant_id,
+                baseline_id=baseline_id,
+                changed_decisions=changed,
+                baseline_only_count=len(base_only),
+                variant_only_count=len(variant_only),
+                cumulative_net_delta_bps=round(delta, 6),
+                mean_net_delta_bps=round(statistics.fmean(changed_values), 6) if changed_values else 0.0,
+            ))
+        return tuple(out)
 
     def report(self) -> AblationReport:
         settled_count = len(self._rows)

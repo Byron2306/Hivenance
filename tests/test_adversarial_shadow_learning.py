@@ -6,7 +6,7 @@ from strategies.volatility_breakout.adversarial_shadow_learning import adversari
 from strategies.volatility_breakout.shadow_flight import ShadowSettlementEngine
 from strategies.volatility_breakout.shadow_models import ShadowOrderIntent
 
-def _i():return ShadowOrderIntent("s","f","z","p","c","m","market","kraken","BTC/USD","UP","buy","market","IOC",.01,1,100,None,250,.5,10,0,10,.6,60,1000,1060,1,2,10000,"v","cfg")
+def _i():return ShadowOrderIntent("s","f","z","p","c","m","market","kraken","BTC/USD","UP","buy","market","IOC",.01,1,100,None,250,.5,10,0,10,.6,61,999,1060,1,2,10000,"v","cfg")
 def _cfg():return SimpleNamespace(phase5_shadow_entry_latency_ms=0,phase5_shadow_chase_timeout_sec=30,phase3_max_slippage_bps=0,phase3_maker_fee_bps=0,phase3_taker_fee_bps=0,exchange="kraken")
 def test_court_persists_idempotently_and_yields_comparative_learning(tmp_path):
  b=AdversarialShadowCourt().build(_i());e=ShadowSettlementEngine(_cfg())

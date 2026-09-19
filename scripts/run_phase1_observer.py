@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
 
 from agents.data_store_agent import DataStoreAgent
 from strategies.volatility_breakout.observation_swarm import ObservationSwarmAgent
+from strategies.relative_value_lab.vns_score_conductor import VNSScoreConductor
 
 ALLOWED_PUBLIC_VENUES = {"kraken", "coinbase", "binance", "valr", "luno"}
 
@@ -120,6 +121,12 @@ def main() -> int:
     parser.add_argument("--database", type=Path)
     parser.add_argument("--once", action="store_true", help="Collect one cycle and exit")
     parser.add_argument("--json", action="store_true", help="Print the complete cycle payload")
+    parser.add_argument(
+        "--score-output",
+        type=Path,
+        default=ROOT / "VNS_SCORE.json",
+        help="Write the latest canonical VNS measure to this path",
+    )
     args = parser.parse_args()
 
     cfg = load_observer_config(args.settings, args.profile)
@@ -134,11 +141,25 @@ def main() -> int:
     client = build_public_client(exchange_id)
     store = DataStoreAgent(str(db_path))
     observer = ObservationSwarmAgent(cfg, client, coordinator=StoreBridge(store))
+    score_conductor = VNSScoreConductor(
+        freshness_window_ms=max(
+            1_000,
+            int(getattr(cfg, "phase1_observation_stale_after_sec", 180) or 180) * 1000,
+        )
+    )
 
     def collect() -> None:
         payload = observer.run_once()
+        measure = score_conductor.conduct_cycle(payload)
+        args.score_output.parent.mkdir(parents=True, exist_ok=True)
+        args.score_output.write_text(
+            json.dumps(measure.to_dict(), indent=2, sort_keys=True, default=str) + "\n",
+            encoding="utf-8",
+        )
         if args.json:
-            print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+            rendered = dict(payload)
+            rendered["vns_measure"] = measure.to_dict()
+            print(json.dumps(rendered, indent=2, sort_keys=True, default=str))
         else:
             run = payload.get("run") or {}
             print(
@@ -146,6 +167,8 @@ def main() -> int:
                 f"observed={run.get('symbols_successful', 0)}/{run.get('symbols_attempted', 0)} "
                 f"eligible={run.get('symbols_eligible', 0)} "
                 f"quality={float(run.get('mean_data_quality') or 0):.3f} "
+                f"score={measure.frame.world_state_id} "
+                f"pulses={len(measure.pulses)} "
                 "orders=0"
             )
 

@@ -244,6 +244,24 @@ class KrakenPublicRestClient:
             ])
         return out
 
+
+    def fetch_trades(self, symbol: str, *, limit: int = 200) -> list[dict[str, Any]]:
+        """Fetch recent public trades with normalized aggressor side."""
+        pair_id = self._pair_id(symbol)
+        result = self._get("Trades", {"pair": pair_id})
+        rows = next((value for key, value in result.items() if key != "last" and isinstance(value, list)), [])
+        out: list[dict[str, Any]] = []
+        for row in rows[-max(1, int(limit)):]:
+            if not isinstance(row, (list, tuple)) or len(row) < 4:
+                continue
+            out.append({
+                "timestamp": int(self._float(row[2]) * 1000),
+                "price": self._float(row[0]),
+                "amount": self._float(row[1]),
+                "side": "buy" if str(row[3]).lower() == "b" else "sell",
+            })
+        return out
+
     def fetch_order_book(self, symbol: str, *, limit: int = 50) -> dict[str, Any]:
         pair_id = self._pair_id(symbol)
         result = self._get("Depth", {"pair": pair_id, "count": max(1, int(limit))})

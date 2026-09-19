@@ -8891,6 +8891,7 @@ class DataStoreAgent:
 
     def settle_mature_shadow_intents(self, settler: Any, *, now_ts: Optional[float] = None, tolerance_sec: int = 900) -> Dict[str, Any]:
         result = {"phase": 5, "examined": 0, "settled": 0, "missed_fills": 0,
+                  "adversarial_courts_created": 0, "adversarial_court_errors": 0,
                   "transmission_attempts": 0, "real_orders_submitted": 0}
         if not self.conn:
             result["error"] = "data_store_unavailable"
@@ -8964,6 +8965,14 @@ class DataStoreAgent:
                     result["settled"] += 1
                     if payload.get("status") == "MISSED_FILL":
                         result["missed_fills"] += 1
+                    try:
+                        from strategies.volatility_breakout.adversarial_shadow_runtime import prosecute_settled_shadow
+                        court = prosecute_settled_shadow(data_store=self, settler=settler, intent_row=intent, observations=observations, settled_ts=now)
+                        if court.get("created"):
+                            result["adversarial_courts_created"] += 1
+                    except Exception:
+                        result["adversarial_court_errors"] += 1
+                        logging.exception("Phase-5 adversarial shadow prosecution failed")
                 self.conn.commit()
             return result
         except Exception:

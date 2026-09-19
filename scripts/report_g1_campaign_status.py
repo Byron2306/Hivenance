@@ -26,17 +26,21 @@ def main()->int:
  policy=policy_from_freeze(frozen)
  organs=tuple(frozen.get("organs") or ())
  counts=defaultdict(lambda:{"frozen":0,"settled":0,"pending":0})
- try:
-  with s._lock:
-   rows=s.conn.execute("SELECT organ_id,status,COUNT(*) FROM phase5_g0_shadow_twins GROUP BY organ_id,status").fetchall()
-  for organ,status,n in rows:
-   counts[str(organ)]["frozen"]+=int(n)
-   if str(status)=="SETTLED":counts[str(organ)]["settled"]+=int(n)
-   else:counts[str(organ)]["pending"]+=int(n)
- except Exception:
-  pass
  campaign_id=str(frozen.get("campaign_id") or "") if frozen.get("research_target_id") else None
  target_id=str(frozen.get("research_target_id") or "") or None
+ try:
+  with s._lock:
+   rows=s.conn.execute("SELECT organ_id,status,payload FROM phase5_g0_shadow_twins").fetchall()
+  for organ,status,raw in rows:
+   try:p=json.loads(raw or "{}")
+   except Exception:continue
+   if campaign_id and str(p.get("research_campaign_id") or "")!=campaign_id:continue
+   if target_id and str(p.get("research_target_id") or "")!=target_id:continue
+   counts[str(organ)]["frozen"]+=1
+   if str(status)=="SETTLED":counts[str(organ)]["settled"]+=1
+   else:counts[str(organ)]["pending"]+=1
+ except Exception:
+  pass
  reports={r.organ_id:r for r in evaluate_store(s,policy=policy,campaign_id=campaign_id,target_id=target_id)}
  payload={"campaign_id":frozen.get("campaign_id"),"created_ts":frozen.get("created_ts"),
   "policy":policy.to_dict(),"organs":[],"execution_eligible":False,"promotion_eligible":False}

@@ -498,6 +498,7 @@ class ObservationSwarmAgent:
                 )
                 feature_payload_values = dict(feature_payload.get('values') or {})
                 feature_payload_values['canonical_world_binding'] = canonical_binding
+                feature_payload_values['phase1_canonical_world_required'] = True
                 feature_payload['values'] = feature_payload_values
                 forecast = self.signal_model.forecast(features)
                 market = markets.get(symbol) or {}

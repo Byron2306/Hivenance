@@ -283,3 +283,25 @@ def test_cost_motion_interactions_do_not_alias_by_definition():
     assert admit("FOLLOW_EDGE_COST_RATIO_2",high) is False
     assert admit("FOLLOW_MOTION_GE_EDGE",low) is True
     assert admit("FOLLOW_MOTION_GE_EDGE",high) is False
+
+def test_v5_confirmatory_follow_cost_grid_is_distinct():
+    s=snapshot("v5",motion_kind="FOLLOW",motion_bps=1.2,edge=1.1,cost=.8,stability=.60)
+    assert admit("LOW_COST_075",s) is False
+    assert admit("LOW_COST_100",s) is True
+    assert admit("FOLLOW_LOW_COST_075",s) is False
+    assert admit("FOLLOW_LOW_COST_100",s) is True
+    assert admit("FOLLOW_LOW_COST_100_EDGE100",s) is True
+    assert admit("FOLLOW_LOW_COST_100_EDGE150",s) is False
+    assert admit("FOLLOW_LOW_COST_100_STAB055",s) is True
+    assert admit("FOLLOW_LOW_COST_100_STAB065",s) is False
+    assert admit("FOLLOW_LOW_COST_100_MOTION100",s) is True
+    assert admit("FOLLOW_LOW_COST_100_MOTION200",s) is False
+
+
+def test_v5_negative_control_separates_dissent_from_follow():
+    follow=snapshot("follow",motion_kind="FOLLOW",cost=.5)
+    dissent=snapshot("dissent",motion_kind="DISSENT",dissent=True,cost=.5)
+    assert admit("FOLLOW_LOW_COST_100",follow) is True
+    assert admit("DISSENT_LOW_COST_100",follow) is False
+    assert admit("FOLLOW_LOW_COST_100",dissent) is False
+    assert admit("DISSENT_LOW_COST_100",dissent) is True

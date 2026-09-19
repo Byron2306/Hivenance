@@ -8892,6 +8892,7 @@ class DataStoreAgent:
     def settle_mature_shadow_intents(self, settler: Any, *, now_ts: Optional[float] = None, tolerance_sec: int = 900) -> Dict[str, Any]:
         result = {"phase": 5, "examined": 0, "settled": 0, "missed_fills": 0,
                   "adversarial_courts_created": 0, "adversarial_court_errors": 0,
+                  "g0_twins_examined": 0, "g0_twins_settled": 0, "g0_twin_errors": 0,
                   "transmission_attempts": 0, "real_orders_submitted": 0}
         if not self.conn:
             result["error"] = "data_store_unavailable"
@@ -8974,6 +8975,15 @@ class DataStoreAgent:
                         result["adversarial_court_errors"] += 1
                         logging.exception("Phase-5 adversarial shadow prosecution failed")
                 self.conn.commit()
+            try:
+                from strategies.relative_value_lab.g0_twin_runtime import settle_mature_g0_twins
+                g0 = settle_mature_g0_twins(self, settler, now_ts=now, tolerance_sec=int(tolerance_sec))
+                result["g0_twins_examined"] = int(g0.get("examined") or 0)
+                result["g0_twins_settled"] = int(g0.get("settled") or 0)
+                result["g0_twin_errors"] = int(g0.get("errors") or 0)
+            except Exception:
+                result["g0_twin_errors"] += 1
+                logging.exception("Phase-5 G0 prospective twin settlement failed")
             return result
         except Exception:
             logging.exception("Error settling Phase-5 shadow intents")

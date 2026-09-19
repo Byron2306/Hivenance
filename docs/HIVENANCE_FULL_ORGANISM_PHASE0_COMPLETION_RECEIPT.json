@@ -1,0 +1,45 @@
+{
+  "schema": "hivenance_full_organism_phase0_completion_receipt_v1",
+  "phase": 0,
+  "phase_name": "Evidence Freeze and Programme Lock",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "validated_git_head": "4b7e8ad48eb0a3c3d5404024310a18a7c200bb9a",
+  "programme_base_head": "3e1376ad2e53303385a6c9755f047c2de822efce",
+  "campaign_id": "g1_1b1095a3aad7595b9218dbc0",
+  "research_target_id": "g1rt_847b425820c10697936bf63f",
+  "evidence_root": "sha256:10e13bff205803931902dca9379dd17c2fbbda1807a70ceb96ab702e6de53186",
+  "evidence_tables": {
+    "g1_campaign_freeze": {
+      "row_count": 4,
+      "content_sha256": "sha256:717ee042e5cce1673c48b249ccd1e813fd75ddcece6c778e54910899eb9a5707"
+    },
+    "g1_research_target_freeze": {
+      "row_count": 4,
+      "content_sha256": "sha256:448d14c0ce8f3db477f2b3da8aa385f2811f9759ee004e34f2ae475e8c19e1d5"
+    },
+    "phase5_g0_shadow_twin_settlements": {
+      "row_count": 328,
+      "content_sha256": "sha256:88aeafa31b80b201c6888d6c46637dab449b87564d75cb064ef3112477dca0bc"
+    },
+    "phase5_g0_shadow_twins": {
+      "row_count": 1901,
+      "content_sha256": "sha256:0ea748e421a414970d188e537c536aba0af84b82360d78ded8d5a439d20ecfff"
+    }
+  },
+  "acceptance": {
+    "tests_passed": 4,
+    "campaign_identity_valid": true,
+    "frozen_source_validation": true,
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "mutates_evidence": false,
+    "reasons": []
+  },
+  "next_phase": {
+    "phase": 1,
+    "name": "Canonical Memory and World Identity",
+    "gate": "No Phase 2 work until Phase 1 runtime lineage tests and completion receipt pass."
+  },
+  "authority": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+}

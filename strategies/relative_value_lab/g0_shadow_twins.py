@@ -43,5 +43,6 @@ def settle_shadow_twin(*,twin:G0ShadowTwin,settler:Any,
  bd=blind.to_dict() if hasattr(blind,"to_dict") else dict(blind)
  pair=G0PairedOutcome(twin.organ_id,"PROSPECTIVE",twin.opportunity_id,twin.world_state_hash,
   float(fd.get("net_return_bps") or 0.0),float(bd.get("net_return_bps") or 0.0),
-  str(fd.get("status"))!="MISSED_FILL",str(bd.get("status"))!="MISSED_FILL")
+  str(fd.get("status")) not in {"MISSED_FILL","ABSTAIN_NO_TRADE"},
+  str(bd.get("status")) not in {"MISSED_FILL","ABSTAIN_NO_TRADE"})
  return G0ShadowTwinSettlement(twin.organ_id,twin.opportunity_id,twin.world_state_hash,fd,bd,pair,False,False)

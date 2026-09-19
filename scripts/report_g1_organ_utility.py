@@ -11,7 +11,7 @@ class Store:
 
 def main()->int:
  ap=argparse.ArgumentParser(description="Report strict prospective G1 organ utility from canonical G0 settlements.")
- ap.add_argument("--db",default="data/hivenance.db")
+ ap.add_argument("--db",default="swarm_data.db")
  ap.add_argument("--min-pairs",type=int,default=30)
  ap.add_argument("--min-worlds",type=int,default=10)
  ap.add_argument("--cost-stress-bps",type=float,default=5.0)

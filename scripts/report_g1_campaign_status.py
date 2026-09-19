@@ -20,7 +20,7 @@ from collections import defaultdict
 from strategies.relative_value_lab.g1_campaign_freeze import get_latest_g1_campaign_freeze,policy_from_freeze
 from strategies.relative_value_lab.g1_utility_campaign import (
  evaluate_store,evaluate_store_stratified,evaluate_store_world_clustered,
- evaluate_store_settlement_status,load_prospective_outcomes
+ evaluate_store_settlement_status,evaluate_store_veto_economics,load_prospective_outcomes
 )
 from main import load_config,apply_phase0_safety_policy
 
@@ -63,9 +63,10 @@ def main()->int:
  strata=evaluate_store_stratified(s,policy=policy,campaign_id=campaign_id,target_id=target_id)
  clustered=evaluate_store_world_clustered(s,policy=policy,campaign_id=campaign_id,target_id=target_id)
  status_diag=evaluate_store_settlement_status(s,campaign_id=campaign_id,target_id=target_id)
+ veto_diag=evaluate_store_veto_economics(s,campaign_id=campaign_id,target_id=target_id)
  payload={"campaign_id":frozen.get("campaign_id"),"created_ts":frozen.get("created_ts"),
   "policy":policy.to_dict(),"organs":[],"strata":strata,"world_cluster_diagnostics":clustered,
-  "settlement_status_diagnostics":status_diag,
+  "settlement_status_diagnostics":status_diag,"veto_economics_diagnostics":veto_diag,
   "execution_eligible":False,"promotion_eligible":False}
  for organ in organs:
   r=reports.get(organ)
@@ -122,6 +123,13 @@ def main()->int:
  print("SETTLEMENT STATUS PAIRS")
  for r in payload.get("settlement_status_diagnostics",()):
   print(f"  {r['organ_id']:28s} n={r['paired_n']:4d} {json.dumps(r['status_pairs'],sort_keys=True)}")
+ print("VETO ECONOMICS DECOMPOSITION")
+ for r in payload.get("veto_economics_diagnostics",()):
+  print(f"  {r['organ_id']:28s} pairs={r['paired_n']:4d} blind_filled={r['blind_filled_n']:3d} "
+        f"fill_rate={r['blind_fill_rate']:.3f} gross={r['blind_mean_gross_bps']:+.3f}bps "
+        f"cost={r['blind_mean_cost_bps']:+.3f}bps net={r['blind_mean_net_bps']:+.3f}bps "
+        f"gross_pos={r['blind_gross_positive']:3d} net_pos={r['blind_net_positive']:3d} "
+        f"net_neg={r['blind_net_negative']:3d}")
  return 0
 
 if __name__=="__main__":raise SystemExit(main())

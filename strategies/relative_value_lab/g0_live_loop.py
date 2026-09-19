@@ -1,0 +1,100 @@
+"""Autonomous prospective G0 generation from the live Phoenix feature pass.
+
+Uses one observed FeatureVector to build one immutable world, runs FULL_HIVE and
+Edge-blind cognition, lets the unchanged Phoenix model forecast, applies the
+research-only semantic challenge, and freezes only decisions that actually
+diverge before the target exists.
+"""
+from __future__ import annotations
+import hashlib,json
+from dataclasses import asdict
+from typing import Any
+from strategies.volatility_breakout.shadow_flight import ShadowIntentBuilder
+from strategies.volatility_breakout.shadow_models import ShadowFreeze
+from .world_score import ScoreObservation,CanonicalWorldScore
+from .edge_ecology import EdgeEcology
+from .synthesis_runtime import SynthesisRuntime
+from .g0_hypothesis_adapter import bind_synthesis_context
+from .g0_forecast_challenge import challenge_forecast
+from .g0_forecast_binding import freeze_forecast_pair
+
+def _hash(x:Any)->str:
+ return "sha256:"+hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
+
+def _freeze(record:dict[str,Any])->ShadowFreeze:
+ return ShadowFreeze(freeze_id=str(record.get("freeze_id") or ""),phase4_run_id=str(record.get("phase4_run_id") or ""),
+  candidate_key=str(record.get("candidate_key") or ""),model_id=str(record.get("model_id") or ""),
+  order_policy=str(record.get("order_policy") or ""),approved_by=str(record.get("approved_by") or ""),
+  approved_ts=float(record.get("approved_ts") or 0),phase4_dataset_hash=str(record.get("phase4_dataset_hash") or ""),
+  config_hash=str(record.get("config_hash") or ""),symbol=str(record.get("symbol") or "") or None,
+  direction=str(record.get("direction") or "").upper() or None,status=str(record.get("status") or "ACTIVE"))
+
+def _row(f:Any,*,venue:str,world_hash:str,path:str,entry_price:float|None)->dict[str,Any]:
+ d=asdict(f) if hasattr(f,"__dataclass_fields__") else dict(f)
+ ts=float(d.get("timestamp_ms") or 0)/1000.0;h=int(d.get("horizon_seconds") or 0)
+ d.update({"forecast_id":_hash({"world":world_hash,"model":d.get("model_id"),"horizon":h,"path":path}),
+  "venue":venue,"ts":ts,"target_ts":ts+h,"entry_price":entry_price,
+  "target_timestamp_ms":int((ts+h)*1000),"execution_eligible":False})
+ return d
+
+def _decision(f:Any)->tuple[Any,...]:
+ return (bool(getattr(f,"abstain",False)),str(getattr(f,"direction","ABSTAIN")),
+  getattr(f,"expected_net_bps",None),getattr(f,"probability_positive_net",None))
+
+class G0LiveLoop:
+ def __init__(self,cfg:Any,runtime:SynthesisRuntime|None=None)->None:
+  self.cfg=cfg;self.runtime=runtime or SynthesisRuntime();self.builder=ShadowIntentBuilder(cfg)
+
+ def process_feature(self,*,data_store:Any,competition:Any,feature:Any,venue:str,now_ms:int,
+                     horizons:tuple[int,...])->dict[str,int]:
+  out={"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0}
+  record=data_store.get_phase5_active_freeze() if hasattr(data_store,"get_phase5_active_freeze") else {}
+  if not record:return out
+  freeze=_freeze(record)
+  if freeze.status!="ACTIVE":return out
+  if freeze.symbol and str(feature.symbol)!=freeze.symbol:return out
+  if feature.book_imbalance is None or feature.depth_usd_25bps is None or feature.spread_bps is None:return out
+  payload=asdict(feature);root=_hash(payload)
+  observed=min(int(feature.timestamp_ms),int(now_ms))
+  obs=ScoreObservation(_hash({"root":root,"symbol":feature.symbol})[-24:],str(venue),"public_market_feature",
+   str(feature.symbol),observed,int(now_ms),root,payload)
+  frame=CanonicalWorldScore.assemble(observations=(obs,),assembled_at_ms=int(now_ms),
+   freshness_window_ms=max(1000,int(getattr(self.cfg,"phase1_observation_stale_after_sec",180) or 180)*1000))
+  total=max(0.0,float(feature.depth_usd_25bps));imb=max(-1.0,min(1.0,float(feature.book_imbalance)))
+  bid=total*(1.0+imb)/2.0;ask=total*(1.0-imb)/2.0
+  snap=EdgeEcology().snapshot(timestamp_ms=int(feature.timestamp_ms),pair_id=str(feature.symbol),voices=(
+   EdgeEcology.liquidity_voice(bid_depth=bid,ask_depth=ask,spread_bps=float(feature.spread_bps)),))
+  full=self.runtime.run(frame=frame,now_ms=int(now_ms),edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)})
+  blind=self.runtime.run(frame=frame,now_ms=int(now_ms),edge_snapshot=snap,edge_roots={"LIQUIDITY":(root,)},
+   disabled_organs=("edge_ecology",))
+  full_feature=bind_synthesis_context(feature,full);blind_feature=bind_synthesis_context(feature,blind)
+  full_forecasts=competition.evaluate(full_feature,horizons)
+  blind_forecasts=competition.evaluate(blind_feature,horizons)
+  blind_by={(x.model_id,int(x.horizon_seconds)):x for x in blind_forecasts}
+  entry={"price":feature.price,"data_quality":feature.data_quality,"spread_bps":feature.spread_bps,
+   "depth_usd_25bps":feature.depth_usd_25bps}
+  for raw_full in full_forecasts:
+   if str(raw_full.model_id)!=freeze.model_id:continue
+   raw_blind=blind_by.get((raw_full.model_id,int(raw_full.horizon_seconds)))
+   if raw_blind is None:continue
+   out["examined"]+=1
+   full_fc=challenge_forecast(raw_full,full_feature);blind_fc=challenge_forecast(raw_blind,blind_feature)
+   if freeze.direction and not full_fc.abstain and str(full_fc.direction).upper()!=str(freeze.direction).upper():
+    out["skipped"]+=1;continue
+   out["eligible"]+=1
+   if _decision(full_fc)==_decision(blind_fc):
+    out["skipped"]+=1;continue
+   out["diverged"]+=1
+   try:
+    ff=_row(full_fc,venue=venue,world_hash=frame.world_state_hash,path="FULL_HIVE",entry_price=feature.price)
+    bf=_row(blind_fc,venue=venue,world_hash=frame.world_state_hash,path="EDGE_BLIND",entry_price=feature.price)
+    opportunity=_hash({"world":frame.world_state_hash,"organ":"edge_ecology","model":freeze.model_id,
+     "horizon":int(full_fc.horizon_seconds)})
+    r=freeze_forecast_pair(data_store=data_store,builder=self.builder,freeze=freeze,organ_id="edge_ecology",
+     opportunity_id=opportunity,frame=frame,full_cycle=full,ablated_cycle=blind,
+     full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,frozen_at_ms=int(now_ms))
+    if r.get("created"):out["frozen"]+=1
+    else:out["skipped"]+=1
+   except Exception:
+    out["errors"]+=1
+  return out

@@ -114,6 +114,16 @@ def test_phase1_observer_collects_and_never_executes(tmp_path: Path):
     assert payload['orders_submitted'] == 0
     assert len(payload['candidates']) == 2
     assert all(row['execution_eligible'] is False for row in payload['candidates'])
+    assert payload['world_state_summary']['canonical_binding_count'] == 2
+    assert all(
+        ((row.get('values') or {}).get('canonical_world_binding') or {}).get('canonical_world_state_id')
+        for row in payload['candidates']
+    )
+    assert all(
+        ((((row.get('values') or {}).get('feature_vector') or {}).get('values') or {})
+         .get('canonical_world_binding') or {}).get('canonical_world_state_hash')
+        for row in payload['candidates']
+    )
     assert client.orders == []
     assert any(key == 'buzz.observation.snapshot' for key, _ in coordinator.events)
 

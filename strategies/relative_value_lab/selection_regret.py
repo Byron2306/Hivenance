@@ -15,8 +15,8 @@ from typing import Any, Mapping, Sequence
 
 AUTHORITY="PUBLIC_MARKET_RESEARCH_SELECTION_REGRET_ONLY_NO_EXECUTION_AUTHORITY"
 FREEZE_SCHEMA="hivenance_selector_opportunity_freeze_v1"
-SETTLEMENT_SCHEMA="hivenance_selector_opportunity_settlement_v1"
-REPORT_SCHEMA="hivenance_selector_regret_report_v1"
+SETTLEMENT_SCHEMA="hivenance_selector_opportunity_settlement_v2"
+REPORT_SCHEMA="hivenance_selector_regret_report_v2"
 DEFAULT_HORIZON_SECONDS=300
 
 
@@ -91,6 +91,21 @@ def ensure_tables(store:Any)->None:
             payload TEXT
         )""")
         store.conn.execute("CREATE INDEX IF NOT EXISTS idx_selector_settle_symbol ON full_organism_selector_settlements(symbol,settled_ts)")
+        # V2 corrects the Phase-4 clock domain: settlement eligibility is based
+        # on observer custody time (observation_runs.completed_ts), not candle timestamp.
+        # V1 is retained immutably as superseded experimental evidence.
+        store.conn.execute("""
+        CREATE TABLE IF NOT EXISTS full_organism_selector_settlements_v2(
+            settlement_id TEXT PRIMARY KEY,
+            freeze_id TEXT UNIQUE,
+            settled_ts REAL,
+            symbol TEXT,
+            selected INTEGER,
+            selector_rank INTEGER,
+            regime TEXT,
+            payload TEXT
+        )""")
+        store.conn.execute("CREATE INDEX IF NOT EXISTS idx_selector_settle_v2_symbol ON full_organism_selector_settlements_v2(symbol,settled_ts)")
         store.conn.commit()
 
 
@@ -193,23 +208,34 @@ def freeze_selector_universe(
 
 
 def _future_observations(store:Any, symbol:str, created_ts:float, target_ts:float, tolerance_sec:float)->list[dict[str,Any]]:
+    """Return snapshots by *custody time*, not market-candle timestamp.
+
+    The observation row's ts is a market timestamp and may remain fixed while
+    repeated public snapshots are collected inside the same candle. Prospective
+    settlement therefore joins to observation_runs.completed_ts, which records
+    when HiveNance actually possessed that snapshot.
+    """
     with store._lock:
         cur=store.conn.execute(
-            """SELECT ts,price,spread_bps,depth_usd_25bps,data_quality,payload
-               FROM observation_universe_snapshots
-               WHERE symbol=? AND ts>? AND ts<=?
-               ORDER BY ts ASC""",
+            """SELECT u.run_id,r.completed_ts,u.ts,u.price,u.spread_bps,u.depth_usd_25bps,u.data_quality,u.payload
+               FROM observation_universe_snapshots u
+               JOIN observation_runs r ON r.run_id=u.run_id
+               WHERE u.symbol=? AND r.completed_ts>? AND r.completed_ts<=?
+               ORDER BY r.completed_ts ASC""",
             (symbol,float(created_ts),float(target_ts+tolerance_sec)),
         )
         rows=cur.fetchall()
     out=[]
-    for ts,price,spread,depth,quality,raw in rows:
+    for run_id,custody_ts,market_ts,price,spread,depth,quality,raw in rows:
         out.append({
-            "ts":float(ts),"price":_num(price),"spread_bps":_num(spread,0.0),
+            "run_id":str(run_id),
+            "ts":float(custody_ts),
+            "custody_ts":float(custody_ts),
+            "market_ts":float(market_ts or 0.0),
+            "price":_num(price),"spread_bps":_num(spread,0.0),
             "depth_usd_25bps":_num(depth,0.0),"data_quality":_num(quality,0.0),
         })
     return out
-
 
 def settle_mature_selector_freezes(
     *,
@@ -222,7 +248,7 @@ def settle_mature_selector_freezes(
     with store._lock:
         cur=store.conn.execute(
             """SELECT f.payload FROM full_organism_selector_freezes f
-               LEFT JOIN full_organism_selector_settlements s ON s.freeze_id=f.freeze_id
+               LEFT JOIN full_organism_selector_settlements_v2 s ON s.freeze_id=f.freeze_id
                WHERE s.freeze_id IS NULL AND f.target_ts<=?
                ORDER BY f.target_ts ASC LIMIT ?""",
             (float(now_ts),max(1,int(limit))),
@@ -275,7 +301,11 @@ def settle_mature_selector_freezes(
             "blind_rank":int(p.get("blind_rank") or 0),"blind_selected":bool(p.get("blind_selected")),
             "regime":str(p.get("regime") or "unknown"),
             "observed_ts":float(p.get("observed_ts") or 0),"target_ts":target,
-            "exit_ts":float(exit_row["ts"]),"entry_price":entry,"exit_price":exit_price,
+            "exit_ts":float(exit_row["ts"]),"exit_custody_ts":float(exit_row["custody_ts"]),
+            "exit_market_ts":float(exit_row.get("market_ts") or 0.0),
+            "exit_observation_run_id":str(exit_row.get("run_id") or ""),
+            "settlement_clock":"OBSERVATION_RUN_COMPLETED_TS",
+            "entry_price":entry,"exit_price":exit_price,
             "gross_absolute_move_bps":gross_abs,
             "realized_roundtrip_cost_bps":realized_cost,
             "net_opportunity_bps":net_opportunity,
@@ -289,7 +319,7 @@ def settle_mature_selector_freezes(
         settlement["settlement_id"]=sid
         with store._lock:
             store.conn.execute(
-                """INSERT OR IGNORE INTO full_organism_selector_settlements
+                """INSERT OR IGNORE INTO full_organism_selector_settlements_v2
                 (settlement_id,freeze_id,settled_ts,symbol,selected,selector_rank,regime,payload)
                 VALUES(?,?,?,?,?,?,?,?)""",
                 (sid,p["freeze_id"],float(now_ts),symbol,1 if p.get("selected") else 0,
@@ -306,7 +336,7 @@ def settle_mature_selector_freezes(
 
 def selector_regret_report(store:Any, *, run_id:str|None=None)->dict[str,Any]:
     ensure_tables(store)
-    q="""SELECT s.payload FROM full_organism_selector_settlements s
+    q="""SELECT s.payload FROM full_organism_selector_settlements_v2 s
          JOIN full_organism_selector_freezes f ON f.freeze_id=s.freeze_id"""
     args=[]
     if run_id:
@@ -356,6 +386,9 @@ def selector_regret_report(store:Any, *, run_id:str|None=None)->dict[str,Any]:
 
     return {
         "schema":REPORT_SCHEMA,"authority":AUTHORITY,
+        "settlement_schema":SETTLEMENT_SCHEMA,
+        "settlement_clock":"OBSERVATION_RUN_COMPLETED_TS",
+        "supersedes_settlement_schema":"hivenance_selector_opportunity_settlement_v1",
         "run_id":run_id,
         "settled_n":len(settled),"selected_n":len(selected),"rejected_n":len(rejected),
         "selected_mean_net_opportunity_bps":selected_mean,

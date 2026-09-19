@@ -242,6 +242,54 @@ VARIANTS: tuple[AblationVariant, ...] = (
     AblationVariant("ENTRAINMENT_GT_040", "Entrainment >= 0.40.", "entrainment_metric"),
     AblationVariant("ENTRAINMENT_GT_060", "Entrainment >= 0.60.", "entrainment_metric"),
     AblationVariant("FALSE_UNISON_LT_025", "False-unison risk < 0.25.", "entrainment_metric"),
+
+    # Frozen after v4 discovery, intended for prospective v5 confirmation.
+    AblationVariant("LOW_COST_050", "Expected cost <= 0.50 bps, independent of motion.", "confirmatory_cost"),
+    AblationVariant("LOW_COST_075", "Expected cost <= 0.75 bps, independent of motion.", "confirmatory_cost"),
+    AblationVariant("LOW_COST_100", "Expected cost <= 1.00 bps, independent of motion.", "confirmatory_cost"),
+    AblationVariant("LOW_COST_125", "Expected cost <= 1.25 bps, independent of motion.", "confirmatory_cost"),
+    AblationVariant("FOLLOW_LOW_COST_050", "FOLLOW with expected cost <= 0.50 bps.", "confirmatory_follow_cost"),
+    AblationVariant("FOLLOW_LOW_COST_075", "FOLLOW with expected cost <= 0.75 bps.", "confirmatory_follow_cost"),
+    AblationVariant("FOLLOW_LOW_COST_100", "FOLLOW with expected cost <= 1.00 bps.", "confirmatory_follow_cost"),
+    AblationVariant("FOLLOW_LOW_COST_125", "FOLLOW with expected cost <= 1.25 bps.", "confirmatory_follow_cost"),
+    AblationVariant("FOLLOW_LOW_COST_150", "FOLLOW with expected cost <= 1.50 bps.", "confirmatory_follow_cost"),
+    AblationVariant("DISSENT_LOW_COST_100", "DISSENT with expected cost <= 1.00 bps.", "confirmatory_negative_control"),
+    AblationVariant("FOLLOW_LOW_COST_100_EDGE050", "FOLLOW, cost <= 1 bps, expected net >= 0.5 bps.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_EDGE100", "FOLLOW, cost <= 1 bps, expected net >= 1.0 bps.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_EDGE150", "FOLLOW, cost <= 1 bps, expected net >= 1.5 bps.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_STAB055", "FOLLOW, cost <= 1 bps, stability >= .55.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_STAB065", "FOLLOW, cost <= 1 bps, stability >= .65.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_MOTION050", "FOLLOW, cost <= 1 bps, |motion| >= .5 bps.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_MOTION100", "FOLLOW, cost <= 1 bps, |motion| >= 1 bps.", "confirmatory_interaction"),
+    AblationVariant("FOLLOW_LOW_COST_100_MOTION200", "FOLLOW, cost <= 1 bps, |motion| >= 2 bps.", "confirmatory_interaction"),
+)
+
+
+CONFIRMATORY_V5_VARIANTS: tuple[str, ...] = (
+    "CONTROL_ALL",
+    "REJECT_ALL",
+    "FULL_HIVE",
+    "MOTION_FOLLOW_ONLY",
+    "LOW_COST_050",
+    "LOW_COST_075",
+    "LOW_COST_100",
+    "LOW_COST_125",
+    "FOLLOW_LOW_COST_050",
+    "FOLLOW_LOW_COST_075",
+    "FOLLOW_LOW_COST_100",
+    "FOLLOW_LOW_COST_125",
+    "FOLLOW_LOW_COST_150",
+    "DISSENT_LOW_COST_100",
+    "FOLLOW_LOW_COST_100_EDGE050",
+    "FOLLOW_LOW_COST_100_EDGE100",
+    "FOLLOW_LOW_COST_100_EDGE150",
+    "FOLLOW_LOW_COST_100_STAB055",
+    "FOLLOW_LOW_COST_100_STAB065",
+    "FOLLOW_LOW_COST_100_MOTION050",
+    "FOLLOW_LOW_COST_100_MOTION100",
+    "FOLLOW_LOW_COST_100_MOTION200",
+    "HASH_25",
+    "HASH_50",
 )
 
 
@@ -315,6 +363,29 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
         return s.queen_resolution == "ADMIT_RESOLVED" and s.structural_reputation >= s.motion_reputation
     if vid == "REP_MOTION_GE_STRUCT":
         return s.queen_resolution == "ADMIT_RESOLVED" and s.motion_reputation >= s.structural_reputation
+
+    if vid.startswith("LOW_COST_"):
+        threshold = float(vid.rsplit("_", 1)[1]) / 100.0
+        return s.expected_cost_bps <= threshold
+    if vid.startswith("FOLLOW_LOW_COST_"):
+        parts = vid.split("_")
+        # FOLLOW_LOW_COST_<cost hundredths>[_EDGE|STAB|MOTION_<threshold>]
+        cost_threshold = float(parts[3]) / 100.0
+        if s.motion_kind != "FOLLOW" or s.expected_cost_bps > cost_threshold:
+            return False
+        if len(parts) == 4:
+            return True
+        qualifier = parts[4]
+        raw = parts[5]
+        if qualifier == "EDGE":
+            return s.expected_net_bps >= float(raw) / 100.0
+        if qualifier == "STAB":
+            return s.stability_score >= float(raw) / 100.0
+        if qualifier == "MOTION":
+            return abs(s.motion_bps) >= float(raw) / 100.0
+        raise KeyError(f"unknown_follow_low_cost_qualifier:{variant_id}")
+    if vid == "DISSENT_LOW_COST_100":
+        return s.motion_kind == "DISSENT" and s.expected_cost_bps <= 1.0
 
     if vid.startswith("EDGE_GT_"):
         threshold = float(vid.rsplit("_", 1)[1])

@@ -1,4 +1,7 @@
-import redis
+try:
+    import redis
+except Exception:
+    redis = None
 import json
 import logging
 import uuid
@@ -25,7 +28,7 @@ class NetworkAgent:
         self.port = port
         self.db = db
         self.password = password
-        self.client: Optional[redis.Redis] = None
+        self.client: Optional[Any] = None
         self.consumer_group_pref = consumer_group_pref
         self._connect()
 
@@ -47,6 +50,11 @@ class NetworkAgent:
 
     def _connect(self):
         """Establish Redis connection."""
+        if redis is None:
+            logging.info("redis package not installed; Network Agent disabled")
+            self.client = None
+            self.pubsub = None
+            return
         try:
             self.client = redis.Redis(
                 host=self.host,
@@ -62,7 +70,7 @@ class NetworkAgent:
                 self.pubsub = self.client.pubsub()
             except Exception:
                 self.pubsub = None
-        except redis.ConnectionError as e:
+        except Exception as e:
             logging.warning(f"Redis not available at {self.host}:{self.port}: {e}")
             self.client = None
             self.pubsub = None

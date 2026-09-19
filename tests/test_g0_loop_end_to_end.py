@@ -48,5 +48,6 @@ def test_autonomous_g0_birth_to_future_settlement():
  assert settled=={"examined":1,"settled":1,"errors":0}
  payload=json.loads(s.conn.execute("SELECT payload FROM phase5_g0_shadow_twin_settlements").fetchone()[0])
  assert payload["paired_outcome"]["delta_bps"]==3.0
+ assert payload["paired_outcome"]["ablated_acted"] is False
  assert payload["ablated_settlement"]["status"]=="ABSTAIN_NO_TRADE"
  assert not payload["execution_eligible"] and not payload["promotion_eligible"]

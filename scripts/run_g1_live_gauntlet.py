@@ -154,12 +154,17 @@ def main()->int:
                  "adversarial_court_errors":0}
     last_payload=None
     cycle_errors=[]
+    last_cycle_runtime=None
 
     try:
         while not STOP and time.monotonic()<deadline:
-            cycles+=1
             cycle_start=time.monotonic()
             remaining=max(0.0,deadline-cycle_start)
+            minimum_budget=max(30.0,(last_cycle_runtime or 0.0)*1.10)
+            if cycles>0 and remaining<minimum_budget:
+                print(f"[GAUNTLET] no new observation cycle: remaining={remaining:.1f}s budget={minimum_budget:.1f}s",flush=True)
+                break
+            cycles+=1
             print(f"[GAUNTLET] cycle={cycles} start remaining={remaining:.1f}s",flush=True)
             try:
                 payload=shadow.run_once(drive_upstream=True)
@@ -169,7 +174,9 @@ def main()->int:
                 _merge_counts(total,g0)
                 for key in settlements:
                     settlements[key]+=int(settlement.get(key) or 0)
+                last_cycle_runtime=time.monotonic()-cycle_start
                 _compact_cycle(cycles,time.monotonic()-started,g0,settlement,str(payload.get("status") or ""))
+                print(f"[GAUNTLET] cycle={cycles} runtime={last_cycle_runtime:.1f}s",flush=True)
             except Exception as exc:
                 cycle_errors.append(f"cycle_{cycles}:{type(exc).__name__}:{exc}")
                 total["errors"]+=1

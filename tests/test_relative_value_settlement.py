@@ -62,3 +62,40 @@ def test_settler_does_not_double_settle():
     settler.register(forecast=forecast(), state=state(1_000, -0.01))
     assert len(settler.settle(state(11_000, -0.009))) == 1
     assert settler.settle(state(12_000, -0.008)) == []
+
+def test_settler_prices_use_frozen_hedge_parameters():
+    base = forecast()
+    frozen = ForwardRelativeForecast(
+        **{
+            **base.to_dict(),
+            "inputs": {
+                "hedge_alpha": 0.0,
+                "hedge_ratio": 1.0,
+            },
+        }
+    )
+    entry = state(1_000, 0.0)
+    settler = ProspectiveForecastSettler()
+    settler.register(forecast=frozen, state=entry)
+
+    rows = settler.settle_prices(
+        pair_id=frozen.pair_id,
+        timestamp_ms=11_000,
+        price_a=101.0,
+        price_b=100.0,
+    )
+    assert len(rows) == 1
+    expected = (__import__("math").log(101.0) - __import__("math").log(100.0)) * 10_000.0
+    assert round(rows[0].realized_signed_move_bps, 6) == round(expected, 6)
+    assert round(rows[0].realized_directional_net_bps or 0.0, 6) == round(expected - 3.0, 6)
+
+
+def test_settler_prices_skips_forecast_without_frozen_hedge():
+    settler = ProspectiveForecastSettler()
+    settler.register(forecast=forecast(), state=state(1_000, -0.01))
+    assert settler.settle_prices(
+        pair_id="A/USD__B/USD",
+        timestamp_ms=11_000,
+        price_a=101.0,
+        price_b=100.0,
+    ) == []

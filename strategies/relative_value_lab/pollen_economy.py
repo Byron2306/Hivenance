@@ -425,6 +425,16 @@ class QueenPollenEconomy:
     def claims(self, bounty_id: str) -> tuple[PollenClaim, ...]:
         return tuple(self._claims.get(bounty_id, ()))
 
+    def bounty(self, bounty_id: str) -> PollenBounty:
+        try:
+            return self._bounties[bounty_id]
+        except KeyError as exc:
+            raise KeyError(f"unknown_pollen_bounty:{bounty_id}") from exc
+
+    def bounties(self) -> tuple[PollenBounty, ...]:
+        return tuple(self._bounties[key] for key in sorted(self._bounties))
+
+
     @staticmethod
     def _correctness(claim: PollenClaim, outcome: ProspectivePollenOutcome) -> float:
         if outcome.outcome_class == "UNRESOLVED":

@@ -142,6 +142,14 @@ class SelectorEquivalenceClass:
 
 
 @dataclass(frozen=True)
+class AblationReplayCase:
+    forecast_id: str
+    pair_id: str
+    net_bps: float
+    snapshot: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
 class AblationReport:
     schema: str
     report_id: str
@@ -150,6 +158,7 @@ class AblationReport:
     organ_findings: tuple[OrganUtilityFinding, ...] = ()
     selector_equivalence_classes: tuple[SelectorEquivalenceClass, ...] = ()
     variant_stability: tuple[VariantStability, ...] = ()
+    replay_cases: tuple[AblationReplayCase, ...] = ()
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -165,6 +174,7 @@ class AblationReport:
                 asdict(item) for item in self.selector_equivalence_classes
             ],
             "variant_stability": [asdict(item) for item in self.variant_stability],
+            "replay_cases": [asdict(item) for item in self.replay_cases],
             "authority": self.authority,
             "execution_eligible": self.execution_eligible,
             "promotion_eligible": self.promotion_eligible,
@@ -663,6 +673,25 @@ class RelativeValueAblationLab:
             ))
         return tuple(out)
 
+    def replay_cases(self) -> tuple[AblationReplayCase, ...]:
+        """Persist frozen time-t features beside future settlement outcome.
+
+        This makes the prospective sample reusable for later offline mutation
+        policies without re-reading future information into the snapshots.
+        """
+        out = []
+        for row in self._rows:
+            snapshot = self._snapshots.get(row.forecast_id)
+            if snapshot is None:
+                continue
+            out.append(AblationReplayCase(
+                forecast_id=row.forecast_id,
+                pair_id=row.pair_id,
+                net_bps=round(float(row.net_bps), 6),
+                snapshot=snapshot.to_dict(),
+            ))
+        return tuple(out)
+
     def report(self) -> AblationReport:
         settled_count = len(self._rows)
         books = []
@@ -685,6 +714,7 @@ class RelativeValueAblationLab:
             organ_findings=self.organ_findings(),
             selector_equivalence_classes=self.selector_equivalence_classes(),
             variant_stability=self.variant_stability(),
+            replay_cases=self.replay_cases(),
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,

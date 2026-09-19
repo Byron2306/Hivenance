@@ -83,11 +83,16 @@ def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
  if not getattr(data_store,"conn",None):return ()
  try:
   with data_store._lock:
-   cur=data_store.conn.execute("""SELECT s.settled_ts,s.payload,t.payload
-    FROM phase5_g0_shadow_twin_settlements s
-    LEFT JOIN phase5_g0_shadow_twins t ON t.twin_freeze_id=s.twin_freeze_id
-    ORDER BY s.settled_ts""")
-   rows=cur.fetchall()
+   try:
+    cur=data_store.conn.execute("""SELECT s.settled_ts,s.payload,t.payload
+     FROM phase5_g0_shadow_twin_settlements s
+     LEFT JOIN phase5_g0_shadow_twins t ON t.twin_freeze_id=s.twin_freeze_id
+     ORDER BY s.settled_ts""")
+    rows=cur.fetchall()
+   except Exception:
+    cur=data_store.conn.execute(
+     "SELECT settled_ts,payload FROM phase5_g0_shadow_twin_settlements ORDER BY settled_ts")
+    rows=[(settled_ts,raw,None) for settled_ts,raw in cur.fetchall()]
  except Exception:return ()
  out=[]
  for settled_ts,raw,twin_raw in rows:

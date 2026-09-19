@@ -70,14 +70,21 @@ class G0LiveLoop:
    else:
     bucket["raw_non_abstain"]+=1
   record=data_store.get_phase5_active_freeze() if hasattr(data_store,"get_phase5_active_freeze") else {}
+  research_campaign_id=None;research_target_id=None
   if record:
-   freeze=_freeze(record)
+   freezes=(_freeze(record),)
   else:
-   from .g1_research_target import ensure_g1_research_target,shadow_freeze_from_research_target
-   target=ensure_g1_research_target(data_store,self.cfg,created_ts=float(now_ms)/1000.0)
-   freeze=shadow_freeze_from_research_target(target)
-  if freeze.status!="ACTIVE":return out
-  if freeze.symbol and str(feature.symbol)!=freeze.symbol:return out
+   from .g1_research_target import (
+    ensure_g1_research_target,get_latest_g1_research_target,shadow_freezes_from_research_target,
+   )
+   target=get_latest_g1_research_target(data_store)
+   if target is None:
+    target=ensure_g1_research_target(data_store,self.cfg,created_ts=float(now_ms)/1000.0)
+   freezes=shadow_freezes_from_research_target(target)
+   research_campaign_id=str(target.get("campaign_id") or "") or None
+   research_target_id=str(target.get("target_id") or "") or None
+  freeze_by_model={str(x.model_id):x for x in freezes if x.status=="ACTIVE"}
+  if not freeze_by_model:return out
   if feature.book_imbalance is None or feature.depth_usd_25bps is None or feature.spread_bps is None:return out
   payload=asdict(feature);root=_hash(payload)
   observed=min(int(feature.timestamp_ms),int(now_ms))
@@ -114,7 +121,9 @@ class G0LiveLoop:
    blind_forecasts=competition.evaluate(blind_feature,horizons)
    blind_by={(x.model_id,int(x.horizon_seconds)):x for x in blind_forecasts}
    for raw_full in full_forecasts:
-    if str(raw_full.model_id)!=freeze.model_id:continue
+    freeze=freeze_by_model.get(str(raw_full.model_id))
+    if freeze is None:continue
+    if freeze.symbol and str(feature.symbol)!=freeze.symbol:continue
     raw_blind=blind_by.get((raw_full.model_id,int(raw_full.horizon_seconds)))
     if raw_blind is None:continue
     bump(organ_id,"examined")
@@ -134,7 +143,8 @@ class G0LiveLoop:
       "horizon":int(full_fc.horizon_seconds)})
      r=freeze_forecast_pair(data_store=data_store,builder=self.builder,freeze=freeze,organ_id=organ_id,
       opportunity_id=opportunity,frame=frame,full_cycle=full,ablated_cycle=blind,
-      full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,frozen_at_ms=int(now_ms))
+      full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,frozen_at_ms=int(now_ms),
+      research_campaign_id=research_campaign_id,research_target_id=research_target_id)
      if r.get("created"):bump(organ_id,"frozen")
      else:bump(organ_id,"skipped")
     except Exception:
@@ -143,7 +153,9 @@ class G0LiveLoop:
   # Post-cognition organs are evaluated independently against the exact raw
   # Phoenix forecast, never against one another's modified output.
   for raw_full in competition.evaluate(full_feature,horizons):
-   if str(raw_full.model_id)!=freeze.model_id or raw_full.abstain:continue
+   freeze=freeze_by_model.get(str(raw_full.model_id))
+   if freeze is None or raw_full.abstain:continue
+   if freeze.symbol and str(feature.symbol)!=freeze.symbol:continue
    if freeze.direction and str(raw_full.direction).upper()!=str(freeze.direction).upper():continue
 
    bump("polyphonic_quorum","examined");bump("polyphonic_quorum","eligible");raw_state("polyphonic_quorum",raw_full)
@@ -159,7 +171,8 @@ class G0LiveLoop:
      r=freeze_post_cognition_pair(data_store=data_store,builder=self.builder,freeze=freeze,
       organ_id="polyphonic_quorum",opportunity_id=opportunity,frame=frame,
       full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
-      intervention_receipt=receipt.to_dict(),frozen_at_ms=int(now_ms))
+      intervention_receipt=receipt.to_dict(),frozen_at_ms=int(now_ms),
+      research_campaign_id=research_campaign_id,research_target_id=research_target_id)
      if r.get("created"):bump("polyphonic_quorum","frozen")
      else:bump("polyphonic_quorum","skipped")
     else:bump("polyphonic_quorum","skipped")
@@ -179,7 +192,8 @@ class G0LiveLoop:
      r=freeze_post_cognition_pair(data_store=data_store,builder=self.builder,freeze=freeze,
       organ_id="conducting_queen",opportunity_id=opportunity,frame=frame,
       full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
-      intervention_receipt=queen.to_dict(),frozen_at_ms=int(now_ms))
+      intervention_receipt=queen.to_dict(),frozen_at_ms=int(now_ms),
+      research_campaign_id=research_campaign_id,research_target_id=research_target_id)
      if r.get("created"):bump("conducting_queen","frozen")
      else:bump("conducting_queen","skipped")
     else:bump("conducting_queen","skipped")

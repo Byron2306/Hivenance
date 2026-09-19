@@ -170,6 +170,8 @@ __all__ = [
     "CanonicalScoreFrame",
     "ScoreInterpretation",
     "ScoreObservation",
+    "VNSScoreConductor",
+    "VNSMeasure",
 ]
 from .governance_epoch import (
     ResearchGovernanceEpoch,
@@ -234,3 +236,4 @@ from .world_score import (
     ScoreBindingAudit,
     CanonicalWorldScore,
 )
+from .vns_score_conductor import VNSMeasure, VNSScoreConductor

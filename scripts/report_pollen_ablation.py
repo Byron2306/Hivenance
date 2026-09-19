@@ -20,6 +20,7 @@ def main()->int:
     books={row["variant_id"]:row for row in payload.get("books",[])}
     findings=payload.get("organ_findings",[])
     deltas=payload.get("deltas_vs_full_hive",[])
+    stability={row["variant_id"]:row for row in payload.get("variant_stability",[])}
 
     print("HiveNance Ablation Autopsy")
     print(f"settled={settled}")
@@ -77,12 +78,16 @@ def main()->int:
         print("none yet")
     for row in winners[:max(1,args.top)]:
         book=books.get(row["variant_id"],{})
+        stab=stability.get(row["variant_id"],{})
         print(
             f"{row['variant_id']:30s} "
             f"Δ={row['cumulative_net_delta_bps']:+.3f}bps "
             f"changed={row['changed_decisions']} "
             f"n={book.get('selected_count',0)} "
-            f"select={float(book.get('selection_rate') or 0.0):.3f}"
+            f"select={float(book.get('selection_rate') or 0.0):.3f} "
+            f"halves={float(stab.get('first_half_net_bps') or 0.0):+.2f}/"
+            f"{float(stab.get('second_half_net_bps') or 0.0):+.2f} "
+            f"w/o_best={float(stab.get('net_without_best_pair_bps') or 0.0):+.2f}"
         )
 
     print("\nDEGENERATE SELECT-NONE RESULTS")
@@ -94,6 +99,30 @@ def main()->int:
             f"Δ={row['cumulative_net_delta_bps']:+.3f}bps "
             f"changed={row['changed_decisions']} "
             "reason=selected_zero_trades"
+        )
+
+    print("\nNON-DEGENERATE ROBUST CANDIDATES")
+    robust=[]
+    for row in winners:
+        book=books.get(row["variant_id"],{})
+        stab=stability.get(row["variant_id"],{})
+        if (
+            int(book.get("selected_count") or 0) >= 5
+            and bool(stab.get("both_halves_positive"))
+            and bool(stab.get("survives_best_pair_removal"))
+        ):
+            robust.append(row)
+    if not robust:
+        print("none in this sample")
+    for row in robust[:max(1,args.top)]:
+        book=books.get(row["variant_id"],{})
+        stab=stability.get(row["variant_id"],{})
+        print(
+            f"{row['variant_id']:30s} "
+            f"Δ={row['cumulative_net_delta_bps']:+.3f}bps "
+            f"n={book.get('selected_count',0)} "
+            f"pairs+/-={stab.get('positive_pair_count',0)}/{stab.get('negative_pair_count',0)} "
+            f"w/o_best={float(stab.get('net_without_best_pair_bps') or 0.0):+.3f}bps"
         )
 
     print("\nMUTATIONS THAT HURT THIS SAMPLE")
@@ -108,6 +137,27 @@ def main()->int:
             f"changed={row['changed_decisions']} "
             f"n={book.get('selected_count',0)} "
             f"select={float(book.get('selection_rate') or 0.0):.3f}"
+        )
+
+    print("\nFRAGILE POSITIVE MUTATIONS")
+    fragile=[]
+    for row in winners:
+        stab=stability.get(row["variant_id"],{})
+        if not (
+            bool(stab.get("both_halves_positive"))
+            and bool(stab.get("survives_best_pair_removal"))
+        ):
+            fragile.append(row)
+    if not fragile:
+        print("none")
+    for row in fragile[:max(1,args.top)]:
+        stab=stability.get(row["variant_id"],{})
+        print(
+            f"{row['variant_id']:30s} "
+            f"halves={float(stab.get('first_half_net_bps') or 0.0):+.3f}/"
+            f"{float(stab.get('second_half_net_bps') or 0.0):+.3f} "
+            f"best={stab.get('best_pair_id')}:{float(stab.get('best_pair_net_bps') or 0.0):+.3f} "
+            f"w/o_best={float(stab.get('net_without_best_pair_bps') or 0.0):+.3f}"
         )
 
     print("\nSELECTOR EQUIVALENCE CLASSES")

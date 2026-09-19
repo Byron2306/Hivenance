@@ -33,6 +33,8 @@ COMPONENTS = (
     "relative_value_world_score",
     "relative_value_vns_score_conductor",
     "relative_value_vns_score_stream",
+    "relative_value_polyphonic_quorum",
+    "relative_value_pollen_economy",
     "relative_value_market_hunting",
     "relative_value_colony_correlation",
     "relative_value_ml_challenger",

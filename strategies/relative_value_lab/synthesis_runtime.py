@@ -13,6 +13,9 @@ from .world_score import CanonicalScoreFrame
 from .world_graph_adapters import add_horizon_context,add_edge_ecology,add_temporal_participation
 from .learning_memory import add_learning_receipt
 from .learning_retrieval import learning_brief
+from .learning_attention import obligations_from_learning
+from .learning_attention_router import LearningAttentionRouter
+from .comparison_engine import add_comparison_result
 
 def _digest(v:Any)->str:
  raw=json.dumps(v,sort_keys=True,separators=(",",":"),default=str).encode()
@@ -29,10 +32,12 @@ class OrganReceipt:
 class SynthesisCycle:
  cycle_id:str; world_state_id:str; world_state_hash:str; queen_view:QueenView
  organ_receipts:tuple[OrganReceipt,...]; learning:Mapping[str,Any]
+ attention_obligations:tuple[Mapping[str,Any],...]=(); organ_requests:tuple[Mapping[str,Any],...]=()
  execution_eligible:bool=False; promotion_eligible:bool=False
  def to_dict(self): return {"cycle_id":self.cycle_id,"world_state_id":self.world_state_id,
   "world_state_hash":self.world_state_hash,"queen_view":self.queen_view.to_dict(),
   "organ_receipts":tuple(x.to_dict() for x in self.organ_receipts),"learning":dict(self.learning),
+  "attention_obligations":self.attention_obligations,"organ_requests":self.organ_requests,
   "execution_eligible":False,"promotion_eligible":False}
 
 class SynthesisRuntime:
@@ -42,7 +47,7 @@ class SynthesisRuntime:
          horizon_roots:Sequence[str]=(),edge_snapshot:Any|None=None,
          edge_roots:Mapping[str,Sequence[str]]|None=None,
          temporal_participation:Any|None=None,
-         learning_receipts:Sequence[Mapping[str,Any]]=(),
+         learning_receipts:Sequence[Mapping[str,Any]]=(),comparison_results:Sequence[Any]=(),
          disabled_organs:Sequence[str]=())->SynthesisCycle:
   disabled={str(x) for x in disabled_organs};g=WorldGraph(frame);rs=[]
 
@@ -77,9 +82,21 @@ class SynthesisRuntime:
    receipt("learning_memory","INVOKED" if learned else "AVAILABLE_NOT_INVOKED",
            (r for n in learned for r in n.evidence_roots),learned,count=len(learned))
 
-  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING"))
+  compared=[]
+  if "comparison_engine" in disabled:
+   receipt("comparison_engine","DISABLED")
+  else:
+   for result in comparison_results: compared.append(add_comparison_result(g,result=result,created_at_ms=now_ms))
+   receipt("comparison_engine","INVOKED" if compared else "AVAILABLE_NOT_INVOKED",
+           (r for n in compared for r in n.evidence_roots),compared,count=len(compared))
+
+  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON"))
   brief=learning_brief(view)
+  obligations=obligations_from_learning(brief)
+  router=LearningAttentionRouter()
+  requests=tuple(router.route(o) for o in obligations)
   body={"world_state_id":frame.world_state_id,"world_state_hash":frame.world_state_hash,
         "organs":[x.to_dict() for x in rs],"nodes":[n.node_id for n in view.nodes]}
   return SynthesisCycle("syn_"+_digest(body).split(":",1)[1][:24],frame.world_state_id,
-    frame.world_state_hash,view,tuple(rs),brief.to_dict(),False,False)
+    frame.world_state_hash,view,tuple(rs),brief.to_dict(),
+    tuple(o.to_dict() for o in obligations),tuple(r.to_dict() for r in requests),False,False)

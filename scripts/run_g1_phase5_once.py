@@ -63,6 +63,17 @@ def main()->int:
   "private_exchange_access":False,
   "real_orders_submitted":0,
  },indent=2,sort_keys=True,default=str))
+ print("[G1] stopping one-shot agents...",flush=True)
+ for agent in list(getattr(coordinator,"agents",{}).values()):
+  stop=getattr(agent,"stop",None)
+  if callable(stop):
+   try: stop()
+   except TypeError:
+    try: stop(timeout=1)
+    except Exception: pass
+   except Exception: pass
+ coordinator.running=False
+ print("[G1] done",flush=True)
  return 0
 
 if __name__=="__main__":raise SystemExit(main())

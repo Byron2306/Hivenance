@@ -75,7 +75,7 @@ def get_latest_g1_research_target(store:Any)->dict[str,Any]|None:
  except Exception:
   return None
 
-def freeze_g1_research_target_successor(store:Any,cfg:Any,*,campaign_id:str,
+def freeze_g1_research_target_successor(store:Any,cfg:Any,*,campaign_id:str|None=None,
  model_ids:tuple[str,...]=PRIMARY_MODEL_IDS,order_policy:str=ORDER_POLICY,
  predecessor_target_id:str|None=None,created_ts:float|None=None)->dict[str,Any]:
  conn=_conn(store)
@@ -83,7 +83,7 @@ def freeze_g1_research_target_successor(store:Any,cfg:Any,*,campaign_id:str,
  mids=tuple(dict.fromkeys(str(x) for x in model_ids if str(x)))
  if not mids:raise ValueError("g1_research_target_models_required")
  ts=float(time.time() if created_ts is None else created_ts)
- body={"schema":"hivenance_g1_research_target_v2","campaign_id":str(campaign_id),
+ body={"schema":"hivenance_g1_research_target_v2","campaign_id":(str(campaign_id) if campaign_id else None),
   "model_ids":mids,"order_policy":str(order_policy),"symbol":None,"direction":None,
   "predecessor_target_id":predecessor_target_id,"config_hash":frozen_config_hash(cfg),
   "authority":AUTHORITY,"execution_eligible":False,"promotion_eligible":False,

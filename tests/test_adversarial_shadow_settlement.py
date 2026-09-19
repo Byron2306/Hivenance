@@ -9,8 +9,8 @@ def _i():
 def _cfg(): return SimpleNamespace(phase5_shadow_entry_latency_ms=0,phase5_shadow_chase_timeout_sec=30,phase3_max_slippage_bps=0,phase3_maker_fee_bps=0,phase3_taker_fee_bps=0,exchange="kraken")
 def test_candidate_and_controls_share_public_tape():
  b=AdversarialShadowCourt().build(_i());e=ShadowSettlementEngine(_cfg())
- tape=[{"ts":1000,"price":100,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1},{"ts":1060,"price":110,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1},{"ts":1120,"price":90,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1}]
- r=settle_adversarial_bundle(bundle=b,engine=e,observations=tape,settled_ts=1121)
+ tape=[{"ts":1000,"price":100,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1},{"ts":1060,"price":110,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1},{"ts":1120,"price":90,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1},{"ts":1180,"price":80,"spread_bps":0,"depth_usd_25bps":10000,"data_quality":1}]
+ r=settle_adversarial_bundle(bundle=b,engine=e,observations=tape,settled_ts=1181)
  assert r.candidate is not None and r.candidate.net_return_bps>0
  inv=next(x for x in r.controls if x.control_type=="SIGN_INVERTED")
  no=next(x for x in r.controls if x.control_type=="NO_TRADE")

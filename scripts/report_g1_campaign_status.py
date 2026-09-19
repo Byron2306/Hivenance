@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,json,sqlite3,threading
+import argparse,json,sqlite3,threading,sys
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+ sys.path.insert(0,str(ROOT))
 from collections import defaultdict
 from strategies.relative_value_lab.g1_campaign_freeze import get_g1_campaign_freeze,policy_from_freeze
 from strategies.relative_value_lab.g1_utility_campaign import evaluate_store,load_prospective_outcomes

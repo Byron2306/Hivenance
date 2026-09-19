@@ -23,12 +23,6 @@ def main()->int:
  cfg.binance_api_key=""
  cfg.binance_api_secret=""
  client=None
- if str(cfg.exchange).lower()=="kraken":
-  try:
-   import ccxt
-   client=ccxt.kraken({"enableRateLimit":True})
-  except Exception as exc:
-   print(f"PUBLIC_CLIENT_WARNING: {type(exc).__name__}: {exc}")
  coordinator=SwarmCoordinator(cfg)
  coordinator.initialize(client)
  shadow=coordinator.agents.get("shadow_flight")

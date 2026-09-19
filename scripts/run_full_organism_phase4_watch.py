@@ -37,11 +37,15 @@ def main()->int:
  ap.add_argument("--database",type=Path)
  ap.add_argument("--minutes",type=float,default=7.0)
  ap.add_argument("--pause-sec",type=float,default=45.0)
+ ap.add_argument("--mature-only",action="store_true",
+                 help="Collect future public tape and settle existing freezes without creating new selector cohorts.")
  args=ap.parse_args()
 
  cfg=load_observer_config(args.settings,args.profile)
  cfg.live_mode=False
  cfg.dry_run=True
+ if args.mature_only:
+  cfg.full_organism_selector_freeze_enabled=False
  db=args.database or Path(str(getattr(cfg,"db_path","data/swarm_data.db")))
  if not db.is_absolute():db=ROOT/db
  store=DataStoreAgent(str(db))
@@ -69,6 +73,7 @@ def main()->int:
   report=selector_regret_report(store)
   last={
    "cycle":cycle,
+   "mode":"MATURATION_ONLY" if args.mature_only else "FREEZE_AND_MATURE",
    "observation_run_id":((obs.get("run") or {}).get("run_id") if isinstance(obs,dict) else None),
    "selector_freeze":(obs.get("selector_freeze") if isinstance(obs,dict) else None),
    "settlement":settlement,

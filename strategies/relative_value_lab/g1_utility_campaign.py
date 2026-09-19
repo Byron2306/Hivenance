@@ -110,9 +110,13 @@ def load_prospective_outcomes(data_store:Any,*,organ_id:str|None=None,
   if target_id and str(pair.get("research_target_id") or "")!=str(target_id):continue
   q=dict(pair);q["settled_ts"]=float(settled_ts)
   fi=twin.get("full_intent") if isinstance(twin.get("full_intent"),dict) else {}
-  q["model_id"]=str(fi.get("model_id") or "")
-  q["horizon_seconds"]=int(fi.get("horizon_seconds") or 0)
-  q["symbol"]=str(fi.get("symbol") or "")
+  bi=twin.get("ablated_intent") if isinstance(twin.get("ablated_intent"),dict) else {}
+  q["model_id"]=str(fi.get("model_id") or bi.get("model_id") or "")
+  created=float(fi.get("created_ts") or bi.get("created_ts") or 0.0)
+  target=float(twin.get("target_ts") or fi.get("target_ts") or bi.get("target_ts") or 0.0)
+  q["horizon_seconds"]=int(fi.get("horizon_seconds") or bi.get("horizon_seconds") or
+                           (round(target-created) if target>created>0 else 0))
+  q["symbol"]=str(fi.get("symbol") or bi.get("symbol") or "")
   fs=p.get("full_settlement") if isinstance(p.get("full_settlement"),dict) else {}
   bs=p.get("ablated_settlement") if isinstance(p.get("ablated_settlement"),dict) else {}
   q["full_status"]=str(fs.get("status") or "")

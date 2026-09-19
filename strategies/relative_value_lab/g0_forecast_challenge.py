@@ -47,6 +47,24 @@ def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ec
    t=first("TEMPORAL_PARTICIPATION");state=str(t.get("activity_state") or "")
    if state not in {"PARTICIPATION_NORMAL","PARTICIPATION_ELEVATED"}:
     reasons.append("g0_temporal_participation_weak")
+ elif organ_scope=="learning_memory":
+  if "LEARNING" in families:
+   for lp in payloads.get("LEARNING") or ():
+    if not isinstance(lp,dict):continue
+    comps=lp.get("comparisons") if isinstance(lp.get("comparisons"),dict) else {}
+    d=comps.get("candidate_minus_no_trade_bps")
+    if isinstance(d,(int,float)) and float(d)<=0:
+     reasons.append("g0_learning_prior_no_trade_superior")
+     break
+ elif organ_scope=="comparison_engine" and forecast.hypothesis=="breakout_continuation":
+  if "COMPARISON" in families:
+   cmp=first("COMPARISON")
+   if int(cmp.get("matched_n") or 0)>=5:
+    metrics=cmp.get("metrics") if isinstance(cmp.get("metrics"),dict) else {}
+    vol=metrics.get("volume_zscore") if isinstance(metrics.get("volume_zscore"),dict) else {}
+    delta=vol.get("delta")
+    if isinstance(delta,(int,float)) and float(delta)<0:
+     reasons.append("g0_comparison_participation_below_same_hour_baseline")
  if not reasons:return forecast
  inputs=dict(forecast.inputs or {});inputs["g0_synthesis_challenge"]={
   "cycle_id":c.get("cycle_id"),"world_state_hash":c.get("world_state_hash"),

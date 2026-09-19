@@ -161,3 +161,51 @@ def test_queen_motif_entrainment_mutations_are_distinct():
     assert admit("DISSONANCE_LT_025",s) is True
     assert admit("ENTRAINMENT_GT_060",s) is True
     assert admit("FALSE_UNISON_LT_025",s) is True
+
+def test_interaction_mutations_are_distinct():
+    s=snapshot(
+        "combo",
+        resolution="ADMIT_RESOLVED",
+        dissent=False,
+        motion_kind="FOLLOW",
+        edge=1.5,
+        stability=.65,
+        pollen_count=1,
+        srep=.7,
+        mrep=.5,
+    )
+    assert admit("POLLEN_AND_REPUTATION",s) is True
+    assert admit("QUORUM_PLUS_FOLLOW",s) is True
+    assert admit("QUORUM_PLUS_EDGE1",s) is True
+    assert admit("QUORUM_PLUS_EDGE2",s) is False
+    assert admit("FOLLOW_PLUS_EDGE1",s) is True
+    assert admit("FOLLOW_PLUS_STABILITY060",s) is True
+
+
+def test_organ_findings_expose_selection_dead_weight():
+    lab=RelativeValueAblationLab()
+    for idx,net in enumerate((1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0),start=1):
+        fid=f"f{idx}"
+        lab.freeze(snapshot(fid,resolution="ADMIT_RESOLVED",pollen_count=1,srep=.6,mrep=.5))
+        lab.settle(settled(fid,net))
+    findings={f.organ_id:f for f in lab.organ_findings(minimum_changed_cases=3)}
+    assert findings["pollen_bounties"].utility_status=="ZERO_SELECTION_EFFECT"
+    assert findings["reputation"].utility_status=="ZERO_SELECTION_EFFECT"
+
+
+def test_organ_findings_can_flag_harmful_candidate():
+    lab=RelativeValueAblationLab()
+    # FULL_HIVE holds dissenting losses. Removing counterpoint hold admits them.
+    for idx in range(8):
+        fid=f"bad{idx}"
+        lab.freeze(snapshot(
+            fid,
+            resolution="HOLD_COUNTERPOINT",
+            dissent=True,
+            motion_kind="DISSENT",
+            motion_bps=2.0,
+        ))
+        lab.settle(settled(fid,-5.0))
+    findings={f.organ_id:f for f in lab.organ_findings(minimum_changed_cases=5)}
+    # Removing counterpoint hold hurts performance, so counterpoint hold is useful.
+    assert findings["counterpoint_hold"].utility_status=="USEFUL_CANDIDATE_THIS_SAMPLE"

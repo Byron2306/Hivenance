@@ -13,6 +13,7 @@ class G0PairedOutcome:
  organ_id:str; evidence_class:str; opportunity_id:str; world_state_hash:str
  full_net_bps:float; ablated_net_bps:float
  full_acted:bool=True; ablated_acted:bool=True
+ research_campaign_id:str|None=None; research_target_id:str|None=None
  execution_eligible:bool=False; promotion_eligible:bool=False
  @property
  def delta_bps(self)->float: return float(self.full_net_bps)-float(self.ablated_net_bps)

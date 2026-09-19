@@ -50,8 +50,12 @@ class G0LiveLoop:
   self.cfg=cfg;self.runtime=runtime or SynthesisRuntime();self.builder=ShadowIntentBuilder(cfg)
 
  def process_feature(self,*,data_store:Any,competition:Any,feature:Any,venue:str,now_ms:int,
-                     horizons:tuple[int,...])->dict[str,int]:
-  out={"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0}
+                     horizons:tuple[int,...])->dict[str,Any]:
+  out={"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0,"by_organ":{}}
+  def bump(organ_id:str,key:str,amount:int=1)->None:
+   bucket=out["by_organ"].setdefault(str(organ_id),{"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0})
+   bucket[key]+=int(amount)
+   out[key]+=int(amount)
   record=data_store.get_phase5_active_freeze() if hasattr(data_store,"get_phase5_active_freeze") else {}
   if record:
    freeze=_freeze(record)
@@ -100,15 +104,15 @@ class G0LiveLoop:
     if str(raw_full.model_id)!=freeze.model_id:continue
     raw_blind=blind_by.get((raw_full.model_id,int(raw_full.horizon_seconds)))
     if raw_blind is None:continue
-    out["examined"]+=1
+    bump(organ_id,"examined")
     full_fc=challenge_forecast(raw_full,full_feature,organ_scope=organ_id)
     blind_fc=challenge_forecast(raw_blind,blind_feature,organ_scope=organ_id)
     if freeze.direction and not full_fc.abstain and str(full_fc.direction).upper()!=str(freeze.direction).upper():
-     out["skipped"]+=1;continue
-    out["eligible"]+=1
+     bump(organ_id,"skipped");continue
+    bump(organ_id,"eligible")
     if _decision(full_fc)==_decision(blind_fc):
-     out["skipped"]+=1;continue
-    out["diverged"]+=1
+     bump(organ_id,"skipped");continue
+    bump(organ_id,"diverged")
     try:
      ff=_row(full_fc,venue=venue,world_hash=frame.world_state_hash,path="FULL_HIVE",entry_price=feature.price)
      bf=_row(blind_fc,venue=venue,world_hash=frame.world_state_hash,path=path_label,entry_price=feature.price)
@@ -117,10 +121,10 @@ class G0LiveLoop:
      r=freeze_forecast_pair(data_store=data_store,builder=self.builder,freeze=freeze,organ_id=organ_id,
       opportunity_id=opportunity,frame=frame,full_cycle=full,ablated_cycle=blind,
       full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,frozen_at_ms=int(now_ms))
-     if r.get("created"):out["frozen"]+=1
-     else:out["skipped"]+=1
+     if r.get("created"):bump(organ_id,"frozen")
+     else:bump(organ_id,"skipped")
     except Exception:
-     out["errors"]+=1
+     bump(organ_id,"errors")
 
   # Post-cognition organs are evaluated independently against the exact raw
   # Phoenix forecast, never against one another's modified output.
@@ -128,12 +132,12 @@ class G0LiveLoop:
    if str(raw_full.model_id)!=freeze.model_id or raw_full.abstain:continue
    if freeze.direction and str(raw_full.direction).upper()!=str(freeze.direction).upper():continue
 
-   out["examined"]+=1;out["eligible"]+=1
+   bump("polyphonic_quorum","examined");bump("polyphonic_quorum","eligible")
    try:
     receipt=quorum_for_forecast(cycle=full,forecast=raw_full,feature=full_feature)
     gated=apply_quorum_gate(raw_full,receipt)
     if _decision(gated)!=_decision(raw_full):
-     out["diverged"]+=1
+     bump("polyphonic_quorum","diverged")
      ff=_row(gated,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_GATED",entry_price=feature.price)
      bf=_row(raw_full,venue=venue,world_hash=frame.world_state_hash,path="QUORUM_BLIND",entry_price=feature.price)
      opportunity=_hash({"world":frame.world_state_hash,"organ":"polyphonic_quorum","model":freeze.model_id,
@@ -142,18 +146,18 @@ class G0LiveLoop:
       organ_id="polyphonic_quorum",opportunity_id=opportunity,frame=frame,
       full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
       intervention_receipt=receipt.to_dict(),frozen_at_ms=int(now_ms))
-     if r.get("created"):out["frozen"]+=1
-     else:out["skipped"]+=1
-    else:out["skipped"]+=1
+     if r.get("created"):bump("polyphonic_quorum","frozen")
+     else:bump("polyphonic_quorum","skipped")
+    else:bump("polyphonic_quorum","skipped")
    except Exception:
-    out["errors"]+=1
+    bump("polyphonic_quorum","errors")
 
-   out["examined"]+=1;out["eligible"]+=1
+   bump("conducting_queen","examined");bump("conducting_queen","eligible")
    try:
     queen=queen_receipt_for_forecast(frame=frame,cycle=full,forecast=raw_full,feature=full_feature,now_ms=int(now_ms))
     gated=apply_queen_gate(raw_full,queen)
     if _decision(gated)!=_decision(raw_full):
-     out["diverged"]+=1
+     bump("conducting_queen","diverged")
      ff=_row(gated,venue=venue,world_hash=frame.world_state_hash,path="QUEEN_GATED",entry_price=feature.price)
      bf=_row(raw_full,venue=venue,world_hash=frame.world_state_hash,path="QUEEN_BLIND",entry_price=feature.price)
      opportunity=_hash({"world":frame.world_state_hash,"organ":"conducting_queen","model":freeze.model_id,
@@ -162,9 +166,9 @@ class G0LiveLoop:
       organ_id="conducting_queen",opportunity_id=opportunity,frame=frame,
       full_forecast=ff,ablated_forecast=bf,full_observation=entry,ablated_observation=entry,
       intervention_receipt=queen.to_dict(),frozen_at_ms=int(now_ms))
-     if r.get("created"):out["frozen"]+=1
-     else:out["skipped"]+=1
-    else:out["skipped"]+=1
+     if r.get("created"):bump("conducting_queen","frozen")
+     else:bump("conducting_queen","skipped")
+    else:bump("conducting_queen","skipped")
    except Exception:
-    out["errors"]+=1
+    bump("conducting_queen","errors")
   return out

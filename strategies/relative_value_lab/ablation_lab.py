@@ -369,20 +369,36 @@ def admit(variant_id: str, s: AblationSnapshot) -> bool:
         return s.expected_cost_bps <= threshold
     if vid.startswith("FOLLOW_LOW_COST_"):
         parts = vid.split("_")
-        # FOLLOW_LOW_COST_<cost hundredths>[_EDGE|STAB|MOTION_<threshold>]
-        cost_threshold = float(parts[3]) / 100.0
+        # FOLLOW_LOW_COST_<cost hundredths>[_EDGE<threshold>|_STAB<threshold>|_MOTION<threshold>]
+        # Accept both EDGE100 and EDGE_100 spellings without positional assumptions.
+        if len(parts) < 4 or not parts[3]:
+            raise KeyError(f"malformed_follow_low_cost_variant:{variant_id}")
+        try:
+            cost_threshold = float(parts[3]) / 100.0
+        except ValueError as exc:
+            raise KeyError(f"malformed_follow_low_cost_cost:{variant_id}") from exc
+
         if s.motion_kind != "FOLLOW" or s.expected_cost_bps > cost_threshold:
             return False
         if len(parts) == 4:
             return True
-        qualifier = parts[4]
-        raw = parts[5]
-        if qualifier == "EDGE":
-            return s.expected_net_bps >= float(raw) / 100.0
-        if qualifier == "STAB":
-            return s.stability_score >= float(raw) / 100.0
-        if qualifier == "MOTION":
-            return abs(s.motion_bps) >= float(raw) / 100.0
+
+        suffix = "_".join(parts[4:])
+        for qualifier, value in (
+            ("EDGE", s.expected_net_bps),
+            ("STAB", s.stability_score),
+            ("MOTION", abs(s.motion_bps)),
+        ):
+            if suffix.startswith(qualifier):
+                raw = suffix[len(qualifier):].lstrip("_")
+                if not raw:
+                    raise KeyError(f"malformed_follow_low_cost_qualifier:{variant_id}")
+                try:
+                    threshold = float(raw) / 100.0
+                except ValueError as exc:
+                    raise KeyError(f"malformed_follow_low_cost_threshold:{variant_id}") from exc
+                return value >= threshold
+
         raise KeyError(f"unknown_follow_low_cost_qualifier:{variant_id}")
     if vid == "DISSENT_LOW_COST_100":
         return s.motion_kind == "DISSENT" and s.expected_cost_bps <= 1.0

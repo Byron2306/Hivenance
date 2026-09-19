@@ -49,6 +49,9 @@ def test_autonomous_g0_birth_to_future_settlement():
  assert settled["examined"]>=1 and settled["settled"]>=1 and settled["errors"]==0
  payloads=[json.loads(row[0]) for row in s.conn.execute("SELECT payload FROM phase5_g0_shadow_twin_settlements").fetchall()]
  assert all(p["paired_outcome"]["delta_bps"] in {3.0,-3.0} for p in payloads)
- assert any(p["paired_outcome"]["ablated_acted"] is False for p in payloads)
- assert any(p["full_settlement"]["status"]=="ABSTAIN_NO_TRADE" or p["ablated_settlement"]["status"]=="ABSTAIN_NO_TRADE" for p in payloads)
+ assert any(
+  p["paired_outcome"]["full_acted"] is False and p["paired_outcome"]["ablated_acted"] is True
+  for p in payloads
+ )
+ assert any(p["full_settlement"]["status"]=="ABSTAIN_NO_TRADE" for p in payloads)
  assert all(not p["execution_eligible"] and not p["promotion_eligible"] for p in payloads)

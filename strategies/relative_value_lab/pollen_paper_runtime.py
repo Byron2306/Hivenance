@@ -21,6 +21,7 @@ class RegisteredPaperHypothesis:
     quorum_formed: bool
     quorum_last_note_ms: int | None
     treatment_eligible_at_registration: bool
+    treatment_resolution: str
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -61,7 +62,7 @@ class ProspectivePollenPaperRuntime:
     hindsight selection.
     """
 
-    version = "hivenance.prospective_pollen_paper_runtime.v1"
+    version = "hivenance.prospective_pollen_paper_runtime.v1.1"
 
     def __init__(
         self,
@@ -72,6 +73,7 @@ class ProspectivePollenPaperRuntime:
         self.experiment = PollenProfitExperiment()
         self.ledger_path = ledger_path
         self._quorum_by_forecast: dict[str, PolyphonicQuorumReceipt | None] = {}
+        self._treatment_by_forecast: dict[str, bool] = {}
         self._registered: dict[str, RegisteredPaperHypothesis] = {}
         if self.ledger_path is not None:
             self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -82,15 +84,26 @@ class ProspectivePollenPaperRuntime:
         forecast: ForwardRelativeForecast,
         state: RelativeMarketState,
         quorum: PolyphonicQuorumReceipt | None,
+        treatment_admitted: bool | None = None,
+        treatment_resolution: str | None = None,
     ) -> RegisteredPaperHypothesis:
         if forecast.forecast_id in self._registered:
             raise ValueError("paper_forecast_already_registered")
 
-        treatment_eligible = bool(
+        quorum_preforecast = bool(
             quorum is not None
             and quorum.quorum_formed
             and quorum.last_note_ms <= forecast.timestamp_ms
             and quorum.hypothesis_id == forecast.forecast_id
+        )
+        treatment_eligible = (
+            quorum_preforecast
+            if treatment_admitted is None
+            else bool(treatment_admitted and quorum_preforecast)
+        )
+        frozen_resolution = str(
+            treatment_resolution
+            or ("ADMIT" if treatment_eligible else "HOLD")
         )
 
         # Freeze a non-qualifying quorum to None. This means a later quorum can
@@ -99,6 +112,7 @@ class ProspectivePollenPaperRuntime:
 
         self.settler.register(forecast=forecast, state=state)
         self._quorum_by_forecast[forecast.forecast_id] = frozen_quorum
+        self._treatment_by_forecast[forecast.forecast_id] = treatment_eligible
 
         row = RegisteredPaperHypothesis(
             forecast_id=forecast.forecast_id,
@@ -109,6 +123,7 @@ class ProspectivePollenPaperRuntime:
             quorum_formed=bool(frozen_quorum and frozen_quorum.quorum_formed),
             quorum_last_note_ms=None if frozen_quorum is None else frozen_quorum.last_note_ms,
             treatment_eligible_at_registration=treatment_eligible,
+            treatment_resolution=frozen_resolution,
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,
@@ -123,6 +138,7 @@ class ProspectivePollenPaperRuntime:
             self.experiment.record(
                 settlement=row,
                 quorum=self._quorum_by_forecast.get(row.forecast_id),
+                treatment_selected=self._treatment_by_forecast.get(row.forecast_id, False),
             )
             self._append_ledger("SETTLE", row.to_dict())
 
@@ -159,6 +175,7 @@ class ProspectivePollenPaperRuntime:
             self.experiment.record(
                 settlement=row,
                 quorum=self._quorum_by_forecast.get(row.forecast_id),
+                treatment_selected=self._treatment_by_forecast.get(row.forecast_id, False),
             )
             self._append_ledger("SETTLE", row.to_dict())
 

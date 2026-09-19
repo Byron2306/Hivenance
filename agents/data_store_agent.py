@@ -1345,6 +1345,19 @@ class DataStoreAgent:
             )
             ''')
             c.execute("CREATE INDEX IF NOT EXISTS idx_phase5_settlements_ts ON phase5_shadow_settlements(settled_ts)")
+            c.execute("""
+            CREATE TABLE IF NOT EXISTS phase5_adversarial_shadow_receipts (
+                receipt_id TEXT PRIMARY KEY,
+                bundle_id TEXT NOT NULL,
+                settled_ts REAL NOT NULL,
+                payload_sha256 TEXT NOT NULL,
+                authority TEXT NOT NULL,
+                execution_eligible INTEGER NOT NULL DEFAULT 0,
+                promotion_eligible INTEGER NOT NULL DEFAULT 0,
+                payload TEXT NOT NULL
+            )
+            """)
+            c.execute("CREATE INDEX IF NOT EXISTS idx_phase5_adversarial_shadow_ts ON phase5_adversarial_shadow_receipts(settled_ts)")
             c.execute('''
             CREATE TABLE IF NOT EXISTS paper_trades (
 
@@ -8957,6 +8970,49 @@ class DataStoreAgent:
             logging.exception("Error settling Phase-5 shadow intents")
             result["error"] = "settlement_failed"
             return result
+
+    def persist_phase5_adversarial_shadow_receipt(self, receipt: Dict[str, Any]) -> bool:
+        """Canonical Phoenix custody for adversarial Shadow Court evidence."""
+        if not self.conn:
+            return False
+        try:
+            payload = dict(receipt)
+            if payload.get("execution_eligible") is not False or payload.get("promotion_eligible") is not False:
+                raise ValueError("adversarial_shadow_authority_escalation_forbidden")
+            authority = str(payload.get("authority") or "")
+            if authority != "PROSPECTIVE_SHADOW_RESEARCH_ONLY":
+                raise ValueError("invalid_adversarial_shadow_authority")
+            raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+            digest = "sha256:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
+            receipt_id = str(payload.get("receipt_id") or digest)
+            with self._lock:
+                cur = self.conn.execute(
+                    """INSERT OR IGNORE INTO phase5_adversarial_shadow_receipts
+                    (receipt_id,bundle_id,settled_ts,payload_sha256,authority,execution_eligible,promotion_eligible,payload)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (receipt_id, str(payload.get("bundle_id") or ""), float(payload.get("settled_ts") or time.time()),
+                     digest, authority, 0, 0, raw),
+                )
+                created = cur.rowcount > 0
+                self.conn.commit()
+            return created
+        except ValueError:
+            raise
+        except Exception:
+            logging.exception("Error persisting Phase-5 adversarial shadow receipt")
+            return False
+
+    def get_phase5_adversarial_shadow_receipts(self, limit: int = 250) -> list:
+        if not self.conn:
+            return []
+        try:
+            with self._lock:
+                c = self.conn.cursor()
+                c.execute("SELECT * FROM phase5_adversarial_shadow_receipts ORDER BY settled_ts DESC LIMIT ?", (int(limit or 250),))
+                rows = c.fetchall(); cols = [item[0] for item in c.description]
+            return [dict(zip(cols,row)) for row in rows]
+        except Exception:
+            return []
 
     def persist_phase5_shadow_run(self, report: Dict[str, Any]) -> bool:
         if not self.conn:

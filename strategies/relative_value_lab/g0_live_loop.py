@@ -53,9 +53,22 @@ class G0LiveLoop:
                      horizons:tuple[int,...])->dict[str,Any]:
   out={"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0,"by_organ":{}}
   def bump(organ_id:str,key:str,amount:int=1)->None:
-   bucket=out["by_organ"].setdefault(str(organ_id),{"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0})
+   bucket=out["by_organ"].setdefault(str(organ_id),{"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0,"raw_non_abstain":0,"raw_abstain":0,"raw_abstain_reasons":{}})
    bucket[key]+=int(amount)
    out[key]+=int(amount)
+  def raw_state(organ_id:str,forecast:Any)->None:
+   bucket=out["by_organ"].setdefault(str(organ_id),{"examined":0,"eligible":0,"diverged":0,"frozen":0,"skipped":0,"errors":0,"raw_non_abstain":0,"raw_abstain":0,"raw_abstain_reasons":{}})
+   if bool(getattr(forecast,"abstain",False)):
+    bucket["raw_abstain"]+=1
+    reasons=tuple(getattr(forecast,"reasons",()) or ())
+    if not reasons:
+     reason=str(getattr(forecast,"reason","") or "unspecified")
+     reasons=(reason,)
+    for reason in reasons:
+     key=str(reason or "unspecified")
+     bucket["raw_abstain_reasons"][key]=int(bucket["raw_abstain_reasons"].get(key) or 0)+1
+   else:
+    bucket["raw_non_abstain"]+=1
   record=data_store.get_phase5_active_freeze() if hasattr(data_store,"get_phase5_active_freeze") else {}
   if record:
    freeze=_freeze(record)
@@ -105,6 +118,7 @@ class G0LiveLoop:
     raw_blind=blind_by.get((raw_full.model_id,int(raw_full.horizon_seconds)))
     if raw_blind is None:continue
     bump(organ_id,"examined")
+    raw_state(organ_id,raw_full)
     full_fc=challenge_forecast(raw_full,full_feature,organ_scope=organ_id)
     blind_fc=challenge_forecast(raw_blind,blind_feature,organ_scope=organ_id)
     if freeze.direction and not full_fc.abstain and str(full_fc.direction).upper()!=str(freeze.direction).upper():
@@ -132,7 +146,7 @@ class G0LiveLoop:
    if str(raw_full.model_id)!=freeze.model_id or raw_full.abstain:continue
    if freeze.direction and str(raw_full.direction).upper()!=str(freeze.direction).upper():continue
 
-   bump("polyphonic_quorum","examined");bump("polyphonic_quorum","eligible")
+   bump("polyphonic_quorum","examined");bump("polyphonic_quorum","eligible");raw_state("polyphonic_quorum",raw_full)
    try:
     receipt=quorum_for_forecast(cycle=full,forecast=raw_full,feature=full_feature)
     gated=apply_quorum_gate(raw_full,receipt)
@@ -152,7 +166,7 @@ class G0LiveLoop:
    except Exception:
     bump("polyphonic_quorum","errors")
 
-   bump("conducting_queen","examined");bump("conducting_queen","eligible")
+   bump("conducting_queen","examined");bump("conducting_queen","eligible");raw_state("conducting_queen",raw_full)
    try:
     queen=queen_receipt_for_forecast(frame=frame,cycle=full,forecast=raw_full,feature=full_feature,now_ms=int(now_ms))
     gated=apply_queen_gate(raw_full,queen)

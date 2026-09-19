@@ -33,7 +33,7 @@ def main()->int:
              SUM(CASE WHEN s.freeze_id IS NOT NULL THEN 1 ELSE 0 END) AS settled_n,
              MIN(f.target_ts),MAX(f.target_ts)
       FROM full_organism_selector_freezes f
-      LEFT JOIN full_organism_selector_settlements s ON s.freeze_id=f.freeze_id
+      LEFT JOIN full_organism_selector_settlements_v2 s ON s.freeze_id=f.freeze_id
       GROUP BY f.run_id
       HAVING settled_n=frozen_n AND selected_n>0 AND rejected_n>0
       ORDER BY MAX(f.observed_ts) DESC"""
@@ -61,7 +61,10 @@ def main()->int:
    ).fetchall()
    for symbol,selected,target in fs:
     n=store.conn.execute(
-     "SELECT COUNT(*) FROM observation_universe_snapshots WHERE symbol=? AND ts>=?",
+     """SELECT COUNT(*)
+        FROM observation_universe_snapshots u
+        JOIN observation_runs r ON r.run_id=u.run_id
+        WHERE u.symbol=? AND r.completed_ts>=?""",
      (symbol,float(target or 0)),
     ).fetchone()[0]
     if n:
@@ -85,6 +88,8 @@ def main()->int:
   },
   "universe_custody":universe_counts,
   "selection_regret":report,
+  "settlement_schema":"hivenance_selector_opportunity_settlement_v2",
+  "settlement_clock":"OBSERVATION_RUN_COMPLETED_TS",
   "reasons":reasons,
   "execution_eligible":False,"promotion_eligible":False,"real_orders_submitted":0,
  }

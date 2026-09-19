@@ -675,7 +675,10 @@ class ObservationSwarmAgent:
         })
         store = getattr(self.coordinator, 'store', None) if self.coordinator is not None else None
         selector_freeze_summary = None
-        if store is not None:
+        selector_freeze_enabled = bool(
+            getattr(self.cfg, 'full_organism_selector_freeze_enabled', True)
+        )
+        if store is not None and selector_freeze_enabled:
             try:
                 selector_freeze_summary = freeze_selector_universe(
                     store=store,
@@ -700,6 +703,14 @@ class ObservationSwarmAgent:
                     'execution_eligible': False,
                     'promotion_eligible': False,
                 }
+        elif store is not None:
+            payload['selector_freeze'] = {
+                'schema': 'hivenance_selector_freeze_summary_v1',
+                'status': 'DISABLED_MATURATION_ONLY',
+                'created': 0,
+                'execution_eligible': False,
+                'promotion_eligible': False,
+            }
         if store is not None and hasattr(store, 'persist_crystal_registry_entry'):
             for row in candidate_rows:
                 values = row.get('values') if isinstance(row.get('values'), dict) else {}

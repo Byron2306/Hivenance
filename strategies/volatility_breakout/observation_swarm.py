@@ -16,6 +16,7 @@ from .feature_engine import Phase1FeatureEngine
 from .models import CandidateObservation, ObservationRunSummary
 from .signal_model import ObservationOnlySignalModel
 from strategies.relative_value_lab.canonical_memory_bridge import CanonicalMemoryWorldBridge
+from strategies.relative_value_lab.selection_regret import freeze_selector_universe
 
 
 def _float(value: Any) -> Optional[float]:
@@ -673,6 +674,32 @@ class ObservationSwarmAgent:
             'world_state_summary': payload['world_state_summary'],
         })
         store = getattr(self.coordinator, 'store', None) if self.coordinator is not None else None
+        selector_freeze_summary = None
+        if store is not None:
+            try:
+                selector_freeze_summary = freeze_selector_universe(
+                    store=store,
+                    run_id=run_id,
+                    comparison_universe=comparison_universe,
+                    observed_at_ms=completed_ms,
+                    shortlist_size=len(candidate_rows),
+                    horizon_seconds=int(
+                        getattr(self.cfg, 'full_organism_selector_horizon_seconds', 300) or 300
+                    ),
+                    taker_fee_bps_per_side=float(
+                        getattr(self.cfg, 'phase2_taker_fee_bps_per_side', 20.0) or 20.0
+                    ),
+                )
+                payload['selector_freeze'] = selector_freeze_summary
+            except Exception as exc:
+                errors.append(f'selector_freeze:{type(exc).__name__}:{exc}')
+                payload['selector_freeze'] = {
+                    'schema': 'hivenance_selector_freeze_summary_v1',
+                    'status': 'ERROR',
+                    'error': f'{type(exc).__name__}:{exc}',
+                    'execution_eligible': False,
+                    'promotion_eligible': False,
+                }
         if store is not None and hasattr(store, 'persist_crystal_registry_entry'):
             for row in candidate_rows:
                 values = row.get('values') if isinstance(row.get('values'), dict) else {}

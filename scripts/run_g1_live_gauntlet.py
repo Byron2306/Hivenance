@@ -77,7 +77,7 @@ def _stop_agents(coordinator:Any)->None:
         except Exception:pass
     coordinator.running=False
 
-def _compact_cycle(n:int,elapsed:float,g0:dict[str,Any],settlement:dict[str,Any],status:str)->None:
+def _compact_cycle(n:int,elapsed:float,g0:dict[str,Any],settlement:dict[str,Any],status:str,phase13:dict[str,Any]|None=None)->None:
     organs=g0.get("by_organ") or {}
     influenced={k:int(v.get("diverged") or 0) for k,v in organs.items() if int(v.get("diverged") or 0)>0}
     acted={k:int(v.get("raw_non_abstain") or 0) for k,v in organs.items() if int(v.get("raw_non_abstain") or 0)>0}
@@ -88,6 +88,9 @@ def _compact_cycle(n:int,elapsed:float,g0:dict[str,Any],settlement:dict[str,Any]
         f"raw_non_abstain={sum(int(v.get('raw_non_abstain') or 0) for v in organs.values())} "
         f"diverged={int(g0.get('diverged') or 0)} frozen={int(g0.get('frozen') or 0)} "
         f"twins_settled={int((settlement or {}).get('g0_twins_settled') or 0)} "
+        f"phase13_rows={int((phase13 or {}).get('book_rows') or 0)} "
+        f"phase13_inserts={int((phase13 or {}).get('inserted') or 0)} "
+        f"phase13_errors={int((phase13 or {}).get('errors') or 0)} "
         f"status={status}",
         flush=True,
     )
@@ -180,7 +183,8 @@ def main()->int:
                 for key in settlements:
                     settlements[key]+=int(settlement.get(key) or 0)
                 last_cycle_runtime=time.monotonic()-cycle_start
-                _compact_cycle(cycles,time.monotonic()-started,g0,settlement,str(payload.get("status") or ""))
+                phase13=_find_key(payload.get("upstream_cycle") or {},"phase13_books") or {}
+                _compact_cycle(cycles,time.monotonic()-started,g0,settlement,str(payload.get("status") or ""),phase13)
                 print(f"[GAUNTLET] cycle={cycles} runtime={last_cycle_runtime:.1f}s",flush=True)
             except Exception as exc:
                 cycle_errors.append(f"cycle_{cycles}:{type(exc).__name__}:{exc}")

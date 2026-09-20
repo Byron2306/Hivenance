@@ -33,6 +33,7 @@ class OrganRouteCensus:
     dead_routes: tuple[str,...]
     active_routes: tuple[str,...]
     optional_routes: tuple[str,...]
+    unmeasured_routes: tuple[str,...]
     execution_eligible: bool=False
     promotion_eligible: bool=False
 
@@ -43,6 +44,7 @@ class OrganRouteCensus:
             "dead_routes":self.dead_routes,
             "active_routes":self.active_routes,
             "optional_routes":self.optional_routes,
+            "unmeasured_routes":self.unmeasured_routes,
             "execution_eligible":False,
             "promotion_eligible":False,
         }
@@ -53,9 +55,11 @@ def build_route_census(
     invocation_counts: Mapping[str,int],
     runtime_seen_ids: Sequence[str],
     aliases: Mapping[str,str]|None=None,
+    measured_ids: Sequence[str]|None=None,
 )->OrganRouteCensus:
     seen={str(x) for x in runtime_seen_ids}
     alias={str(k):str(v) for k,v in dict(aliases or {}).items()}
+    measured=None if measured_ids is None else {str(x) for x in measured_ids}
     rows=[]
 
     for topo in ORGANS:
@@ -70,18 +74,27 @@ def build_route_census(
             "RETAIN_MECHANISM_LAYER",
         }
 
+        measured_route = (
+            measured is None
+            or runtime_id in measured
+            or topo.organ_id in measured
+        )
+
         if count>0:
             state="ACTIVE"
             reason="runtime_invocations_observed"
         elif runtime_seen:
             state="WIRED_NOT_INVOKED"
             reason="runtime_route_present_without_invocation"
+        elif not measured_route:
+            state="NOT_MEASURED"
+            reason="route_telemetry_not_collected_in_this_corpus"
         elif optional:
             state="OPTIONAL_OR_DOWNSTREAM"
             reason="route_absence_may_be_expected_in_current_phase"
         else:
             state="DEAD_OR_UNWIRED"
-            reason="topology_declares_organ_but_runtime_route_not_observed"
+            reason="measured_topology_route_not_observed"
 
         rows.append(
             OrganRouteStatus(
@@ -98,6 +111,7 @@ def build_route_census(
     dead=tuple(sorted(r.organ_id for r in rows if r.route_state=="DEAD_OR_UNWIRED"))
     active=tuple(sorted(r.organ_id for r in rows if r.route_state=="ACTIVE"))
     optional=tuple(sorted(r.organ_id for r in rows if r.route_state=="OPTIONAL_OR_DOWNSTREAM"))
+    unmeasured=tuple(sorted(r.organ_id for r in rows if r.route_state=="NOT_MEASURED"))
 
     return OrganRouteCensus(
         schema="hivenance_organ_route_census_v1",
@@ -105,4 +119,5 @@ def build_route_census(
         dead_routes=dead,
         active_routes=active,
         optional_routes=optional,
+        unmeasured_routes=unmeasured,
     )

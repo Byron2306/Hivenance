@@ -8,6 +8,7 @@ from typing import Any
 from strategies.relative_value_lab.full_organism_census_runner import run_full_organism_census
 from strategies.relative_value_lab.historical_causal_prosecution import HistoricalWorldOutcome
 from strategies.relative_value_lab.organ_route_census import build_route_census
+from strategies.relative_value_lab.organ_runtime_control import build_runtime_control_plane
 
 
 def _load_bundle(path: str) -> dict[str, Any]:
@@ -101,6 +102,9 @@ def main() -> None:
         measured_ids=tuple(sorted(runtime_seen_ids)),
     )
 
+    utility_rows = [row.to_dict() for row in run.utility_census.rows]
+    runtime_plane = build_runtime_control_plane(utility_rows)
+
     payload={
         "schema":"hivenance_full_organism_census_report_v1",
         "sources":sources,
@@ -115,6 +119,10 @@ def main() -> None:
         "organ_utility_census":run.utility_census.to_dict(),
         "organ_route_census":route.to_dict(),
         "worker_component_causality":worker_component_causality,
+        "organ_runtime_control": {
+            organ_id: state.to_dict()
+            for organ_id,state in sorted(runtime_plane.items())
+        },
     }
 
     out=Path(args.out)
@@ -140,6 +148,16 @@ def main() -> None:
                 row.get("classification"),
                 row.get("recommendation"),
             )
+    print("organ_runtime_modes=")
+    for organ_id,state in sorted(runtime_plane.items()):
+        print(
+            " ",
+            organ_id,
+            state.mode,
+            "influence=" + str(state.influence_enabled),
+            "shadow_probe=" + str(state.shadow_probe_enabled),
+            state.reason,
+        )
     print("dead_routes=",",".join(route.dead_routes) if route.dead_routes else "none")
     print("unmeasured_routes=",",".join(route.unmeasured_routes) if route.unmeasured_routes else "none")
     print("report=",str(out))

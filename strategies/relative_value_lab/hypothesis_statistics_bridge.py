@@ -110,16 +110,21 @@ def statistical_hypothesis_gate(
     edge_p = raw.get("edge_positive_probability")
 
     veto_reason = None
-    if uncertainty >= float(max_uncertainty):
-        veto_reason = "statistical_synthesis_uncertainty_veto"
-    elif change >= float(max_change_point_probability):
-        veto_reason = "statistical_synthesis_change_point_veto"
-    elif (
+    if (
         edge_p is not None
         and n_eff >= float(min_effective_samples)
         and float(edge_p) <= float(min_edge_positive_probability)
     ):
         veto_reason = "statistical_synthesis_negative_edge_veto"
+    elif change >= float(max_change_point_probability):
+        veto_reason = "statistical_synthesis_change_point_veto"
+
+    # Historical causal prosecution found no independent decision value from
+    # uncertainty-as-veto. Preserve it in the attached statistical context for
+    # Queen/calibration/diagnostics, but do not let it independently suppress a
+    # forecast. Keep max_uncertainty in the signature for compatibility while
+    # Phase 12.8 callers migrate.
+    _ = float(max_uncertainty)
 
     if veto_reason is None:
         return replace(forecast, inputs=inputs, execution_eligible=False)

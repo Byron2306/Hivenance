@@ -110,6 +110,11 @@ class LearnedChallengerReceipt:
     world_state_hash: str
     evidence_root: str
 
+    synthesis_win_probability: float | None = None
+    synthesis_edge_positive_probability: float | None = None
+    synthesis_uncertainty: float | None = None
+    synthesis_change_point_probability: float | None = None
+
     authority: str=RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool=False
     promotion_eligible: bool=False
@@ -156,6 +161,7 @@ class LearnedChallenger:
         now_ms:int,
         drift_score:float,
         known_dependence_groups:Sequence[str]=(),
+        synthesis_state:Mapping[str,Any]|None=None,
     )->LearnedChallengerReceipt:
         for name,value in (
             ("model_artifact_digest",provenance.model_artifact_digest),
@@ -211,12 +217,29 @@ class LearnedChallenger:
             reasons.append("challenger_stale")
 
         drift_pressure=_clamp(float(drift_score)/max(1e-9,self.config.drift_reference))
+        synthesis_change=None
+        synthesis_uncertainty=None
+        synthesis_win=None
+        synthesis_edge=None
+        if synthesis_state is not None:
+            synthesis_change=_clamp(float(synthesis_state.get("change_point_probability") or 0.0))
+            synthesis_uncertainty=_clamp(float(synthesis_state.get("uncertainty") or 0.0))
+            synthesis_win=synthesis_state.get("hierarchical_win_probability")
+            synthesis_edge=synthesis_state.get("hierarchical_edge_positive_probability")
+            drift_pressure=max(drift_pressure,synthesis_change)
+            if synthesis_change>.6:
+                reasons.append("synthesis_change_point_pressure_high")
+        else:
+            reasons.append("synthesis_state_missing")
+
         if drift_pressure>.6:
             reasons.append("model_drift_audible")
 
         uncertainty_pressure=_clamp(
             abs(float(forecast.uncertainty_bps))/max(1e-9,self.config.uncertainty_reference_bps)
         )
+        if synthesis_uncertainty is not None:
+            uncertainty_pressure=max(uncertainty_pressure,synthesis_uncertainty)
         if uncertainty_pressure>.7:
             reasons.append("model_uncertainty_high")
 
@@ -260,6 +283,7 @@ class LearnedChallenger:
             "calibration":calibration.to_dict(),
             "health":round(voice_health,6),
             "reasons":sorted(set(reasons)),
+            "synthesis_state":dict(synthesis_state or {}),
         }
         return LearnedChallengerReceipt(
             schema="hivenance_learned_challenger_v1",
@@ -291,6 +315,10 @@ class LearnedChallenger:
             world_state_id=forecast.world_state_id,
             world_state_hash=forecast.world_state_hash,
             evidence_root=forecast.evidence_root,
+            synthesis_win_probability=None if synthesis_win is None else round(float(synthesis_win),6),
+            synthesis_edge_positive_probability=None if synthesis_edge is None else round(float(synthesis_edge),6),
+            synthesis_uncertainty=None if synthesis_uncertainty is None else round(float(synthesis_uncertainty),6),
+            synthesis_change_point_probability=None if synthesis_change is None else round(float(synthesis_change),6),
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,

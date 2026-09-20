@@ -789,7 +789,11 @@ def main() -> None:
                 full_comp.evaluate(shuffled_feature, (horizon,))
             )
 
-            if previous_statistics_by_model:
+            if (
+                previous_statistics_by_model
+                and previous_statistics_timestamp_ms is not None
+                and int(previous_statistics_timestamp_ms) < int(feature.timestamp_ms)
+            ):
                 shifted_values = dict(full_values)
                 shifted_values["phase2_statistical_hypothesis_context_by_model"] = {
                     str(model_id): dict(payload)

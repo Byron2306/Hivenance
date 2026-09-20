@@ -345,3 +345,51 @@ def test_learning_support_can_activate_bounded_adaptive_recovery():
     policy = adapted.values.get("phase2_adaptive_thresholds") or {}
     assert "breakout" in policy
     assert policy["breakout"]["learning_support_score"] == 1.0
+
+
+def test_learning_crystal_is_reused_only_on_exact_applicability_key():
+    gov = FakeReuseGovernor({
+        ("model_a", 300): {
+            "decision": "exact_reuse_candidate",
+            "sample_count": 8,
+            "mean_realized_net_bps": 12.0,
+            "win_rate": 0.75,
+            "latest_settled_ts": 900.0,
+        }
+    })
+    f = feature()
+    first = compile_learning_feedback(
+        f,
+        model_ids=["model_a"],
+        horizons=[300],
+        reuse_governor=gov,
+        max_age_sec=500.0,
+    )
+    stored = [row["payload"] for row in learning_crystal_rows(f, first, venue="kraken")]
+
+    second = compile_learning_feedback(
+        f,
+        model_ids=["model_a"],
+        horizons=[300],
+        reuse_governor=gov,
+        max_age_sec=500.0,
+        reusable_crystals=stored,
+    )
+    prior = second["priors"]["model_a|300"]
+    assert prior["crystal_reused"] is True
+    assert prior["reuse_mode"] == "DETERMINISTIC_CRYSTAL_REUSE"
+    assert second["crystal_reuse_count"] == 1
+
+    changed_values = dict(f.values)
+    changed_values["symbol_class"] = "different_class"
+    changed = replace(f, values=changed_values)
+    third = compile_learning_feedback(
+        changed,
+        model_ids=["model_a"],
+        horizons=[300],
+        reuse_governor=gov,
+        max_age_sec=500.0,
+        reusable_crystals=stored,
+    )
+    assert third["priors"]["model_a|300"]["crystal_reused"] is False
+    assert third["crystal_reuse_count"] == 0

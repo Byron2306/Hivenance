@@ -1262,6 +1262,23 @@ class HypothesisSwarmAgent:
                 *[model.model_id for model in self.competition.medium_trend_models],
                 *[model.model_id for model in self.competition.derivatives_trend_models],
             ]
+            learning_reuse_crystals = []
+            if phase_store is not None and hasattr(phase_store, "get_crystal_registry_rows"):
+                try:
+                    learning_regime = (
+                        ((feature.values or {}).get("regime_inputs") or {}).get("regime_hint")
+                        if isinstance(feature.values, dict)
+                        else None
+                    )
+                    learning_reuse_crystals = phase_store.get_crystal_registry_rows(
+                        crystal_family="learning_reuse",
+                        symbol=str(feature.symbol or "unknown"),
+                        regime_hint=str(learning_regime or "unknown"),
+                        limit=128,
+                    )
+                except Exception:
+                    learning_reuse_crystals = []
+
             learning_feedback = compile_learning_feedback(
                 feature,
                 model_ids=learning_model_ids,
@@ -1276,6 +1293,7 @@ class HypothesisSwarmAgent:
                     1,
                     int(getattr(self.cfg, "phase2_learning_reuse_min_samples", 5) or 5),
                 ),
+                reusable_crystals=learning_reuse_crystals,
             )
             feature = attach_learning_feedback(feature, learning_feedback)
 

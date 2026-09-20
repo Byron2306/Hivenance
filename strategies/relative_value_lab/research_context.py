@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Mapping, Sequence
 
 from .contracts import RELATIVE_VALUE_AUTHORITY
+from .regime_context import build_regime_context
 
 
 def _digest(value: Any) -> str:
@@ -65,10 +66,12 @@ def build_research_context(
     synthesis = dict(synthesis_context or {})
     statistical = dict(statistical_state or {})
     regime_inputs = values.get("regime_inputs") if isinstance(values.get("regime_inputs"), Mapping) else {}
-    regime = {
-        "deterministic": dict(regime_inputs),
-        "bayesian": dict(regime_state or {}),
-    }
+    canonical_regime = build_regime_context(
+        as_of_ms=int(as_of_ms),
+        deterministic=regime_inputs,
+        bayesian=dict(regime_state or {}),
+    )
+    regime = canonical_regime.to_dict()
 
     learning = values.get("phase2_learning_feedback")
     if not isinstance(learning, Mapping):
@@ -97,7 +100,7 @@ def build_research_context(
     provenance = {
         "synthesis_cycle_id": synthesis.get("cycle_id"),
         "statistical_state_id": statistical.get("state_id"),
-        "regime_posterior_id": (regime_state or {}).get("posterior_id") if isinstance(regime_state, Mapping) else None,
+        "regime_posterior_id": canonical_regime.provenance.get("bayesian_posterior_id"),
         "calibration_health_id": (calibration_state or {}).get("health_id") if isinstance(calibration_state, Mapping) else None,
     }
 
@@ -142,8 +145,16 @@ def bind_research_context_values(
     out["research_context"] = context.to_dict()
 
     # Compatibility aliases remain until replay ablations prove they can go.
-    if context.regime.get("deterministic"):
-        out.setdefault("regime_inputs", dict(context.regime["deterministic"]))
+    if context.regime:
+        out.setdefault("regime_context", dict(context.regime))
+        deterministic_hint=context.regime.get("deterministic_hint")
+        deterministic_confidence=context.regime.get("deterministic_confidence")
+        if deterministic_hint:
+            out.setdefault("regime_inputs", {
+                "regime_hint": deterministic_hint,
+                "confidence": deterministic_confidence,
+                "canonical_regime_context_id": context.regime.get("context_id"),
+            })
     if context.learning:
         out.setdefault("phase2_learning_feedback", dict(context.learning))
     if context.crystals:

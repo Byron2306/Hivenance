@@ -54,12 +54,13 @@ class CensusRun:
     promotion_eligible: bool = False
 
 
-def _key(row: HistoricalWorldOutcome) -> tuple[str, str, int, int]:
+def _key(row: HistoricalWorldOutcome) -> tuple[str, str, int, int, str]:
     return (
         str(row.world_state_id),
         str(row.symbol),
         int(row.timestamp_ms),
         int(row.horizon_seconds),
+        str(row.envelope_id or ""),
     )
 
 

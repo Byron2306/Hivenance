@@ -688,3 +688,33 @@ Resulting simplification:
 
 Truth rule:
 retain the witness, remove unevidenced control authority.
+
+
+## Learning starvation repair — worker-specific transfer reuse
+
+Observed starvation on the strict 203-world corpus:
+- learning prior evidence appeared on only 31 worlds;
+- usable priors were effectively n=1;
+- no prior reached candidate/scaffolded depth;
+- Crystal reuse remained zero.
+
+Root cause:
+- worker models were restricted to exact model+symbol+horizon+regime reuse;
+- worker transform reuse was explicitly disabled;
+- sparse exact buckets prevented graduation into reusable candidates;
+- Crystals are downstream of candidate lifecycle and therefore also starved.
+
+Repair:
+- worker-only transfer reuse is allowed when exact evidence is absent;
+- transfer scope never crosses worker model identity;
+- transfer scope never crosses horizon;
+- first fallback is same worker+horizon+regime across symbols;
+- second fallback is same worker+horizon across regimes;
+- transform minimum sample threshold remains 8;
+- point-in-time settlement cutoff remains strict;
+- worker transfer support is discounted below exact reuse;
+- execution and promotion authority remain false.
+
+Acceptance:
+- rerun NO_LEARNING and NO_CRYSTALS on the same historical tape;
+- do not retain the wider transfer path unless it produces useful or at least informative causal behavior without leakage.

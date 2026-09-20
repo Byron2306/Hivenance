@@ -1,5 +1,6 @@
 from strategies.relative_value_lab.hypothesis_statistics_bridge import (
     bind_statistical_context,
+    bind_statistical_contexts,
     statistical_hypothesis_gate,
 )
 from strategies.volatility_breakout.models import FeatureVector, Forecast
@@ -139,3 +140,38 @@ def test_negative_edge_probability_requires_sample_depth_before_veto():
     out=statistical_hypothesis_gate(forecast(),deep)
     assert out.abstain is True
     assert out.reason=="statistical_synthesis_negative_edge_veto"
+
+
+
+def test_model_specific_statistics_do_not_cross_contaminate_forecasts():
+    f=bind_statistical_contexts(
+        feature(),
+        {
+            "m1":{
+                "state_id":"m1s",
+                "as_of_ms":900,
+                "hierarchical_win_probability":.2,
+                "hierarchical_edge_positive_probability":.1,
+                "uncertainty":.2,
+                "change_point_probability":.1,
+                "effective_sample_size":20,
+            },
+            "m2":{
+                "state_id":"m2s",
+                "as_of_ms":900,
+                "hierarchical_win_probability":.8,
+                "hierarchical_edge_positive_probability":.9,
+                "uncertainty":.1,
+                "change_point_probability":.05,
+                "effective_sample_size":20,
+            },
+        },
+    )
+    m1=forecast()
+    m2=Forecast(**{**m1.__dict__,"model_id":"m2"})
+    out1=statistical_hypothesis_gate(m1,f)
+    out2=statistical_hypothesis_gate(m2,f)
+    assert out1.abstain is True
+    assert out1.reason=="statistical_synthesis_negative_edge_veto"
+    assert out2.abstain is False
+    assert out2.inputs["statistical_hypothesis_context"]["state_id"]=="m2s"

@@ -173,8 +173,22 @@ class WorkerSignalModel:
             "cost": asdict(cost),
             "feature_version": (features.values or {}).get("feature_version", "phase2.v1"),
             "research_context": (
-                dict((features.values or {}).get("research_context") or {})
-                if isinstance((features.values or {}).get("research_context"), Mapping)
+                dict(
+                    (
+                        ((features.values or {}).get("organ_context_views") or {})
+                        .get("strategy_workers")
+                    )
+                    or (features.values or {}).get("research_context")
+                    or {}
+                )
+                if isinstance(
+                    (
+                        ((features.values or {}).get("organ_context_views") or {})
+                        .get("strategy_workers")
+                    )
+                    or (features.values or {}).get("research_context"),
+                    Mapping,
+                )
                 else {}
             ),
             "regime_context": (

@@ -19,6 +19,7 @@ from .learning_retrieval import learning_brief
 from .learning_attention import obligations_from_learning
 from .learning_attention_router import LearningAttentionRouter
 from .comparison_engine import add_comparison_result
+from .statistical_synthesis import ProbabilisticSynthesisState
 
 def _digest(v:Any)->str:
  raw=json.dumps(v,sort_keys=True,separators=(",",":"),default=str).encode()
@@ -51,6 +52,7 @@ class SynthesisRuntime:
          edge_roots:Mapping[str,Sequence[str]]|None=None,
          temporal_participation:Any|None=None,
          learning_receipts:Sequence[Mapping[str,Any]]=(),comparison_results:Sequence[Any]=(),
+         statistical_state:ProbabilisticSynthesisState|None=None,
          disabled_organs:Sequence[str]=())->SynthesisCycle:
   disabled={str(x) for x in disabled_organs};g=WorldGraph(frame);rs=[]
 
@@ -228,6 +230,38 @@ class SynthesisRuntime:
    receipt("learning_memory","INVOKED" if learned else "AVAILABLE_NOT_INVOKED",
            (r for n in learned for r in n.evidence_roots),learned,count=len(learned))
 
+  statistical=[]
+  if statistical_state is None or "statistics_bee" in disabled:
+   receipt(
+    "statistics_bee",
+    "DISABLED" if "statistics_bee" in disabled else "AVAILABLE_NOT_INVOKED",
+   )
+  else:
+   if int(statistical_state.as_of_ms)>int(now_ms):
+    raise ValueError("statistics_state_from_future")
+   node=g.add_node(
+    organ_id="STATISTICS_BEE",
+    family="STATISTICAL_SYNTHESIS",
+    created_at_ms=now_ms,
+    evidence_roots=statistical_state.evidence_roots,
+    lineage_id=statistical_state.state_id,
+    transformation_id=statistical_state.schema,
+    payload=statistical_state.to_dict(),
+    freshness=1.0,
+    uncertainty=float(statistical_state.uncertainty),
+    synthetic=False,
+   )
+   statistical.append(node)
+   receipt(
+    "statistics_bee",
+    "INVOKED",
+    statistical_state.evidence_roots,
+    statistical,
+    state_id=statistical_state.state_id,
+    effective_sample_size=statistical_state.effective_sample_size,
+    change_point_probability=statistical_state.change_point_probability,
+   )
+
   compared=[]
   if "comparison_engine" in disabled:
    receipt("comparison_engine","DISABLED")
@@ -236,7 +270,7 @@ class SynthesisRuntime:
    receipt("comparison_engine","INVOKED" if compared else "AVAILABLE_NOT_INVOKED",
            (r for n in compared for r in n.evidence_roots),compared,count=len(compared))
 
-  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON"))
+  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON","STATISTICAL_SYNTHESIS"))
   brief=learning_brief(view)
   obligations=obligations_from_learning(brief)
   router=LearningAttentionRouter()

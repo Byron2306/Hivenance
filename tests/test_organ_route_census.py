@@ -19,3 +19,16 @@ def test_execution_downstream_is_not_mislabeled_dead():
     )
     row=next(row for row in census.rows if row.organ_id=="execution_canary_growth")
     assert row.route_state=="OPTIONAL_OR_DOWNSTREAM"
+
+
+
+def test_unmeasured_route_is_not_declared_dead():
+    census=build_route_census(
+        invocation_counts={"strategy_workers":4},
+        runtime_seen_ids=("strategy_workers",),
+        measured_ids=("strategy_workers",),
+    )
+    statistics=next(row for row in census.rows if row.organ_id=="statistics_bee")
+    assert statistics.route_state=="NOT_MEASURED"
+    assert "statistics_bee" in census.unmeasured_routes
+    assert "statistics_bee" not in census.dead_routes

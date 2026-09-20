@@ -524,6 +524,14 @@ def main() -> None:
 
     worlds = 0
     learning_exposed_worlds = 0
+    learning_prior_evidence_worlds = 0
+    learning_candidate_worlds = 0
+    learning_scaffolded_worlds = 0
+    learning_advisory_worlds = 0
+    learning_no_prior_worlds = 0
+    learning_prior_sample_counts = Counter()
+    learning_lifecycles = Counter()
+    learning_age_samples: list[float] = []
     crystal_reused_worlds = 0
 
     for (
@@ -597,6 +605,43 @@ def main() -> None:
             warning_floor=args.warning_floor,
         )
 
+        priors = full_feedback.get("priors") if isinstance(full_feedback.get("priors"), dict) else {}
+        world_has_prior_evidence = False
+        world_has_candidate = False
+        world_has_scaffolded = False
+        world_has_advisory = False
+        world_all_no_prior = bool(priors)
+        for prior in priors.values():
+            if not isinstance(prior, dict):
+                continue
+            sample_count = int(prior.get("sample_count") or 0)
+            lifecycle = str(prior.get("lifecycle") or "UNKNOWN")
+            learning_prior_sample_counts[str(sample_count)] += 1
+            learning_lifecycles[lifecycle] += 1
+            if sample_count > 0:
+                world_has_prior_evidence = True
+                world_all_no_prior = False
+            age_sec = prior.get("age_sec")
+            if age_sec is not None:
+                learning_age_samples.append(float(age_sec))
+            if lifecycle == "DETERMINISTIC_RESEARCH_REUSE_CANDIDATE":
+                world_has_candidate = True
+            elif lifecycle == "SCAFFOLDED":
+                world_has_scaffolded = True
+            elif lifecycle == "ADVISORY":
+                world_has_advisory = True
+
+        if world_has_prior_evidence:
+            learning_prior_evidence_worlds += 1
+        if world_has_candidate:
+            learning_candidate_worlds += 1
+        if world_has_scaffolded:
+            learning_scaffolded_worlds += 1
+        if world_has_advisory:
+            learning_advisory_worlds += 1
+        if world_all_no_prior:
+            learning_no_prior_worlds += 1
+
         if int(full_feedback.get("positive_priors") or 0) or int(full_feedback.get("negative_priors") or 0):
             learning_exposed_worlds += 1
         if int(full_feedback.get("crystal_reuse_count") or 0):
@@ -648,6 +693,21 @@ def main() -> None:
     print("promotion_eligible=False")
     print("unique_market_world_horizons=", worlds)
     print("learning_exposed_worlds=", learning_exposed_worlds)
+    print("learning_prior_evidence_worlds=", learning_prior_evidence_worlds)
+    print("learning_candidate_worlds=", learning_candidate_worlds)
+    print("learning_scaffolded_worlds=", learning_scaffolded_worlds)
+    print("learning_advisory_worlds=", learning_advisory_worlds)
+    print("learning_no_prior_worlds=", learning_no_prior_worlds)
+    print("learning_prior_sample_counts=", dict(sorted(learning_prior_sample_counts.items(), key=lambda x: int(x[0]))))
+    print("learning_lifecycles=", dict(sorted(learning_lifecycles.items())))
+    if learning_age_samples:
+        print("learning_evidence_age_sec_min=", round(min(learning_age_samples), 6))
+        print("learning_evidence_age_sec_mean=", round(mean(learning_age_samples), 6))
+        print("learning_evidence_age_sec_max=", round(max(learning_age_samples), 6))
+    else:
+        print("learning_evidence_age_sec_min=", None)
+        print("learning_evidence_age_sec_mean=", None)
+        print("learning_evidence_age_sec_max=", None)
     print("crystal_reused_worlds=", crystal_reused_worlds)
     print("final_full_learning_crystals=", len(full_registry))
 

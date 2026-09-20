@@ -197,6 +197,38 @@ _MASK_DEFINITIONS = {
         "no_trade": False,
     },
 
+    "NO_BAYES": {
+        "organs": ("regime_context",),
+        "channels": ("regime_context",),
+        "families": ("REGIME_CONTEXT",),
+        "model": None,
+        "no_trade": False,
+    },
+
+    "NO_EXTERNAL": {
+        "organs": ("external_statistics",),
+        "channels": ("external_statistics",),
+        "families": ("EXTERNAL_STATISTICS",),
+        "model": None,
+        "no_trade": False,
+    },
+
+    "NO_CONFORMAL": {
+        "organs": ("calibration_context",),
+        "channels": ("calibration_context",),
+        "families": ("CALIBRATION_CONTEXT",),
+        "model": None,
+        "no_trade": False,
+    },
+
+    "NO_ML": {
+        "organs": ("ml_challenger",),
+        "channels": ("learned_challenger_receipts",),
+        "families": ("ML_CHALLENGER",),
+        "model": None,
+        "no_trade": False,
+    },
+
     "NO_VNS_PHRASE": {
         "organs": (),
         "channels": ("vns_phrase_stream",),

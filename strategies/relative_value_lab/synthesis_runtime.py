@@ -272,11 +272,16 @@ class SynthesisRuntime:
 
   view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON","STATISTICAL_SYNTHESIS"))
   brief=learning_brief(view)
+  learning_context=dict(brief.to_dict())
+  learning_context["probabilistic_synthesis"]=(
+   statistical_state.to_dict() if statistical_state is not None and "statistics_bee" not in disabled
+   else None
+  )
   obligations=obligations_from_learning(brief)
   router=LearningAttentionRouter()
   requests=tuple(router.route(o) for o in obligations)
   body={"world_state_id":frame.world_state_id,"world_state_hash":frame.world_state_hash,
         "organs":[x.to_dict() for x in rs],"nodes":[n.node_id for n in view.nodes]}
   return SynthesisCycle("syn_"+_digest(body).split(":",1)[1][:24],frame.world_state_id,
-    frame.world_state_hash,view,tuple(rs),brief.to_dict(),
+    frame.world_state_hash,view,tuple(rs),learning_context,
     tuple(o.to_dict() for o in obligations),tuple(r.to_dict() for r in requests),False,False)

@@ -202,6 +202,8 @@ class HistoricalBayesianRegimeReconstructor:
         payload=deterministic_regime_payload(feature)
         existing=self.pending.get(symbol)
         if existing is not None and int(existing[0])==ts:
+            if dict(existing[1]) != dict(payload):
+                raise ValueError("historical_same_time_regime_conflict")
             return
         self.pending[symbol]=(
             ts,

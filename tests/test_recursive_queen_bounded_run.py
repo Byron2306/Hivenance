@@ -6,6 +6,7 @@ from strategies.relative_value_lab.recursive_queen_loop import (
     observed_root_digest,
     select_recursive_request,
 )
+from strategies.relative_value_lab.cognitive_metabolism import CognitiveMetabolism, MetabolicObservation
 from strategies.relative_value_lab.vns_score_conductor import (
     VNSScoreConductor,
 )
@@ -426,3 +427,107 @@ def test_semantically_identical_queen_stops_as_stable():
     assert run.recurrence_count == 1
     assert run.stop_reason == "INTERPRETATION_STABLE"
     assert run.steps[0].interpretation_changed is False
+
+
+
+def metabolic_receipt(*, info_gain, duplicate, strainish=False):
+    observation=MetabolicObservation(
+        observation_id="metabolic-test",
+        timestamp_ms=3900,
+        context_units_consumed=3000.0 if strainish else 200.0,
+        model_evaluations=40 if strainish else 2,
+        tool_evaluations=40 if strainish else 1,
+        independent_evidence_units=1.0,
+        duplicate_evidence_units=float(duplicate),
+        useful_settled_information_units=0.0 if strainish else 1.0,
+        information_gain_units=float(info_gain),
+        baseline_confidence=.9,
+        current_confidence=.5 if strainish else .85,
+        world_state_id="ws",
+        world_state_hash="sha256:"+"a"*64,
+    )
+    return CognitiveMetabolism().score(observation)
+
+
+def test_metabolic_exhaustion_stops_before_dispatch():
+    graph=setup_graph()
+    initial=queen(graph,"q0","CHALLENGE_CADENCE")
+    called={"dispatch":0}
+
+    def dispatch(**kwargs):
+        called["dispatch"]+=1
+        raise AssertionError("metabolic exhaustion should stop recurrence")
+
+    def reconduct(**kwargs):
+        raise AssertionError("metabolic exhaustion should not reconduct")
+
+    run=RecursiveQueenLoop(max_recurrences=3).run(
+        graph=graph,
+        initial_queen_receipt=initial,
+        dispatch=dispatch,
+        reconduct=reconduct,
+        start_ms=4000,
+        metabolism=metabolic_receipt(
+            info_gain=.01,
+            duplicate=9.0,
+            strainish=True,
+        ),
+    )
+    assert run.recurrence_count==0
+    assert run.stop_reason=="METABOLIC_INFORMATION_EXHAUSTION"
+    assert called["dispatch"]==0
+
+
+def test_metabolic_strain_thins_recurrence_budget():
+    graph=setup_graph()
+    initial=queen(graph,"q0","CHALLENGE_CADENCE")
+
+    def dispatch(*,graph,request,queen_receipt,recurrence_index,created_at_ms):
+        node=graph.add_node(
+            organ_id="bounded-test",
+            family="CHALLENGE",
+            created_at_ms=created_at_ms,
+            evidence_roots=tuple(obs.evidence_root for obs in graph.frame.observations),
+            lineage_id="bounded-test",
+            transformation_id=f"bounded-test.{recurrence_index}",
+            payload={"recurrence_index":recurrence_index},
+        )
+        response=QueenResearchResponse(
+            schema="hivenance_queen_research_response_v1",
+            response_id=f"response-{recurrence_index}",
+            request_id=request.request_id,
+            recurrence_index=recurrence_index,
+            state="ANSWERED",
+            organ_id="bounded-test",
+            answer="bounded response",
+            source_node_ids=(),
+            added_node_ids=(node.node_id,),
+            evidence_roots=node.evidence_roots,
+            world_state_id=graph.frame.world_state_id,
+            world_state_hash=graph.frame.world_state_hash,
+            observed_root_digest=observed_root_digest(graph),
+            graph_changed=True,
+        )
+        return response,{}
+
+    def reconduct(*,graph,queen_before,request,response,response_context,recurrence_index,now_ms):
+        return queen(
+            graph,
+            f"q{recurrence_index+1}",
+            "CHALLENGE_CADENCE",
+            fragility=float(recurrence_index+1)/10.0,
+        )
+
+    run=RecursiveQueenLoop(max_recurrences=3).run(
+        graph=graph,
+        initial_queen_receipt=initial,
+        dispatch=dispatch,
+        reconduct=reconduct,
+        start_ms=4000,
+        metabolism=metabolic_receipt(
+            info_gain=.2,
+            duplicate=7.0,
+            strainish=True,
+        ),
+    )
+    assert run.recurrence_count<=1

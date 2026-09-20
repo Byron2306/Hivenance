@@ -69,7 +69,7 @@ def test_statistical_context_binds_before_hypothesis_without_authority():
     assert ctx["execution_eligible"] is False
 
 
-def test_high_uncertainty_can_veto_but_never_flip_or_create_direction():
+def test_high_uncertainty_is_context_only_not_independent_veto():
     f=bind_statistical_context(
         feature(),
         {
@@ -83,9 +83,9 @@ def test_high_uncertainty_can_veto_but_never_flip_or_create_direction():
         },
     )
     out=statistical_hypothesis_gate(forecast(),f)
-    assert out.abstain is True
-    assert out.direction=="ABSTAIN"
-    assert out.reason=="statistical_synthesis_uncertainty_veto"
+    assert out.abstain is False
+    assert out.direction=="UP"
+    assert out.inputs["statistical_hypothesis_context"]["uncertainty"]==.95
     assert out.execution_eligible is False
 
 
@@ -175,3 +175,40 @@ def test_model_specific_statistics_do_not_cross_contaminate_forecasts():
     assert out1.reason=="statistical_synthesis_negative_edge_veto"
     assert out2.abstain is False
     assert out2.inputs["statistical_hypothesis_context"]["state_id"]=="m2s"
+
+
+
+def test_change_point_remains_secondary_veto():
+    f=bind_statistical_context(
+        feature(),
+        {
+            "state_id":"s-change",
+            "as_of_ms":900,
+            "hierarchical_win_probability":.55,
+            "hierarchical_edge_positive_probability":.8,
+            "uncertainty":.1,
+            "change_point_probability":.95,
+            "effective_sample_size":20,
+        },
+    )
+    out=statistical_hypothesis_gate(forecast(),f)
+    assert out.abstain is True
+    assert out.reason=="statistical_synthesis_change_point_veto"
+
+
+def test_negative_edge_precedes_change_point_when_both_fire():
+    f=bind_statistical_context(
+        feature(),
+        {
+            "state_id":"s-both",
+            "as_of_ms":900,
+            "hierarchical_win_probability":.2,
+            "hierarchical_edge_positive_probability":.1,
+            "uncertainty":.1,
+            "change_point_probability":.95,
+            "effective_sample_size":20,
+        },
+    )
+    out=statistical_hypothesis_gate(forecast(),f)
+    assert out.abstain is True
+    assert out.reason=="statistical_synthesis_negative_edge_veto"

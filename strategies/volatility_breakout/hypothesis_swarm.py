@@ -503,6 +503,21 @@ class HypothesisSwarmAgent:
         self.derivatives_trend_horizons = tuple(sorted({max(3600, int(value)) for value in raw_derivatives_trend_horizons}))
         self.competition = HypothesisCompetition(cfg)
         self.phase13_runtime = None
+        if bool(getattr(cfg, "phase13_enabled", True)):
+            try:
+                from strategies.relative_value_lab.phase13_runtime import Phase13Runtime
+                self.phase13_runtime = Phase13Runtime(
+                    cfg,
+                    freeze_path=getattr(cfg, "phase13_freeze_path", "data/phase13_experiment_freeze.json"),
+                    census_path=getattr(cfg, "phase13_census_path", "data/full_organism_census.json"),
+                    ledger_path=getattr(cfg, "phase13_ledger_path", "data/hivenance_phase13_books.db"),
+                )
+            except FileNotFoundError:
+                self.phase13_runtime = None
+            except Exception:
+                logging.exception("Failed to initialize Phase-13 runtime")
+                self.phase13_runtime = None
+        self.phase13_runtime = None
         self._phase13_errors = 0
         if bool(getattr(cfg, "phase13_prospective_enabled", True)):
             freeze_path = Path(str(getattr(cfg, "phase13_freeze_path", "data/phase13_experiment_freeze.json")))
@@ -1201,6 +1216,19 @@ class HypothesisSwarmAgent:
         temporal_lattice_rows: list[dict[str, Any]] = []
         comparison_packet_rows: list[dict[str, Any]] = []
         g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0, "by_organ": {}}
+        phase13_rows = {
+            "enabled": bool(self.phase13_runtime is not None),
+            "features_examined": 0,
+            "book_rows": 0,
+            "inserted": 0,
+            "errors": 0,
+            "freeze_id": (
+                self.phase13_runtime.freeze_id
+                if self.phase13_runtime is not None
+                else None
+            ),
+            "worlds": [],
+        }
         phase13_rows = []
         phase_store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         g0_live = None
@@ -1307,6 +1335,23 @@ class HypothesisSwarmAgent:
                     )
                 except Exception:
                     learning_reuse_crystals = []
+
+            if self.phase13_runtime is not None:
+                try:
+                    p13 = self.phase13_runtime.process_feature(feature)
+                    phase13_rows["features_examined"] += 1
+                    phase13_rows["book_rows"] += int(p13.get("book_rows") or 0)
+                    phase13_rows["inserted"] += int(p13.get("inserted") or 0)
+                    phase13_rows["worlds"].append({
+                        "world_state_id": p13.get("world_state_id"),
+                        "world_state_hash": p13.get("world_state_hash"),
+                        "frozen_forecasts": p13.get("frozen_forecasts"),
+                        "adaptive_forecasts": p13.get("adaptive_forecasts"),
+                        "inserted": p13.get("inserted"),
+                    })
+                except Exception:
+                    phase13_rows["errors"] += 1
+                    logging.exception("Phase-13 same-world book fan-out failed")
 
             learning_feedback = compile_learning_feedback(
                 feature,
@@ -1592,6 +1637,12 @@ class HypothesisSwarmAgent:
                 "execution_eligible": False,
                 "promotion_eligible": False,
             },
+            "phase13_books": {
+                **phase13_rows,
+                "authority": "PHASE13_PROSPECTIVE_SHADOW_RESEARCH_ONLY",
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            },
             "forecasts": forecast_rows,
             "research_reuse": {
                 "receipts": reuse_receipts,
@@ -1680,6 +1731,9 @@ class HypothesisSwarmAgent:
             "g0_prospective_frozen": int(g0_prospective.get("frozen") or 0),
             "g0_prospective_diverged": int(g0_prospective.get("diverged") or 0),
             "g0_prospective_errors": int(g0_prospective.get("errors") or 0),
+            "phase13_book_rows": int(phase13_rows.get("book_rows") or 0),
+            "phase13_book_inserts": int(phase13_rows.get("inserted") or 0),
+            "phase13_errors": int(phase13_rows.get("errors") or 0),
             "execution_wired": False,
             "orders_submitted": 0,
         })

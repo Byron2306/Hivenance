@@ -548,6 +548,12 @@ def main() -> None:
     learning_lifecycles = Counter()
     learning_age_samples: list[float] = []
     crystal_reused_worlds = 0
+    statistical_context_worlds = 0
+    statistical_effective_n_samples: list[float] = []
+    statistical_edge_probability_samples: list[float] = []
+    bayes_context_worlds = 0
+    bayes_disagreement_samples: list[float] = []
+    bayes_change_probability_samples: list[float] = []
     census_outcomes = {
         "FULL_HIVE": [],
         "NO_LEARNING": [],
@@ -677,6 +683,36 @@ def main() -> None:
             )[0],
             regime_context,
         )
+
+        stats_map = (
+            full_feature.values.get("phase2_statistical_hypothesis_context_by_model")
+            if isinstance(full_feature.values, dict)
+            else None
+        )
+        if isinstance(stats_map, dict):
+            positive_depth = False
+            for row in stats_map.values():
+                if not isinstance(row, dict):
+                    continue
+                n_eff = float(row.get("effective_sample_size") or 0.0)
+                if n_eff > 0.0:
+                    positive_depth = True
+                    statistical_effective_n_samples.append(n_eff)
+                edge_p = row.get("edge_positive_probability")
+                if edge_p is not None:
+                    statistical_edge_probability_samples.append(float(edge_p))
+            if positive_depth:
+                statistical_context_worlds += 1
+
+        regime_payload = regime_context.to_dict()
+        if regime_payload.get("dominant_posterior_regime"):
+            bayes_context_worlds += 1
+            bayes_disagreement_samples.append(
+                float(regime_payload.get("disagreement_score") or 0.0)
+            )
+            bayes_change_probability_samples.append(
+                float(regime_payload.get("change_point_probability") or 0.0)
+            )
 
         priors = full_feedback.get("priors") if isinstance(full_feedback.get("priors"), dict) else {}
         world_has_prior_evidence = False
@@ -846,6 +882,43 @@ def main() -> None:
         print("learning_evidence_age_sec_max=", None)
     print("crystal_reused_worlds=", crystal_reused_worlds)
     print("final_full_learning_crystals=", len(full_registry))
+    print("statistical_context_worlds=", statistical_context_worlds)
+    print(
+        "statistical_effective_n_min=",
+        round(min(statistical_effective_n_samples), 6)
+        if statistical_effective_n_samples else None,
+    )
+    print(
+        "statistical_effective_n_mean=",
+        round(mean(statistical_effective_n_samples), 6)
+        if statistical_effective_n_samples else None,
+    )
+    print(
+        "statistical_effective_n_max=",
+        round(max(statistical_effective_n_samples), 6)
+        if statistical_effective_n_samples else None,
+    )
+    print(
+        "statistical_edge_probability_mean=",
+        round(mean(statistical_edge_probability_samples), 6)
+        if statistical_edge_probability_samples else None,
+    )
+    print("bayes_context_worlds=", bayes_context_worlds)
+    print(
+        "bayes_disagreement_mean=",
+        round(mean(bayes_disagreement_samples), 6)
+        if bayes_disagreement_samples else None,
+    )
+    print(
+        "bayes_disagreement_max=",
+        round(max(bayes_disagreement_samples), 6)
+        if bayes_disagreement_samples else None,
+    )
+    print(
+        "bayes_change_probability_mean=",
+        round(mean(bayes_change_probability_samples), 6)
+        if bayes_change_probability_samples else None,
+    )
 
     for mask_id in MASKS:
         per_world = {

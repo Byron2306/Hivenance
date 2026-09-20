@@ -2829,6 +2829,7 @@ class DataStoreAgent:
         horizon_seconds: int,
         regime_hint: str,
         limit: int = 25,
+        cutoff_ts: Optional[float] = None,
     ) -> Dict[str, Any]:
         result: Dict[str, Any] = {
             "sample_count": 0,
@@ -2862,11 +2863,20 @@ class DataStoreAgent:
                                 json_extract(f.payload, '$.inputs.regime_inputs.regime_hint'),
                                 'unknown'
                               ) = ?
+                          AND (? IS NULL OR o.settled_ts <= ?)
                         ORDER BY o.settled_ts DESC
                         LIMIT ?
                     ) recent
                     """,
-                    (str(model_id), str(symbol), int(horizon_seconds or 0), str(regime_hint or "unknown"), int(limit or 25)),
+                    (
+                        str(model_id),
+                        str(symbol),
+                        int(horizon_seconds or 0),
+                        str(regime_hint or "unknown"),
+                        cutoff_ts,
+                        cutoff_ts,
+                        int(limit or 25),
+                    ),
                 )
                 rows = c.fetchall()
             if not rows:
@@ -2952,6 +2962,7 @@ class DataStoreAgent:
         cohort_bucket: str,
         symbol_class: str,
         limit: int = 50,
+        cutoff_ts: Optional[float] = None,
     ) -> Dict[str, Any]:
         result: Dict[str, Any] = {
             "match_type": "none",
@@ -2984,6 +2995,7 @@ class DataStoreAgent:
                               ) = ?
                           AND COALESCE(json_extract(f.payload, '$.inputs.symbol_class'), 'unknown') = ?
                           AND COALESCE(f.abstain, 0) = 0
+                          AND (? IS NULL OR o.settled_ts <= ?)
                         ORDER BY o.settled_ts DESC
                         LIMIT ?
                     ) recent
@@ -2993,6 +3005,8 @@ class DataStoreAgent:
                         int(horizon_seconds or 0),
                         str(regime_hint or "unknown"),
                         str(symbol_class or "unknown"),
+                        cutoff_ts,
+                        cutoff_ts,
                         int(limit or 50),
                     ),
                 )
@@ -3026,6 +3040,7 @@ class DataStoreAgent:
                               ) = ?
                           AND COALESCE(json_extract(f.payload, '$.inputs.cohort_bucket'), 'unknown') = ?
                           AND COALESCE(f.abstain, 0) = 0
+                          AND (? IS NULL OR o.settled_ts <= ?)
                         ORDER BY o.settled_ts DESC
                         LIMIT ?
                     ) recent
@@ -3035,6 +3050,8 @@ class DataStoreAgent:
                         int(horizon_seconds or 0),
                         str(regime_hint or "unknown"),
                         str(cohort_bucket or "unknown"),
+                        cutoff_ts,
+                        cutoff_ts,
                         int(limit or 50),
                     ),
                 )

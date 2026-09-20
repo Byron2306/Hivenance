@@ -76,6 +76,7 @@ MECHANISTIC_STATES = {
     "HISTORICALLY_USEFUL",
     "HISTORICALLY_HARMFUL",
     "HISTORICALLY_NEUTRAL",
+    "HISTORICALLY_MIXED",
     "INSUFFICIENT_EVIDENCE",
 }
 
@@ -278,6 +279,7 @@ def make_historical_prosecution_receipt(
             if row.classification
             in {
                 "HISTORICALLY_USEFUL",
+                "HISTORICALLY_MIXED",
                 "INFLUENTIAL",
                 "INSUFFICIENT_EVIDENCE",
             }

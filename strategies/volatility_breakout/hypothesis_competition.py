@@ -20,6 +20,7 @@ from .research_model_federation import ResearchModelFederation
 from .worker_coalition_model import WorkerCoalitionMetaModel
 from .worker_signal_federation import WorkerSignalFederation
 from .venue_profiles import venue_profile
+from strategies.relative_value_lab.hypothesis_statistics_bridge import statistical_hypothesis_gate
 
 
 def _cfg_float(cfg: Any, key: str, default: float) -> float:
@@ -311,6 +312,7 @@ class HypothesisCompetition:
             for model in self.medium_trend_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
                 forecast = apply_learning_prior_to_forecast(forecast, features)
+                forecast = statistical_hypothesis_gate(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 forecasts.append(forecast)
@@ -335,6 +337,7 @@ class HypothesisCompetition:
             for model in self.derivatives_trend_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
                 forecast = apply_learning_prior_to_forecast(forecast, features)
+                forecast = statistical_hypothesis_gate(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 if not forecast.abstain and self.derivatives_trend_ml_veto_enabled and coalition_model is not None:
@@ -488,6 +491,7 @@ class HypothesisCompetition:
             for model in active_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
                 forecast = apply_learning_prior_to_forecast(forecast, features)
+                forecast = statistical_hypothesis_gate(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 forecasts.append(forecast)

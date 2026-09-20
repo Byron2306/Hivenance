@@ -229,3 +229,194 @@ Phase 12.8 cannot claim useful learning until:
 10. Prospective shadow evidence demonstrates usefulness after costs.
 
 Execution remains disabled throughout Phase 12.8.
+
+
+## 12.8I — Canonical ResearchContext Bus
+
+Status: IMPLEMENTING
+
+Purpose:
+- replace fragmented side-channel keys with one sealed, point-in-time research context;
+- keep compatibility aliases during migration;
+- make the same context visible to core hypotheses, strategy workers, ML challengers, and Queen-side cognition.
+
+Canonical sections:
+- observed
+- regime
+- statistics
+- learning
+- crystals
+- external
+- calibration
+- workers
+- provenance
+
+Rules:
+- ResearchContext is research-only;
+- it may not mutate the observed world;
+- all positive authority remains downstream and separately gated;
+- legacy feature keys remain adapters only until ablation proves they can be retired.
+
+Primary modules:
+- strategies/relative_value_lab/research_context.py
+- strategies/relative_value_lab/g0_hypothesis_adapter.py
+
+## 12.8J — Full Organism Topology and Worker Integration
+
+Status: IMPLEMENTING
+
+Strategy Workers:
+- retain SMA, RSI, RSI2, Breakout, Momentum, Bollinger, Supertrend, Volatility Expansion and coalition voices;
+- workers consume the same ResearchContext as other hypotheses;
+- worker receipts preserve the exact context seen;
+- workers remain specialist hypothesis voices, not Queen substitutes;
+- worker utility must be prosecuted via NO_WORKERS same-world ablation.
+
+Coin Selector:
+- remains pre-hypothesis and universe-freezing;
+- may consume point-in-time ResearchContext;
+- may not rerank after outcome knowledge;
+- selection regret remains downstream validation.
+
+Market Hunting:
+- remains a research-target generator, never an alpha claim.
+
+Colony Correlation:
+- remains discovery-only and may not claim causality.
+
+Causal Cascade:
+- remains explicit mechanism-bound propagation analysis.
+
+## 12.8K — Governance and Meta-Cognition Integration
+
+Polyphonic Quorum:
+- measures provenance-diverse ensemble health, never directional majority vote.
+
+Pollen Economy:
+- remains meta-learning / information-contribution reputation;
+- may affect research prioritization;
+- may not directly weight trade direction.
+
+Mystique:
+- remains synthetic falsification;
+- synthetic worlds may never contaminate observed or prospective evidence.
+
+Cognitive Metabolism:
+- becomes the information-efficiency and compute-budget governor;
+- should terminate recursive cognition when marginal information gain collapses.
+
+VNS / Temporal Texture:
+- remains transport/cadence health;
+- may influence trust/uncertainty but not originate alpha.
+
+Recursive Queen:
+- remains bounded;
+- may request refresh/challenge/compare/corroboration;
+- may not recurse without explicit stopping conditions.
+
+Conducting Queen:
+- remains final research conductor;
+- receives structured evidence, uncertainty, dissent and governance state;
+- may veto/abstain/request more evidence;
+- may not directly bypass execution gates.
+
+Primary topology registry:
+- strategies/relative_value_lab/organ_topology.py
+
+## 12.8L — Unified RegimeContext
+
+Status: NEXT
+
+Problem:
+- deterministic regime truth currently lives in feature_engine.py;
+- Bayesian regime truth currently lives in probabilistic_regime.py;
+- consumers may see one or the other through separate channels.
+
+Canonical contract:
+- deterministic_hint
+- deterministic_confidence
+- Bayesian posterior probabilities
+- dominant_posterior_regime
+- posterior_entropy
+- change_point_probability
+- disagreement score
+- evidence cutoff
+- authority and provenance
+
+Influence:
+- hypotheses may consume it;
+- worker models may consume it;
+- ML challenger may consume it;
+- Queen may inspect it;
+- it may increase caution immediately;
+- positive directional weighting requires prospective causal proof.
+
+## 12.8M — Queen Input v2
+
+Status: PLANNED AFTER REGIME CONTEXT
+
+Goal:
+- preserve the proven Phase-7 17-channel contract;
+- add a versioned extension layer for:
+  - STATISTICAL_SYNTHESIS
+  - REGIME_CONTEXT
+  - EXTERNAL_STATISTICS
+  - CALIBRATION_CONTEXT
+  - RESEARCH_CONTEXT
+- avoid silently changing historical Phase-7 invariants.
+
+The v1 17-channel assembly remains frozen.
+Queen Input v2 must be explicitly versioned and backward compatible.
+
+## 12.8N — Full Organism Causal Ablation
+
+Required executable masks, only where real runtime isolation exists:
+- FULL_HIVE
+- NO_STATISTICS
+- NO_BAYES
+- NO_REGIME
+- NO_EXTERNAL
+- NO_CONFORMAL
+- NO_ML
+- NO_WORKERS
+- NO_LEARNING
+- NO_CRYSTALS
+- NO_COIN_SELECTOR
+- NO_QUORUM
+- NO_MYSTIQUE
+- NO_METABOLISM
+- NO_POLLEN
+- NO_QUEEN
+
+Each mask must preserve:
+- identical observed world;
+- identical future settlement tape;
+- no synthetic post-hoc mutation of the FULL path;
+- separate invocation and influence receipts.
+
+Acceptance:
+- invocation is not usefulness;
+- decision change is not usefulness;
+- positive historical delta is only historical evidence;
+- prospective shadow evidence remains required for promotion.
+
+## 12.8O — Information Architecture Optimization
+
+Target architecture:
+1. observations create canonical evidence;
+2. Statistics Bee accumulates causally available quantitative state;
+3. Synthesis Bee creates probabilistic research state;
+4. ResearchContext distributes one sealed context packet;
+5. specialist organs consume that packet according to their role;
+6. Queen receives explicit provenance-bound channels;
+7. settlement closes the loop back into statistics/learning/calibration;
+8. Crystals remain downstream of recurrence and transfer testing;
+9. execution remains downstream of independent promotion/risk gates.
+
+Optimization principles:
+- one owner per responsibility;
+- one canonical read seam per context family;
+- compatibility adapters instead of duplicate truths;
+- local/dependency-light computation by default;
+- no side-channel may silently acquire authority;
+- every meaningful organ must be independently ablatable.

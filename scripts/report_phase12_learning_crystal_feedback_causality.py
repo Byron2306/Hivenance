@@ -1423,6 +1423,36 @@ def main() -> None:
         print("  world_normalized_classification=", classification)
 
     if args.census_json_out:
+        adversarial_attack_receipts = {}
+        for attack_id in STATISTICAL_ATTACKS:
+            per_world = {
+                key: mean(values)
+                for key, values in attack_world_deltas[attack_id].items()
+                if values
+            }
+            grouped = defaultdict(list)
+            for key, value in per_world.items():
+                grouped[key[0]].append(value)
+            cohorts = {
+                run_id: mean(values)
+                for run_id, values in grouped.items()
+                if values
+            }
+            adversarial_attack_receipts[attack_id] = {
+                "testable_worlds": int(attack_stats[attack_id]["testable_worlds"]),
+                "changed_worlds": int(attack_stats[attack_id]["changed_worlds"]),
+                "decision_changes": int(attack_stats[attack_id]["decision_changes"]),
+                "full_minus_attack_mean_delta_bps": (
+                    mean(per_world.values()) if per_world else None
+                ),
+                "dependence_adjusted_worlds": len(cohorts),
+                "positive_cohorts": sum(1 for x in cohorts.values() if x > 0),
+                "negative_cohorts": sum(1 for x in cohorts.values() if x < 0),
+                "historical_only": True,
+                "execution_eligible": False,
+                "promotion_eligible": False,
+            }
+
         bundle = {
             "schema": "hivenance_full_organism_census_replay_bundle_v1",
             "source": "report_phase12_learning_crystal_feedback_causality",
@@ -1438,6 +1468,7 @@ def main() -> None:
                 "NO_BAYES": int(stats["NO_BAYES"]["testable_worlds"]),
             },
             "worker_component_causality": worker_component_receipts,
+            "adversarial_attacks": adversarial_attack_receipts,
         }
         with open(args.census_json_out, "w", encoding="utf-8") as fh:
             json.dump(bundle, fh, sort_keys=True, indent=2)

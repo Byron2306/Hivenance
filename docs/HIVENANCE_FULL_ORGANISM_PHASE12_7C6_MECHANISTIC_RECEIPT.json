@@ -1,0 +1,60 @@
+{
+  "schema": "hivenance_full_organism_phase12_7c6_mechanistic_receipt_v1",
+  "phase": "12.7c6",
+  "status": "PASS",
+  "scope": "independent_historical_hypothesis_cohort_reconstruction",
+  "historical_reconstruction_only": true,
+  "old_forecast_direction_used_as_input": false,
+  "current_model_replay": true,
+  "prospective_usefulness_proved": false,
+  "execution_eligible": false,
+  "promotion_eligible": false,
+  "organs": {
+    "liquidity": {
+      "mask_id": "NO_LIQUIDITY",
+      "classification": "HISTORICALLY_USEFUL",
+      "testable_world_horizons": 203,
+      "changed_market_worlds": 92,
+      "positive_worlds": 88,
+      "negative_worlds": 4,
+      "world_normalized_mean_delta_bps": 55.67778800449025,
+      "dependence_adjusted_world_count": 10,
+      "positive_cohorts": 10,
+      "negative_cohorts": 0,
+      "conservative_positive_cohorts": 10,
+      "minimum_independent_worlds_met": true,
+      "mechanistic_survivor": true
+    },
+    "comparison": {
+      "mask_id": "NO_COMPARISON",
+      "classification": "HISTORICALLY_MIXED",
+      "testable_world_horizons": 203,
+      "changed_market_worlds": 63,
+      "positive_worlds": 60,
+      "negative_worlds": 3,
+      "world_normalized_mean_delta_bps": 41.99806858919959,
+      "dependence_adjusted_world_count": 9,
+      "positive_cohorts": 9,
+      "negative_cohorts": 0,
+      "conservative_positive_cohorts": 8,
+      "minimum_independent_worlds_met": true,
+      "mechanistic_survivor": false,
+      "reason": "one dependence-adjusted cohort becomes negative under least-favourable changed-model-per-world normalization"
+    },
+    "temporal_participation": {
+      "mask_id": "NO_TEMPORAL_PARTICIPATION",
+      "classification": "NO_CAUSAL_EFFECT_ON_AVAILABLE_CORPUS",
+      "mechanistic_survivor": false
+    },
+    "horizon_context": {
+      "mask_id": "NO_LONG_HORIZON_LATTICE",
+      "classification": "NOT_TESTABLE_ON_AVAILABLE_FRESH_CORPUS",
+      "mechanistic_survivor": false
+    }
+  },
+  "partial_mechanistic_survivor_set": [
+    "LIQUIDITY"
+  ],
+  "phase12_complete": false,
+  "remaining_requirement": "prosecute remaining frozen Phase-12 masks and organs before final survivor-set freeze"
+}

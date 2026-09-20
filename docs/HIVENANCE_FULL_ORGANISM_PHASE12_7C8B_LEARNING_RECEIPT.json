@@ -1,0 +1,31 @@
+{
+  "schema": "hivenance_full_organism_phase12_7c8b_learning_receipt_v1",
+  "phase": "12.7c8b",
+  "status": "PASS",
+  "mask_id": "NO_LEARNING",
+  "classification": "NO_CAUSAL_EFFECT_ON_AVAILABLE_HISTORICAL_CORPUS",
+  "historical_reuse_receipts": 356,
+  "decisions": {
+    "no_prior_evidence": 356
+  },
+  "sample_count_positive_rows": 0,
+  "rows_with_latest_settled_ts": 0,
+  "rows_with_mean_realized_net_bps": 0,
+  "applicability_contract": {
+    "fail_closed": true,
+    "requires_model_id": true,
+    "requires_symbol": true,
+    "requires_horizon_seconds": true,
+    "requires_direction": true,
+    "requires_forecast_or_hypothesis_binding": true,
+    "requires_settled_at_ms": true,
+    "requires_observed_at_ms": true,
+    "requires_world_or_evidence_lineage": true
+  },
+  "historical_learning_influence_available": false,
+  "synthetic_learning_created": false,
+  "mechanistic_survivor": false,
+  "execution_eligible": false,
+  "promotion_eligible": false,
+  "phase12_complete": false
+}

@@ -5,6 +5,8 @@ It makes invocation/influence inspectable so G0 can ablate organs against an
 identical observation tape.
 """
 from __future__ import annotations
+
+from .bee_evidence import BeeEvidence
 import hashlib,json
 from dataclasses import asdict,dataclass
 from typing import Any,Mapping,Sequence
@@ -122,10 +124,101 @@ class SynthesisRuntime:
    )
 
   if temporal_participation is None or "temporal_participation_bee" in disabled:
-   receipt("temporal_participation_bee","DISABLED" if "temporal_participation_bee" in disabled else "AVAILABLE_NOT_INVOKED")
+   receipt(
+    "temporal_participation_bee",
+    "DISABLED" if "temporal_participation_bee" in disabled
+    else "AVAILABLE_NOT_INVOKED"
+   )
   else:
-   n=add_temporal_participation(g,evidence=temporal_participation,created_at_ms=now_ms)
-   receipt("temporal_participation_bee","INVOKED",(temporal_participation.evidence_root,),(n,))
+   same_hour_n=int(
+    getattr(
+     temporal_participation,
+     "historical_same_hour_n",
+     0,
+    )
+   )
+   ratio=getattr(
+    temporal_participation,
+    "volume_ratio_to_same_hour_median",
+    None,
+   )
+
+   missingness=()
+   if ratio is None:
+    missingness=("same_hour_baseline_insufficient",)
+
+   confidence=(
+    0.0
+    if ratio is None
+    else max(
+     0.05,
+     min(
+      1.0,
+      1.0-(1.0/max(1.0,float(same_hour_n)**0.5)),
+     ),
+    )
+   )
+
+   bee=BeeEvidence(
+    schema="hivenance_bee_evidence_v1",
+    evidence_id=str(
+     temporal_participation.evidence_id
+    ),
+    family="TEMPORAL_PARTICIPATION",
+    source_kind="historical_reconstruction",
+    source_ids=(
+     str(
+      temporal_participation.evidence_id
+     ),
+    ),
+    evidence_roots=(
+     str(
+      temporal_participation.evidence_root
+     ),
+    ),
+    lineage=(
+     "hivenance.temporal_participation_bee.v1",
+    ),
+    transformation_version=(
+     "utc_same_hour_participation.v1"
+    ),
+    observed_at_ms=int(
+     temporal_participation.observed_at_ms
+    ),
+    available_at_ms=int(
+     temporal_participation.observed_at_ms
+    ),
+    freshness=1.0,
+    confidence=confidence,
+    missingness=missingness,
+    abstention=bool(
+     ratio is None
+    ),
+    payload=temporal_participation.to_dict(),
+    execution_eligible=False,
+    promotion_eligible=False,
+   )
+
+   n=add_bee_evidence(
+    g,
+    evidence=bee,
+    created_at_ms=now_ms,
+   )
+
+   receipt(
+    "temporal_participation_bee",
+    "INVOKED",
+    (
+     temporal_participation.evidence_root,
+    ),
+    (n,),
+    canonical_phase5_family=(
+     "TEMPORAL_PARTICIPATION"
+    ),
+    canonical_graph_organ=(
+     "bee_evidence"
+    ),
+   )
 
   learned=[]
   if "learning_memory" in disabled:

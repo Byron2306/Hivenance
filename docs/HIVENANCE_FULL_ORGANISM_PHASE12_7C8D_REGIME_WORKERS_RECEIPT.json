@@ -1,0 +1,57 @@
+{
+  "schema": "hivenance_full_organism_phase12_7c8d_regime_workers_receipt_v1",
+  "phase": "12.7c8d",
+  "status": "PASS",
+  "historical_world_horizons": 203,
+
+  "no_regime": {
+    "mask_id": "NO_REGIME",
+    "semantics": "remove external regime oracle while permitting current model local regime inference from unchanged frozen market features",
+    "testable_worlds": 203,
+    "not_testable_worlds": 0,
+    "changed_market_worlds": 3,
+    "decision_changes": 3,
+    "helpful_changes_full_minus_blind": 3,
+    "harmful_changes_full_minus_blind": 0,
+    "world_normalized_mean_delta_bps": 90.040116177159,
+    "dependence_adjusted_worlds": 1,
+    "positive_cohorts": 1,
+    "negative_cohorts": 0,
+    "minimum_independent_worlds_met": false,
+    "classification": "POSITIVE_WHEN_CAUSAL_BUT_INSUFFICIENT_INDEPENDENCE",
+    "mechanistic_survivor": false
+  },
+
+  "no_workers": {
+    "mask_id": "NO_WORKERS",
+    "semantics": "remove worker signal models and worker coalition while preserving unchanged historical worker_series market evidence",
+    "testable_worlds": 203,
+    "not_testable_worlds": 0,
+    "changed_market_worlds": 12,
+    "decision_changes": 33,
+    "helpful_changes_full_minus_blind": 14,
+    "harmful_changes_full_minus_blind": 19,
+    "world_normalized_mean_delta_bps": -38.85444851771568,
+    "dependence_adjusted_worlds": 7,
+    "positive_cohorts": 1,
+    "negative_cohorts": 6,
+    "minimum_independent_worlds_met": true,
+    "classification": "HISTORICALLY_MIXED_WITH_HARMFUL_SKEW",
+    "mechanistic_survivor": false
+  },
+
+  "interpretation": {
+    "regime_global_usefulness_claimed": false,
+    "workers_global_uselessness_claimed": false,
+    "historical_usefulness_equals_prospective_usefulness": false,
+    "prospective_usefulness_proved": false,
+    "profitability_proved": false
+  },
+
+  "historical_reconstruction_only": true,
+  "old_forecast_direction_used_as_input": false,
+  "current_model_replay": true,
+  "execution_eligible": false,
+  "promotion_eligible": false,
+  "phase12_complete": false
+}

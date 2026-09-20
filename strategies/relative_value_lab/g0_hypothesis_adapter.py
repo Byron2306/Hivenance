@@ -16,7 +16,37 @@ def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
  values=dict(feature.values or {})
  family_payloads={}
  for node in getattr(cycle.queen_view,"nodes",()):
-  family_payloads.setdefault(str(node.family),[]).append(dict(node.payload))
+  raw=dict(node.payload)
+
+  # Canonical Phase-5 evidence enters Queen through BeeEvidence.
+  # Forecast challenges operate on the evidence-family payload itself,
+  # not on the custody envelope, so expose the inner payload while
+  # preserving Bee metadata for audit.
+  if (
+   raw.get("schema")=="hivenance_bee_evidence_v1"
+   and isinstance(raw.get("payload"),dict)
+  ):
+   exposed=dict(raw["payload"])
+   exposed["_bee_evidence"]={
+    "evidence_id":raw.get("evidence_id"),
+    "family":raw.get("family"),
+    "source_kind":raw.get("source_kind"),
+    "source_ids":tuple(raw.get("source_ids") or ()),
+    "evidence_roots":tuple(raw.get("evidence_roots") or ()),
+    "lineage":tuple(raw.get("lineage") or ()),
+    "transformation_version":raw.get("transformation_version"),
+    "observed_at_ms":raw.get("observed_at_ms"),
+    "available_at_ms":raw.get("available_at_ms"),
+    "missingness":tuple(raw.get("missingness") or ()),
+    "abstention":bool(raw.get("abstention")),
+   }
+   family_payloads.setdefault(
+    str(node.family),[]
+   ).append(exposed)
+  else:
+   family_payloads.setdefault(
+    str(node.family),[]
+   ).append(raw)
  values["synthesis_context"]={
   "cycle_id":cycle.cycle_id,
   "world_state_id":cycle.world_state_id,

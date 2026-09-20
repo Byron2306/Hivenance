@@ -32,8 +32,25 @@ def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ec
  continuation=hypothesis in _CONTINUATION
  reversion=hypothesis in _REVERSION
  probe=hypothesis in _UNGROUNDED_PROBE
+
+ # Primary alpha hypotheses may require explicit corroboration.
+ # Baselines/probes remain neutral when an organ is absent so that
+ # ablation does not manufacture a veto merely by removing evidence.
+ strict_primary_corroboration = (
+  hypothesis == "breakout_continuation"
+ )
  if organ_scope=="edge_ecology":
-  # Veto-only semantics: absence of Edge evidence is not itself a veto.
+  # Primary breakout requires explicit liquidity corroboration.
+  # Baselines/probes remain neutral when the organ is absent.
+  if (
+   strict_primary_corroboration
+   and "LIQUIDITY" not in families
+  ):
+   reasons.append(
+    "g0_liquidity_not_corroborated"
+   )
+
+  # Present contradictory evidence may veto any challengeable forecast.
   # Only evidence actually present in the FULL_HIVE path may contradict the proposal.
   if "LIQUIDITY" in families:
    liq=first("LIQUIDITY")
@@ -54,18 +71,57 @@ def challenge_forecast(forecast:Forecast,features:Any,*,organ_scope:str="edge_ec
     if signed < -0.10:
      reasons.append("g0_flow_direction_conflict")
  elif organ_scope=="horizon_context" and (continuation or probe):
-  # Missing horizon evidence is neutral in an ablation. Present contradictory
-  # horizon evidence may veto.
-  if "HORIZON" in families:
-   h=first("HORIZON");alignment=str(h.get("alignment") or "")
-   wanted="ALIGNED_UP" if forecast.direction=="UP" else "ALIGNED_DOWN"
-   if alignment and alignment not in {wanted,"NEUTRAL"}:reasons.append("g0_horizon_conflict")
+  if "HORIZON" not in families:
+   if strict_primary_corroboration:
+    reasons.append(
+     "g0_horizon_not_corroborated"
+    )
+  else:
+   h=first("HORIZON")
+   alignment=str(
+    h.get("alignment") or ""
+   )
+   wanted=(
+    "ALIGNED_UP"
+    if forecast.direction=="UP"
+    else "ALIGNED_DOWN"
+   )
+   if (
+    alignment
+    and alignment not in {
+     wanted,
+     "NEUTRAL",
+    }
+   ):
+    reasons.append(
+     "g0_horizon_conflict"
+    )
  elif organ_scope=="temporal_participation_bee" and (continuation or probe):
-  # Again, missing organ evidence is neutral; only an observed weak state vetoes.
-  if "TEMPORAL_PARTICIPATION" in families:
-   t=first("TEMPORAL_PARTICIPATION");state=str(t.get("activity_state") or "")
-   if state and state not in {"PARTICIPATION_NORMAL","PARTICIPATION_ELEVATED"}:
-    reasons.append("g0_temporal_participation_weak")
+  if "TEMPORAL_PARTICIPATION" not in families:
+   if strict_primary_corroboration:
+    reasons.append(
+     "g0_temporal_participation_not_corroborated"
+    )
+  else:
+   t=first(
+    "TEMPORAL_PARTICIPATION"
+   )
+   state=str(
+    t.get("activity_state") or ""
+   )
+
+   if strict_primary_corroboration:
+    if state not in {
+     "PARTICIPATION_NORMAL",
+     "PARTICIPATION_ELEVATED",
+    }:
+     reasons.append(
+      "g0_temporal_participation_weak"
+     )
+   elif state=="PARTICIPATION_THIN":
+    reasons.append(
+     "g0_temporal_participation_weak"
+    )
  elif organ_scope=="learning_memory":
   if "LEARNING" in families:
    for lp in payloads.get("LEARNING") or ():

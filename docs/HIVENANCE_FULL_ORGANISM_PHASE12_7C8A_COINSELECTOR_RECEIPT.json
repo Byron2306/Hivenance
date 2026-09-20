@@ -1,0 +1,46 @@
+{
+  "schema": "hivenance_full_organism_phase12_7c8a_coinselector_receipt_v1",
+  "phase": "12.7c8a",
+  "status": "PASS",
+  "mask_id": "NO_COIN_SELECTOR",
+  "classification": "POSITIVE_BUT_INSUFFICIENT_INDEPENDENCE",
+  "unique_freezes": 139,
+  "settlement_versions_used": {
+    "v1": 0,
+    "v2": 91,
+    "v3": 48
+  },
+  "dependence_adjusted_worlds": 3,
+  "minimum_required_independent_worlds": 5,
+  "minimum_independent_worlds_met": false,
+  "positive_cohorts": 3,
+  "negative_cohorts": 0,
+  "cohorts": {
+    "obs-1789837239053-9e601545": {
+      "selector_mean_net_opportunity_bps": -144.1278306626404,
+      "blind_mean_net_opportunity_bps": -247.11996508061668,
+      "selector_minus_blind_bps": 102.99213441797627
+    },
+    "obs-1789840269752-aeb81228": {
+      "selector_mean_net_opportunity_bps": -152.9647866981964,
+      "blind_mean_net_opportunity_bps": -171.7372079297279,
+      "selector_minus_blind_bps": 18.772421231531496
+    },
+    "obs-1789849918096-c13d3952": {
+      "selector_mean_net_opportunity_bps": -150.72172258882233,
+      "blind_mean_net_opportunity_bps": -157.92490873630769,
+      "selector_minus_blind_bps": 7.203186147485354
+    }
+  },
+  "pooled_selector_mean_net_bps": -149.22160078078917,
+  "pooled_blind_mean_net_bps": -191.95375393347476,
+  "pooled_selector_minus_blind_bps": 42.732153152685584,
+  "all_selected_opportunities_profitable_after_cost": false,
+  "historical_selection_effect_only": true,
+  "directional_trading_edge_claimed": false,
+  "prospective_profitability_proved": false,
+  "mechanistic_survivor": false,
+  "reason_not_survivor": "dependence_adjusted_world_count_below_5",
+  "execution_eligible": false,
+  "promotion_eligible": false
+}

@@ -1,0 +1,54 @@
+{
+  "schema": "hivenance_full_organism_phase12_7c8c_crystals_receipt_v1",
+  "phase": "12.7c8c",
+  "status": "PASS",
+  "mask_id": "NO_CRYSTALS",
+  "classification": "NO_CAUSAL_EFFECT_ON_APPLICABLE_HISTORICAL_CORPUS",
+
+  "historical_world_horizons": 203,
+
+  "point_in_time_crystal_presence": {
+    "broad_worlds": 113,
+    "no_point_in_time_thesis_crystal": 90
+  },
+
+  "live_semantic_applicability": {
+    "applicable_worlds": 10,
+    "excluded_after_live_semantics": 103,
+    "exclusion_reason": "regime_mismatch"
+  },
+
+  "historical_crystal_state": {
+    "family": "thesis_capability",
+    "verification_state": "candidate",
+    "drift_status": "unsettled_candidate",
+    "authority": "proposal_only",
+    "verified_reusable_memory_present": false,
+    "negative_capability_memory_present": false
+  },
+
+  "causal_ablation": {
+    "testable_worlds": 10,
+    "not_testable_worlds": 193,
+    "changed_market_worlds": 0,
+    "decision_changes": 0,
+    "helpful_changes": 0,
+    "harmful_changes": 0,
+    "world_normalized_mean_delta_bps": null,
+    "dependence_adjusted_worlds_with_effect": 0
+  },
+
+  "interpretation": {
+    "historical_candidate_crystal_context_existed": true,
+    "current_model_consumes_crystal_context": true,
+    "applicable_historical_forecast_effect_observed": false,
+    "global_crystal_uselessness_claimed": false,
+    "prospective_usefulness_proved": false
+  },
+
+  "mechanistic_survivor": false,
+  "historical_reconstruction_only": true,
+  "execution_eligible": false,
+  "promotion_eligible": false,
+  "phase12_complete": false
+}

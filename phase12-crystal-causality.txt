@@ -1,0 +1,160 @@
+HIVENANCE_PHASE12_INDEPENDENT_HYPOTHESIS_CAUSALITY
+unique_market_world_horizons= 203
+
+NO_COMPARISON
+  testable_worlds= 203
+  not_testable= 0
+  changed_worlds= 63
+  decision_changes= 121
+  helpful_changes= 111
+  harmful_changes= 10
+  neutral_changes= 0
+  avoided_losses= 111
+  suppressed_winners= 10
+  mean_paired_delta_bps= 41.870024035160036
+  dependence_adjusted_worlds= 9
+  minimum_independent_worlds_met= True
+  cohort_means= {'obs-1789812916927-c5eb7e78': 40.956777, 'obs-1789813249464-e6f13e00': 50.575149, 'obs-1789813488891-1cf19615': 44.700698, 'obs-1789814115094-f68f3bfe': 44.038275, 'obs-1789814381836-eaac63ec': 42.752202, 'obs-1789814950165-6bf47fbd': 25.547306, 'obs-1789815238853-a5fc5601': 45.411976, 'obs-1789815325631-ff440fc7': 46.027983, 'obs-1789815694810-e104d401': 47.598731}
+  positive_cohorts= 9
+  negative_cohorts= 0
+  zero_cohorts= 0
+  examples= [{'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'SOL/USDT', 'horizon': 300, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -37.037354), 'delta_bps': 37.037354}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'SOL/USDT', 'horizon': 300, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -37.037354), 'delta_bps': 37.037354}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'SOL/USDT', 'horizon': 900, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -26.313493), 'delta_bps': 26.313493}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'SOL/USDT', 'horizon': 900, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -26.313493), 'delta_bps': 26.313493}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDG/USD', 'horizon': 300, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -46.027984), 'delta_bps': 46.027984}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDG/USD', 'horizon': 300, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -46.027984), 'delta_bps': 46.027984}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDG/USD', 'horizon': 900, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -46.027984), 'delta_bps': 46.027984}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDG/USD', 'horizon': 900, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -46.027984), 'delta_bps': 46.027984}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDT/USD', 'horizon': 300, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -45.316979), 'delta_bps': 45.316979}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDT/USD', 'horizon': 300, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -44.916831), 'delta_bps': 44.916831}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDT/USD', 'horizon': 900, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -45.216942), 'delta_bps': 45.216942}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'USDT/USD', 'horizon': 900, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -45.216942), 'delta_bps': 45.216942}]
+
+NO_LIQUIDITY
+  testable_worlds= 203
+  not_testable= 0
+  changed_worlds= 92
+  decision_changes= 157
+  helpful_changes= 141
+  harmful_changes= 16
+  neutral_changes= 0
+  avoided_losses= 141
+  suppressed_winners= 16
+  mean_paired_delta_bps= 51.87855408972268
+  dependence_adjusted_worlds= 10
+  minimum_independent_worlds_met= True
+  cohort_means= {'obs-1789812916927-c5eb7e78': 80.188496, 'obs-1789813249464-e6f13e00': 88.517397, 'obs-1789813488891-1cf19615': 48.616161, 'obs-1789814115094-f68f3bfe': 50.807441, 'obs-1789814381836-eaac63ec': 27.885926, 'obs-1789814950165-6bf47fbd': 42.053758, 'obs-1789815238853-a5fc5601': 32.619744, 'obs-1789815325631-ff440fc7': 54.170629, 'obs-1789815530148-6667177b': 75.383866, 'obs-1789815694810-e104d401': 75.027877}
+  positive_cohorts= 10
+  negative_cohorts= 0
+  zero_cohorts= 0
+  examples= [{'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'BNB/USD', 'horizon': 900, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -43.28027), 'delta_bps': 43.28027}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'BNB/USD', 'horizon': 900, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -43.28027), 'delta_bps': 43.28027}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'HYPE/USD', 'horizon': 300, 'model': 'baseline_simple_mean_reversion_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -54.841285), 'delta_bps': 54.841285}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'HYPE/USD', 'horizon': 900, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -34.213775), 'delta_bps': 34.213775}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'HYPE/USD', 'horizon': 900, 'model': 'baseline_simple_mean_reversion_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -34.213775), 'delta_bps': 34.213775}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'LTC/USD', 'horizon': 900, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -69.55209), 'delta_bps': 69.55209}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'MR/USD', 'horizon': 300, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -99.80683), 'delta_bps': 99.80683}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'MR/USD', 'horizon': 300, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -99.80683), 'delta_bps': 99.80683}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'MR/USD', 'horizon': 900, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -149.281911), 'delta_bps': 149.281911}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'MR/USD', 'horizon': 900, 'model': 'worker_signal_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('DOWN', -149.281911), 'delta_bps': 149.281911}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'PUMP/USD', 'horizon': 300, 'model': 'baseline_deterministic_random_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -109.787262), 'delta_bps': 109.787262}, {'run': 'obs-1789812916927-c5eb7e78', 'symbol': 'PUMP/USD', 'horizon': 300, 'model': 'baseline_simple_momentum_v1', 'full': ('ABSTAIN', 0.0), 'blind': ('UP', -109.787262), 'delta_bps': 109.787262}]
+
+NO_CRYSTALS
+  testable_worlds= 10
+  not_testable= 193
+  changed_worlds= 0
+  decision_changes= 0
+  helpful_changes= 0
+  harmful_changes= 0
+  neutral_changes= 0
+  avoided_losses= 0
+  suppressed_winners= 0
+  mean_paired_delta_bps= None
+  dependence_adjusted_worlds= 0
+  minimum_independent_worlds_met= False
+  cohort_means= {}
+  positive_cohorts= 0
+  negative_cohorts= 0
+  zero_cohorts= 0
+  examples= []
+
+HIVENANCE_PHASE12_WORLD_NORMALIZED_CAUSALITY
+
+NO_COMPARISON
+  changed_market_worlds= 63
+  positive_worlds= 60
+  negative_worlds= 3
+  zero_worlds= 0
+  world_normalized_mean_delta_bps= 41.99806858919959
+  dependence_adjusted_worlds= 9
+  normalized_cohort_means= {'obs-1789812916927-c5eb7e78': 40.956777, 'obs-1789813249464-e6f13e00': 50.575149, 'obs-1789813488891-1cf19615': 44.737306, 'obs-1789814115094-f68f3bfe': 44.038275, 'obs-1789814381836-eaac63ec': 43.146307, 'obs-1789814950165-6bf47fbd': 26.525766, 'obs-1789815238853-a5fc5601': 45.411976, 'obs-1789815325631-ff440fc7': 46.027983, 'obs-1789815694810-e104d401': 47.598731}
+  positive_cohorts= 9
+  negative_cohorts= 0
+  conservative_cohort_means= {'obs-1789812916927-c5eb7e78': 40.923431, 'obs-1789813249464-e6f13e00': -5.11581, 'obs-1789813488891-1cf19615': 38.480815, 'obs-1789814115094-f68f3bfe': 30.411683, 'obs-1789814381836-eaac63ec': 43.146307, 'obs-1789814950165-6bf47fbd': 24.998137, 'obs-1789815238853-a5fc5601': 38.222505, 'obs-1789815325631-ff440fc7': 46.027983, 'obs-1789815694810-e104d401': 37.330026}
+  conservative_positive_cohorts= 8
+  minimum_independent_worlds_met= True
+  world_normalized_classification= HISTORICALLY_MIXED
+
+NO_LIQUIDITY
+  changed_market_worlds= 92
+  positive_worlds= 88
+  negative_worlds= 4
+  zero_worlds= 0
+  world_normalized_mean_delta_bps= 55.67778800449025
+  dependence_adjusted_worlds= 10
+  normalized_cohort_means= {'obs-1789812916927-c5eb7e78': 75.76005, 'obs-1789813249464-e6f13e00': 98.003699, 'obs-1789813488891-1cf19615': 45.460634, 'obs-1789814115094-f68f3bfe': 45.232606, 'obs-1789814381836-eaac63ec': 30.427964, 'obs-1789814950165-6bf47fbd': 40.738616, 'obs-1789815238853-a5fc5601': 51.30585, 'obs-1789815325631-ff440fc7': 52.273152, 'obs-1789815530148-6667177b': 73.497372, 'obs-1789815694810-e104d401': 75.027877}
+  positive_cohorts= 10
+  negative_cohorts= 0
+  conservative_cohort_means= {'obs-1789812916927-c5eb7e78': 75.76005, 'obs-1789813249464-e6f13e00': 98.003699, 'obs-1789813488891-1cf19615': 45.460634, 'obs-1789814115094-f68f3bfe': 45.232606, 'obs-1789814381836-eaac63ec': 30.427964, 'obs-1789814950165-6bf47fbd': 40.738616, 'obs-1789815238853-a5fc5601': 51.30585, 'obs-1789815325631-ff440fc7': 52.273152, 'obs-1789815530148-6667177b': 73.497372, 'obs-1789815694810-e104d401': 75.027877}
+  conservative_positive_cohorts= 10
+  minimum_independent_worlds_met= True
+  world_normalized_classification= HISTORICALLY_USEFUL_CANDIDATE
+
+NO_CRYSTALS
+  changed_market_worlds= 0
+  positive_worlds= 0
+  negative_worlds= 0
+  zero_worlds= 0
+  world_normalized_mean_delta_bps= None
+  dependence_adjusted_worlds= 0
+  normalized_cohort_means= {}
+  positive_cohorts= 0
+  negative_cohorts= 0
+  conservative_cohort_means= {}
+  conservative_positive_cohorts= 0
+  minimum_independent_worlds_met= False
+  world_normalized_classification= NO_CAUSAL_EFFECT
+
+HIVENANCE_PHASE12_WORLD_NORMALIZED_CAUSALITY
+
+NO_COMPARISON
+  changed_market_worlds= 63
+  positive_worlds= 60
+  negative_worlds= 3
+  zero_worlds= 0
+  world_normalized_mean_delta_bps= 41.99806858919959
+  dependence_adjusted_worlds= 9
+  normalized_cohort_means= {'obs-1789812916927-c5eb7e78': 40.956777, 'obs-1789813249464-e6f13e00': 50.575149, 'obs-1789813488891-1cf19615': 44.737306, 'obs-1789814115094-f68f3bfe': 44.038275, 'obs-1789814381836-eaac63ec': 43.146307, 'obs-1789814950165-6bf47fbd': 26.525766, 'obs-1789815238853-a5fc5601': 45.411976, 'obs-1789815325631-ff440fc7': 46.027983, 'obs-1789815694810-e104d401': 47.598731}
+  positive_cohorts= 9
+  negative_cohorts= 0
+  conservative_cohort_means= {'obs-1789812916927-c5eb7e78': 40.923431, 'obs-1789813249464-e6f13e00': -5.11581, 'obs-1789813488891-1cf19615': 38.480815, 'obs-1789814115094-f68f3bfe': 30.411683, 'obs-1789814381836-eaac63ec': 43.146307, 'obs-1789814950165-6bf47fbd': 24.998137, 'obs-1789815238853-a5fc5601': 38.222505, 'obs-1789815325631-ff440fc7': 46.027983, 'obs-1789815694810-e104d401': 37.330026}
+  conservative_positive_cohorts= 8
+  minimum_independent_worlds_met= True
+  world_normalized_classification= HISTORICALLY_MIXED
+
+NO_LIQUIDITY
+  changed_market_worlds= 92
+  positive_worlds= 88
+  negative_worlds= 4
+  zero_worlds= 0
+  world_normalized_mean_delta_bps= 55.67778800449025
+  dependence_adjusted_worlds= 10
+  normalized_cohort_means= {'obs-1789812916927-c5eb7e78': 75.76005, 'obs-1789813249464-e6f13e00': 98.003699, 'obs-1789813488891-1cf19615': 45.460634, 'obs-1789814115094-f68f3bfe': 45.232606, 'obs-1789814381836-eaac63ec': 30.427964, 'obs-1789814950165-6bf47fbd': 40.738616, 'obs-1789815238853-a5fc5601': 51.30585, 'obs-1789815325631-ff440fc7': 52.273152, 'obs-1789815530148-6667177b': 73.497372, 'obs-1789815694810-e104d401': 75.027877}
+  positive_cohorts= 10
+  negative_cohorts= 0
+  conservative_cohort_means= {'obs-1789812916927-c5eb7e78': 75.76005, 'obs-1789813249464-e6f13e00': 98.003699, 'obs-1789813488891-1cf19615': 45.460634, 'obs-1789814115094-f68f3bfe': 45.232606, 'obs-1789814381836-eaac63ec': 30.427964, 'obs-1789814950165-6bf47fbd': 40.738616, 'obs-1789815238853-a5fc5601': 51.30585, 'obs-1789815325631-ff440fc7': 52.273152, 'obs-1789815530148-6667177b': 73.497372, 'obs-1789815694810-e104d401': 75.027877}
+  conservative_positive_cohorts= 10
+  minimum_independent_worlds_met= True
+  world_normalized_classification= HISTORICALLY_USEFUL_CANDIDATE
+
+NO_CRYSTALS
+  changed_market_worlds= 0
+  positive_worlds= 0
+  negative_worlds= 0
+  zero_worlds= 0
+  world_normalized_mean_delta_bps= None
+  dependence_adjusted_worlds= 0
+  normalized_cohort_means= {}
+  positive_cohorts= 0
+  negative_cohorts= 0
+  conservative_cohort_means= {}
+  conservative_positive_cohorts= 0
+  minimum_independent_worlds_met= False
+  world_normalized_classification= NO_CAUSAL_EFFECT
+
+historical_reconstruction_only=True
+old_forecast_direction_used_as_input=False
+current_model_replay=True
+prospective_usefulness_proved=False
+execution_eligible=False
+promotion_eligible=False

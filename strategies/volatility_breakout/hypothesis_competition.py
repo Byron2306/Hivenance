@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 from typing import Any, Iterable
 
 from .cost_model import ResearchCostModel
+from .learning_crystal_feedback import apply_learning_prior_to_forecast
 from .hypothesis_models import (
     BreakoutContinuationModel,
     DerivativesTrendModel,
@@ -309,6 +310,7 @@ class HypothesisCompetition:
         for horizon in horizons:
             for model in self.medium_trend_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
+                forecast = apply_learning_prior_to_forecast(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 forecasts.append(forecast)
@@ -332,6 +334,7 @@ class HypothesisCompetition:
         for horizon in horizons:
             for model in self.derivatives_trend_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
+                forecast = apply_learning_prior_to_forecast(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 if not forecast.abstain and self.derivatives_trend_ml_veto_enabled and coalition_model is not None:
@@ -394,8 +397,15 @@ class HypothesisCompetition:
         crystal_memory = values.get("phase2_crystal_memory") if isinstance(values.get("phase2_crystal_memory"), dict) else {}
         crystal_support = float(crystal_memory.get("support_score") or 0.0)
         crystal_warning = float(crystal_memory.get("warning_score") or 0.0)
+        learning_feedback = values.get("phase2_learning_feedback") if isinstance(values.get("phase2_learning_feedback"), dict) else {}
+        learning_support = float(learning_feedback.get("support_score") or 0.0)
+        learning_warning = float(learning_feedback.get("warning_score") or 0.0)
         crystal_positive_bias = max(0.0, min(1.0, crystal_support * 0.15))
         crystal_warning_drag = max(0.0, min(1.0, crystal_warning * 0.15))
+        learning_positive_bias = max(0.0, min(0.12, learning_support * 0.12))
+        learning_warning_drag = max(0.0, min(0.12, learning_warning * 0.12))
+        reusable_positive_bias = min(1.0, crystal_positive_bias + learning_positive_bias)
+        reusable_warning_drag = min(1.0, crystal_warning_drag + learning_warning_drag)
         breakout_frontier_ok = (
             not self.require_frontier_for_adaptive_recovery
             or (
@@ -416,8 +426,8 @@ class HypothesisCompetition:
         if (
             cohort == "event_driven"
             and regime_hint in {"trend_expansion", "balanced_transition"}
-            and regime_confidence >= max(0.45, 0.60 - crystal_positive_bias + crystal_warning_drag)
-            and tradable_score >= max(0.45, 0.60 - crystal_positive_bias + crystal_warning_drag)
+            and regime_confidence >= max(0.45, 0.60 - reusable_positive_bias + reusable_warning_drag)
+            and tradable_score >= max(0.45, 0.60 - reusable_positive_bias + reusable_warning_drag)
             and breakout_borderline
             and breakout_frontier_ok
         ):
@@ -429,15 +439,21 @@ class HypothesisCompetition:
                 "recovery_mode": "borderline_regime_confirmed",
                 "adaptation_strength": round(min(1.0, 0.55 * tradable_score + 0.45 * regime_confidence), 6),
                 "frontier_context": breakout_frontier,
-                "adaptation_reason": "event_driven_high_tradable_opportunity_with_crystal_bias" if crystal_positive_bias > 0 else "event_driven_high_tradable_opportunity",
+                "adaptation_reason": (
+                    "event_driven_high_tradable_opportunity_with_reusable_prior"
+                    if reusable_positive_bias > 0 or reusable_warning_drag > 0
+                    else "event_driven_high_tradable_opportunity"
+                ),
                 "crystal_support_score": round(crystal_support, 6),
                 "crystal_warning_score": round(crystal_warning, 6),
+                "learning_support_score": round(learning_support, 6),
+                "learning_warning_score": round(learning_warning, 6),
             }
         if (
             cohort in {"mean_reversion", "research_bench"}
             and regime_hint in {"stretch_exhaustion", "quiet_range", "balanced_transition"}
-            and regime_confidence >= max(0.45, 0.58 - crystal_positive_bias + crystal_warning_drag)
-            and max(tradable_score, research_score) >= max(0.45, 0.58 - crystal_positive_bias + crystal_warning_drag)
+            and regime_confidence >= max(0.45, 0.58 - reusable_positive_bias + reusable_warning_drag)
+            and max(tradable_score, research_score) >= max(0.45, 0.58 - reusable_positive_bias + reusable_warning_drag)
             and reversion_borderline
             and reversion_frontier_ok
         ):
@@ -449,9 +465,15 @@ class HypothesisCompetition:
                 "recovery_mode": "borderline_regime_confirmed",
                 "adaptation_strength": round(min(1.0, 0.45 * tradable_score + 0.55 * max(research_score, regime_confidence)), 6),
                 "frontier_context": reversion_frontier,
-                "adaptation_reason": "mean_reversion_high_research_value_with_crystal_bias" if crystal_positive_bias > 0 else "mean_reversion_high_research_value",
+                "adaptation_reason": (
+                    "mean_reversion_high_research_value_with_reusable_prior"
+                    if reusable_positive_bias > 0 or reusable_warning_drag > 0
+                    else "mean_reversion_high_research_value"
+                ),
                 "crystal_support_score": round(crystal_support, 6),
                 "crystal_warning_score": round(crystal_warning, 6),
+                "learning_support_score": round(learning_support, 6),
+                "learning_warning_score": round(learning_warning, 6),
             }
         if not policy:
             return features
@@ -465,6 +487,7 @@ class HypothesisCompetition:
         for horizon in horizons:
             for model in active_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
+                forecast = apply_learning_prior_to_forecast(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 forecasts.append(forecast)

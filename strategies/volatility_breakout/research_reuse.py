@@ -151,6 +151,15 @@ class ResearchReuseGovernor:
             cutoff_ts=as_of_ts,
         )
         sample_count, mean_realized_net_bps, win_rate, latest_settled_ts = self._decision_payload(exact_stats)
+        exact_sample_count = sample_count
+        exact_mean_realized_net_bps = mean_realized_net_bps
+        exact_win_rate = win_rate
+        exact_latest_settled_ts = latest_settled_ts
+        worker_transfer_eligible = (
+            str(model_id).startswith("worker_signal_")
+            and self.worker_transfer_reuse_enabled
+            and hasattr(self.data_store, "get_worker_transfer_reuse_stats")
+        )
         if self._passes_gate(
             sample_count,
             mean_realized_net_bps,
@@ -161,15 +170,11 @@ class ResearchReuseGovernor:
         ):
             decision = "exact_reuse_candidate"
             reason = "exact_match_prior_evidence_is_positive"
-        elif sample_count > 0:
+        elif sample_count > 0 and not worker_transfer_eligible:
             decision = "exact_reuse_too_weak"
             reason = "exact_match_prior_evidence_below_gate"
         else:
-            if (
-                str(model_id).startswith("worker_signal_")
-                and self.worker_transfer_reuse_enabled
-                and hasattr(self.data_store, "get_worker_transfer_reuse_stats")
-            ):
+            if worker_transfer_eligible:
                 transform_stats = self.data_store.get_worker_transfer_reuse_stats(
                     model_id=model_id,
                     horizon_seconds=horizon_seconds,
@@ -197,7 +202,22 @@ class ResearchReuseGovernor:
                 )
             transform_match_type = str(transform_stats.get("match_type") or "none")
             sample_count, mean_realized_net_bps, win_rate, latest_settled_ts = self._decision_payload(transform_stats)
-            if transform_match_type == "worker_regime":
+
+            if (
+                worker_transfer_eligible
+                and sample_count <= 0
+                and exact_sample_count > 0
+            ):
+                sample_count = exact_sample_count
+                mean_realized_net_bps = exact_mean_realized_net_bps
+                win_rate = exact_win_rate
+                latest_settled_ts = exact_latest_settled_ts
+                transform_match_type = "worker_exact_fallback"
+
+            if transform_match_type == "worker_exact_fallback":
+                decision = "exact_reuse_too_weak"
+                reason = "exact_match_prior_evidence_below_gate"
+            elif transform_match_type == "worker_regime":
                 if self._passes_gate(
                     sample_count,
                     mean_realized_net_bps,

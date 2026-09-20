@@ -163,3 +163,35 @@ def test_challenger_can_abstain_without_disappearing():
     assert receipt.direction=="ABSTAIN"
     assert "challenger_abstains" in receipt.reasons
     assert receipt.execution_eligible is False
+
+
+def test_synthesis_state_can_only_make_challenger_more_cautious():
+    engine=LearnedChallenger()
+    healthy=engine.score(
+        forecast=forecast(),
+        provenance=provenance(),
+        calibration=calibration(),
+        now_ms=31_000,
+        drift_score=.05,
+    )
+    cautious=engine.score(
+        forecast=forecast(),
+        provenance=provenance(),
+        calibration=calibration(),
+        now_ms=31_000,
+        drift_score=.05,
+        synthesis_state={
+            "hierarchical_win_probability": .78,
+            "hierarchical_edge_positive_probability": .81,
+            "uncertainty": .92,
+            "change_point_probability": .88,
+        },
+    )
+    assert cautious.voice_health < healthy.voice_health
+    assert cautious.synthesis_win_probability == .78
+    assert cautious.synthesis_edge_positive_probability == .81
+    assert cautious.synthesis_uncertainty == .92
+    assert cautious.synthesis_change_point_probability == .88
+    assert "synthesis_change_point_pressure_high" in cautious.reasons
+    assert cautious.execution_eligible is False
+    assert cautious.promotion_eligible is False

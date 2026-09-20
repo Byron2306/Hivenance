@@ -125,6 +125,7 @@ class ResearchReuseGovernor:
         regime_hint: str,
         cohort_bucket: str,
         symbol_class: str,
+        as_of_ts: float | None = None,
     ) -> dict[str, Any]:
         cache_key = (
             str(model_id),
@@ -133,6 +134,7 @@ class ResearchReuseGovernor:
             str(regime_hint or "unknown"),
             str(cohort_bucket or "unknown"),
             str(symbol_class or "unknown"),
+            None if as_of_ts is None else float(as_of_ts),
         )
         if cache_key in self._decision_cache:
             return dict(self._decision_cache[cache_key])
@@ -142,6 +144,7 @@ class ResearchReuseGovernor:
             horizon_seconds=horizon_seconds,
             regime_hint=regime_hint,
             limit=max(25, self.min_samples * 4),
+            cutoff_ts=as_of_ts,
         )
         sample_count, mean_realized_net_bps, win_rate, latest_settled_ts = self._decision_payload(exact_stats)
         if self._passes_gate(
@@ -174,6 +177,7 @@ class ResearchReuseGovernor:
                     cohort_bucket=cohort_bucket,
                     symbol_class=symbol_class,
                     limit=max(50, self.transform_min_samples * 6),
+                    cutoff_ts=as_of_ts,
                 )
             transform_match_type = str(transform_stats.get("match_type") or "none")
             sample_count, mean_realized_net_bps, win_rate, latest_settled_ts = self._decision_payload(transform_stats)
@@ -214,7 +218,7 @@ class ResearchReuseGovernor:
             else:
                 decision = "no_prior_evidence"
                 reason = "no_exact_or_transform_research_reuse_match"
-        created_ts = time.time()
+        created_ts = float(as_of_ts) if as_of_ts is not None else time.time()
         config_hash = self.config_hash()
         receipt = ResearchReuseDecision(
             receipt_id=_canonical_hash(

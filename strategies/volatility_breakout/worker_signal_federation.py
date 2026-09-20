@@ -177,6 +177,11 @@ class WorkerSignalModel:
                 if isinstance((features.values or {}).get("research_context"), Mapping)
                 else {}
             ),
+            "regime_context": (
+                dict((features.values or {}).get("regime_context") or {})
+                if isinstance((features.values or {}).get("regime_context"), Mapping)
+                else {}
+            ),
             "regime_inputs": (features.values or {}).get("regime_inputs", {}),
             "return_5": features.return_5,
             "return_zscore": features.return_zscore,

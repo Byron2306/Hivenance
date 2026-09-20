@@ -1,32 +1,44 @@
 {
-  "schema": "hivenance_full_organism_phase12_7c9_learning_crystal_feedback_receipt_v1",
-  "phase": "12.7c9",
-  "status": "IMPLEMENTED_AWAITING_TESTS",
-  "objective": "close the Learning -> Crystal -> Hypothesis feedback loop before further Phase-12 organ prosecution",
-  "branch": "hivenance-phase12-learning-crystal-feedback",
+  "acceptance": {
+    "dedicated_learning_crystal_tests": {
+      "failed": 0,
+      "passed": 10
+    },
+    "focused_phase12_regressions": {
+      "failed": 0,
+      "passed": 77
+    },
+    "python_compile": "PASS",
+    "structural_acceptance": true
+  },
   "authority": {
-    "learning": "RESEARCH_PRIOR_ONLY",
     "crystal_reuse": "RESEARCH_PRIOR_ONLY",
     "execution_eligible": false,
+    "learning": "RESEARCH_PRIOR_ONLY",
     "promotion_eligible": false
   },
-  "implemented": {
-    "point_in_time_reuse_cutoff": true,
-    "pre_prediction_learning_compilation": true,
-    "positive_learning_prior": true,
-    "negative_learning_veto": true,
-    "bounded_adaptive_threshold_influence": true,
-    "deterministic_learning_crystal_materialization": true,
-    "next_cycle_exact_crystal_applicability_reuse": true,
-    "stale_or_future_evidence_refusal": true,
-    "crystal_demotion_by_current_evidence": true
-  },
+  "branch": "hivenance-phase12-learning-crystal-feedback",
   "claim_boundary": {
-    "profitability_proved": false,
-    "prospective_edge_proved": false,
+    "execution_authority_granted": false,
     "historical_causal_value_proved": false,
-    "execution_authority_granted": false
+    "profitability_proved": false,
+    "prospective_edge_proved": false
   },
+  "implemented": {
+    "bounded_adaptive_threshold_influence": true,
+    "crystal_demotion_by_current_evidence": true,
+    "deterministic_learning_crystal_materialization": true,
+    "negative_learning_veto": true,
+    "next_cycle_exact_crystal_applicability_reuse": true,
+    "point_in_time_reuse_cutoff": true,
+    "positive_learning_prior": true,
+    "pre_prediction_learning_compilation": true,
+    "stale_or_future_evidence_refusal": true
+  },
+  "objective": "close the Learning -> Crystal -> Hypothesis feedback loop before further Phase-12 organ prosecution",
+  "phase": "12.7c9",
+  "phase12_complete": false,
   "previous_phase12_learning_crystal_dispositions": "PROVISIONAL_PENDING_RETEST",
-  "phase12_complete": false
+  "schema": "hivenance_full_organism_phase12_7c9_learning_crystal_feedback_receipt_v1",
+  "status": "PASS"
 }

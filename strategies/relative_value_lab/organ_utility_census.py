@@ -81,6 +81,8 @@ def _utility_state(row: HistoricalOrganProsecution)->str:
         return "INFLUENTIAL_UNDERPOWERED"
     if row.classification=="HISTORICALLY_NEUTRAL":
         return "HISTORICALLY_NEUTRAL"
+    if row.classification=="HISTORICALLY_MIXED":
+        return "HISTORICALLY_MIXED"
     return row.classification
 
 
@@ -93,6 +95,7 @@ def _recommendation(state:str)->str:
         "HISTORICALLY_HARMFUL":"QUARANTINE_OR_REDESIGN_BEFORE_PROSPECTIVE_USE",
         "INFLUENTIAL_UNDERPOWERED":"RETAIN_AND_GATHER_MORE_INDEPENDENT_WORLDS",
         "HISTORICALLY_NEUTRAL":"REVIEW_COMPLEXITY_VS_GOVERNANCE_VALUE",
+        "HISTORICALLY_MIXED":"SEGMENT_OR_REDESIGN_BEFORE_PROSPECTIVE_USE",
     }.get(state,"REVIEW")
 
 

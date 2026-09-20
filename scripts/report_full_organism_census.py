@@ -48,6 +48,8 @@ def main() -> None:
     invocation_counts={}
     worker_component_causality={}
     adversarial_attacks={}
+    explicit_unavailable_masks={}
+    control_masks_prosecuted={}
     sources=[]
 
     for path in args.bundle:
@@ -77,6 +79,16 @@ def main() -> None:
             if existing is not None and existing!=row:
                 raise ValueError("conflicting_adversarial_attack:" + str(attack_id))
             adversarial_attacks[attack_id]=row
+        for mask_id,reason in dict(bundle.get("explicit_unavailable_masks") or {}).items():
+            existing=explicit_unavailable_masks.get(mask_id)
+            if existing is not None and existing!=reason:
+                raise ValueError("conflicting_explicit_unavailable_mask:" + str(mask_id))
+            explicit_unavailable_masks[mask_id]=reason
+        for mask_id,row in dict(bundle.get("control_masks_prosecuted") or {}).items():
+            existing=control_masks_prosecuted.get(mask_id)
+            if existing is not None and existing!=row:
+                raise ValueError("conflicting_control_mask_prosecution:" + str(mask_id))
+            control_masks_prosecuted[mask_id]=row
 
     run=run_full_organism_census(
         outcomes_by_mask=outcomes_by_mask,
@@ -126,6 +138,8 @@ def main() -> None:
         "organ_route_census":route.to_dict(),
         "worker_component_causality":worker_component_causality,
         "adversarial_attacks":adversarial_attacks,
+        "explicit_unavailable_masks":explicit_unavailable_masks,
+        "control_masks_prosecuted":control_masks_prosecuted,
         "organ_runtime_control": {
             organ_id: state.to_dict()
             for organ_id,state in sorted(runtime_plane.items())

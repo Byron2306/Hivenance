@@ -123,6 +123,7 @@ def main() -> None:
     print("harmful_organs=",",".join(run.utility_census.harmful_organs) if run.utility_census.harmful_organs else "none")
     print("inert_organs=",",".join(run.utility_census.inert_organs) if run.utility_census.inert_organs else "none")
     print("underpowered_organs=",",".join(run.utility_census.underpowered_organs) if run.utility_census.underpowered_organs else "none")
+    print("mixed_organs=",",".join(run.utility_census.mixed_organs) if run.utility_census.mixed_organs else "none")
     print("dead_routes=",",".join(route.dead_routes) if route.dead_routes else "none")
     print("unmeasured_routes=",",".join(route.unmeasured_routes) if route.unmeasured_routes else "none")
     print("report=",str(out))

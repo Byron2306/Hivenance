@@ -67,7 +67,7 @@ Cannot be marked PASS until:
 
 ## Phase 14 — Economic and Scientific Gate
 
-Build state: ANALYSIS CONTRACT COMPLETE / INPUT EVIDENCE PENDING
+Build state: ANALYSIS SURFACE COMPLETE / INPUT EVIDENCE PENDING
 
 Implemented:
 - strict freeze-ID validation;
@@ -80,9 +80,9 @@ Implemented:
 - explicit refusal on insufficient prospective evidence;
 - no execution/promotion authority.
 
-Still to be expanded before final scientific closure:
-- multiplicity-adjusted per-organ significance table;
-- clustered/dependence bootstrap or equivalent robust interval;
+Implemented before prospective outcomes:
+- multiplicity-adjusted significance table using the frozen Holm method;
+- clustered/dependence world-level robustness summary;
 - cost-stress grid;
 - fill-realism summary;
 - per-symbol/regime/horizon/model breakdown;

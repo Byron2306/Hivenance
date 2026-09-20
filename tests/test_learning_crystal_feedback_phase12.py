@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
+from strategies.volatility_breakout.hypothesis_competition import HypothesisCompetition
+from strategies.volatility_breakout.research_reuse import ResearchReuseGovernor
 from strategies.volatility_breakout.learning_crystal_feedback import (
     apply_learning_prior_to_forecast,
     attach_learning_feedback,
@@ -256,3 +259,89 @@ def test_learning_crystal_rows_are_deterministic_and_research_only():
     assert a[0]["authority"] == "research_prior_only"
     assert a[0]["payload"]["execution_eligible"] is False
     assert a[0]["payload"]["promotion_eligible"] is False
+
+
+class CutoffStore:
+    def __init__(self):
+        self.cutoffs = []
+        self.receipts = []
+
+    def get_research_reuse_stats(self, **kwargs):
+        self.cutoffs.append(kwargs.get("cutoff_ts"))
+        return {
+            "sample_count": 0,
+            "mean_realized_net_bps": None,
+            "win_rate": None,
+            "latest_settled_ts": None,
+        }
+
+    def get_research_transform_reuse_stats(self, **kwargs):
+        self.cutoffs.append(kwargs.get("cutoff_ts"))
+        return {
+            "match_type": "none",
+            "sample_count": 0,
+            "mean_realized_net_bps": None,
+            "win_rate": None,
+            "latest_settled_ts": None,
+        }
+
+    def persist_research_reuse_receipt(self, row):
+        self.receipts.append(dict(row))
+        return True
+
+
+def test_reuse_governor_forwards_historical_cutoff_and_receipt_time():
+    store = CutoffStore()
+    gov = ResearchReuseGovernor(SimpleNamespace(phase2_transform_reuse_enabled=True), store)
+    row = gov.decide(
+        model_id="model_a",
+        symbol="BTC/USD",
+        horizon_seconds=300,
+        regime_hint="trend_expansion",
+        cohort_bucket="event_driven",
+        symbol_class="major",
+        as_of_ts=1000.0,
+    )
+    assert store.cutoffs == [1000.0, 1000.0]
+    assert row["created_ts"] == 1000.0
+    assert store.receipts[0]["created_ts"] == 1000.0
+
+
+def test_learning_support_can_activate_bounded_adaptive_recovery():
+    cfg = SimpleNamespace(
+        exchange="kraken",
+        phase2_require_frontier_for_adaptive_recovery=False,
+        phase2_worker_signal_federation_enabled=False,
+        phase2_worker_coalition_enabled=False,
+        medium_trend_phase2_model_enabled=False,
+        derivatives_trend_phase2_model_enabled=False,
+    )
+    competition = HypothesisCompetition(cfg)
+    base = feature()
+    values = dict(base.values)
+    values.update({
+        "tradable_opportunity_score": 0.52,
+        "research_richness_score": 0.52,
+        "phase2_crystal_memory": {"support_score": 0.0, "warning_score": 0.0},
+    })
+    borderline = replace(
+        base,
+        volatility_expansion=1.15,
+        volume_zscore=0.35,
+        return_zscore=0.60,
+        values=values,
+    )
+    assert "phase2_adaptive_thresholds" not in competition._adaptive_feature(borderline).values
+
+    learned_values = dict(borderline.values)
+    learned_values["phase2_learning_feedback"] = {
+        "support_score": 1.0,
+        "warning_score": 0.0,
+        "priors": {},
+        "authority": "RESEARCH_PRIOR_ONLY",
+    }
+    learned = replace(borderline, values=learned_values)
+    adapted = competition._adaptive_feature(learned)
+    policy = adapted.values.get("phase2_adaptive_thresholds") or {}
+    assert "breakout" in policy
+    assert policy["breakout"]["learning_support_score"] == 1.0

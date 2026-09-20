@@ -126,6 +126,7 @@ def forecast_outcome_on_real_tape(
             realized_net
         ),
         envelope_id=None,
+        model_id=str(forecast.model_id),
         execution_eligible=False,
         promotion_eligible=False,
     )

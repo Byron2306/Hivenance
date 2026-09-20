@@ -83,6 +83,7 @@ def compile_learning_feedback(
     reuse_governor: Any | None,
     max_age_sec: float = 86400.0,
     min_samples_for_reuse: int = 5,
+    reusable_crystals: Iterable[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     """Compile settled evidence into bounded, point-in-time research priors.
 
@@ -93,6 +94,13 @@ def compile_learning_feedback(
     scope = _feature_scope(feature)
     as_of_ts = float(feature.timestamp_ms or 0) / 1000.0
     priors: dict[str, dict[str, Any]] = {}
+    crystal_by_key: dict[str, dict[str, Any]] = {}
+    for item in reusable_crystals:
+        if not isinstance(item, Mapping):
+            continue
+        key = str(item.get("applicability_key") or item.get("applicability_hash") or "")
+        if key:
+            crystal_by_key[key] = dict(item)
 
     if reuse_governor is None:
         return {
@@ -162,6 +170,19 @@ def compile_learning_feedback(
                 "config_hash": decision.get("config_hash"),
             }
             key = f"{model_id}|{horizon}"
+            reusable_crystal = crystal_by_key.get(_hash(applicability))
+            crystal_expiry = reusable_crystal.get("expires_ts") if reusable_crystal else None
+            crystal_fresh = bool(
+                reusable_crystal
+                and (crystal_expiry is None or float(crystal_expiry) >= as_of_ts)
+                and str(reusable_crystal.get("authority") or "").lower() in {"research_prior_only", "research_prior_only".lower()}
+            )
+            crystal_reused = bool(
+                crystal_fresh
+                and lifecycle == "DETERMINISTIC_RESEARCH_REUSE_CANDIDATE"
+                and str(reusable_crystal.get("lifecycle") or "") == "DETERMINISTIC_RESEARCH_REUSE_CANDIDATE"
+            )
+
             priors[key] = {
                 "schema": "hivenance_market_learning_prior_v1",
                 "model_id": model_id,
@@ -180,6 +201,9 @@ def compile_learning_feedback(
                 "lifecycle": lifecycle,
                 "applicability_key": _hash(applicability),
                 "applicability": applicability,
+                "crystal_reused": crystal_reused,
+                "crystal_id": reusable_crystal.get("crystal_id") if crystal_reused else None,
+                "reuse_mode": "DETERMINISTIC_CRYSTAL_REUSE" if crystal_reused else "EVIDENCE_COMPILED",
                 "authority": AUTHORITY,
                 "execution_eligible": False,
                 "promotion_eligible": False,
@@ -197,6 +221,7 @@ def compile_learning_feedback(
         "warning_score": round(warning_score, 6),
         "positive_priors": sum(1 for x in priors.values() if float(x.get("support_score") or 0.0) > 0),
         "negative_priors": sum(1 for x in priors.values() if float(x.get("warning_score") or 0.0) > 0),
+        "crystal_reuse_count": sum(1 for x in priors.values() if bool(x.get("crystal_reused"))),
         "execution_eligible": False,
         "promotion_eligible": False,
     }
@@ -320,6 +345,7 @@ def learning_crystal_rows(
             "win_rate": prior.get("win_rate"),
             "applicability_key": applicability_key,
             "authority": AUTHORITY,
+            "expires_ts": as_of_ts + max(60.0, float(expiry_sec)),
             "execution_eligible": False,
             "promotion_eligible": False,
         }

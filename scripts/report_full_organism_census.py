@@ -47,6 +47,7 @@ def main() -> None:
     outcomes_by_mask={}
     invocation_counts={}
     worker_component_causality={}
+    adversarial_attacks={}
     sources=[]
 
     for path in args.bundle:
@@ -71,6 +72,11 @@ def main() -> None:
             if existing is not None and existing!=row:
                 raise ValueError("conflicting_worker_component_causality:" + str(mask_id))
             worker_component_causality[mask_id]=row
+        for attack_id,row in dict(bundle.get("adversarial_attacks") or {}).items():
+            existing=adversarial_attacks.get(attack_id)
+            if existing is not None and existing!=row:
+                raise ValueError("conflicting_adversarial_attack:" + str(attack_id))
+            adversarial_attacks[attack_id]=row
 
     run=run_full_organism_census(
         outcomes_by_mask=outcomes_by_mask,
@@ -119,6 +125,7 @@ def main() -> None:
         "organ_utility_census":run.utility_census.to_dict(),
         "organ_route_census":route.to_dict(),
         "worker_component_causality":worker_component_causality,
+        "adversarial_attacks":adversarial_attacks,
         "organ_runtime_control": {
             organ_id: state.to_dict()
             for organ_id,state in sorted(runtime_plane.items())

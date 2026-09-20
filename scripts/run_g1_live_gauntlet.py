@@ -9,7 +9,7 @@ Research-only:
 - frozen G1 campaign/target reused unchanged throughout the run
 """
 from __future__ import annotations
-import argparse,json,os,signal,sys,time
+import argparse,json,os,signal,sys,time,traceback
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -221,9 +221,13 @@ def main()->int:
                 _compact_cycle(cycles,time.monotonic()-started,g0,settlement,str(payload.get("status") or ""),phase13)
                 print(f"[GAUNTLET] cycle={cycles} runtime={last_cycle_runtime:.1f}s",flush=True)
             except Exception as exc:
-                cycle_errors.append(f"cycle_{cycles}:{type(exc).__name__}:{exc}")
+                tb=traceback.format_exc()
+                cycle_errors.append(f"cycle_{cycles}:{type(exc).__name__}:{exc}\n{tb}")
                 total["errors"]+=1
                 print(f"[GAUNTLET] cycle={cycles} ERROR {type(exc).__name__}: {exc}",flush=True)
+                print("[GAUNTLET] TRACEBACK BEGIN",flush=True)
+                print(tb.rstrip(),flush=True)
+                print("[GAUNTLET] TRACEBACK END",flush=True)
 
             now=time.monotonic()
             if now>=deadline or STOP:break

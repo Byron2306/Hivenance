@@ -667,3 +667,24 @@ Resulting simplification:
 
 This is the first census-driven simplification of the singular organism:
 retain information, remove unevidenced control authority.
+
+
+## Optimization checkpoint — Bayesian regime authority demotion
+
+Strict historical result:
+- Bayesian RegimeContext was present on 158/203 worlds;
+- disagreement and change-point pressure were nontrivial;
+- NO_BAYES changed 0 hypothesis decisions across the strict corpus.
+
+Interpretation:
+- Bayes is decision-inert at the current hypothesis-control boundary;
+- this does not prove Bayesian context is useless to Queen, calibration, diagnostics, ML, or future prospective testing.
+
+Resulting simplification:
+- hypothesis regime gates now use deterministic regime confidence only;
+- Bayesian posterior probabilities, entropy, disagreement and change-point pressure remain preserved in canonical RegimeContext;
+- Bayes remains visible to downstream research cognition;
+- Bayesian state may regain direct hypothesis influence only after prospective causal evidence shows incremental utility.
+
+Truth rule:
+retain the witness, remove unevidenced control authority.

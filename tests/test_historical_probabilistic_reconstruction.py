@@ -119,3 +119,53 @@ def test_statistics_reconstruction_respects_strict_settlement_cutoff():
 
     assert before.effective_sample_size==0.0
     assert after.effective_sample_size==1.0
+
+
+
+def test_hierarchical_statistics_expand_depth_without_double_counting():
+    conn=sqlite3.connect(":memory:")
+    conn.row_factory=sqlite3.Row
+    conn.executescript(
+        """
+        CREATE TABLE hypothesis_forecasts(
+            forecast_id TEXT,
+            model_id TEXT,
+            symbol TEXT,
+            horizon_seconds INTEGER,
+            ts REAL,
+            payload TEXT,
+            abstain INTEGER
+        );
+        CREATE TABLE hypothesis_outcomes(
+            forecast_id TEXT,
+            net_return_bps REAL,
+            settled_ts REAL
+        );
+        """
+    )
+    rows=(
+        ("f1","m1","BTC/USD",60,1.0,'{"inputs":{"regime_hint":"trend_expansion"}}',0,5.0,2.0),
+        ("f2","m1","BTC/USD",60,2.0,'{"inputs":{"regime_hint":"quiet_range"}}',0,-2.0,3.0),
+        ("f3","m1","ETH/USD",60,3.0,'{"inputs":{"regime_hint":"trend_expansion"}}',0,4.0,4.0),
+        ("f4","m1","ETH/USD",60,4.0,'{"inputs":{"regime_hint":"quiet_range"}}',0,1.0,5.0),
+    )
+    for row in rows:
+        conn.execute(
+            "INSERT INTO hypothesis_forecasts VALUES(?,?,?,?,?,?,?)",
+            row[:7],
+        )
+        conn.execute(
+            "INSERT INTO hypothesis_outcomes VALUES(?,?,?)",
+            (row[0],row[7],row[8]),
+        )
+
+    recon=HistoricalStatisticsReconstructor(conn)
+    state=recon.states_for(
+        feature(timestamp_ms=6000),
+        model_ids=("m1",),
+        horizon_seconds=60,
+    )["m1"]
+
+    assert state.effective_sample_size==4.0
+    assert len(state.source_snapshot_ids)>=2
+    assert state.contributing_scopes[0].startswith("exact|m1|BTC/USD|60|trend_expansion")

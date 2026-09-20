@@ -520,3 +520,29 @@ Next:
 - never reconstruct revised external data as if historically observed;
 - compare route census against runtime receipts to identify genuinely dead paths;
 - add cognition/complexity cost to utility decisions before any organ retirement.
+
+
+## Census truth-correction checkpoint
+
+The first real census exposed two reporting errors that are now corrected:
+
+1. Historical utility classification must preserve cohort structure.
+   - paired deltas are counted only when the organ changes a decision;
+   - model-level changes are normalized into world-level means;
+   - world-level effects are grouped by independent observation cohort;
+   - unanimous positive cohorts may classify historically useful;
+   - unanimous negative cohorts may classify historically harmful;
+   - mixed positive/negative cohorts classify HISTORICALLY_MIXED;
+   - mixed historical evidence must never be flattened into harmful merely because the overall mean is negative.
+
+2. Route health requires explicit telemetry coverage.
+   - a route not measured by the current corpus is NOT_MEASURED;
+   - DEAD_OR_UNWIRED may only be used when route telemetry for that organ was actually collected and the route was absent;
+   - the first strict census bundle measures Learning, Crystals, and Workers only;
+   - Statistics, Bayes, External, Conformal, ML, Queen, Pollen, Metabolism and other upper organs remain unmeasured until dedicated replay/runtime telemetry exists.
+
+First strict corpus truth:
+- Learning: causally prior evidence exists in only 31/203 worlds, all advisory and effectively n=1; no decision effect.
+- Crystals: no reuse; no decision effect.
+- Strategy Workers: causally active, 12 changed worlds / 33 decisions, 14 helpful vs 19 harmful, 7 independent cohorts, 1 positive and 6 negative; classification HISTORICALLY_MIXED.
+- No prospective utility is established.

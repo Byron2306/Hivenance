@@ -22,7 +22,24 @@ def main()->int:
 
     mandatory_masks=[x for x in PAIRED_MASKS if x!="FULL_HIVE"]
     missing_masks=[x for x in mandatory_masks if x not in paired]
-    measured_attacks=sorted(k for k,v in attack_results.items() if v)
+    measured_attacks=[]
+    failed_attacks=[]
+    for attack_id,row in attack_results.items():
+        if not row:
+            continue
+        status=row.get("status") if isinstance(row,dict) else None
+        if status is not None:
+            if str(status).upper()=="PASS":
+                measured_attacks.append(str(attack_id))
+            else:
+                failed_attacks.append(str(attack_id))
+            continue
+        # Quantitative attacks are measured when the replay actually produced
+        # a testable-world count, even when no decisions changed.
+        if isinstance(row,dict) and "testable_worlds" in row:
+            measured_attacks.append(str(attack_id))
+    measured_attacks=sorted(set(measured_attacks))
+    failed_attacks=sorted(set(failed_attacks))
     missing_attacks=[x for x in ADVERSARIAL_ATTACKS if x not in measured_attacks]
 
     # A frozen survivor set exists only when every mandatory mask has either
@@ -40,6 +57,8 @@ def main()->int:
         blockers.append("mandatory_masks_unresolved")
     if missing_attacks:
         blockers.append("adversarial_attacks_unresolved")
+    if failed_attacks:
+        blockers.append("adversarial_attacks_failed")
 
     status="PASS" if not blockers else "REFUSE"
     out={
@@ -53,6 +72,7 @@ def main()->int:
         "unresolved_masks":unresolved_masks,
         "measured_attacks":measured_attacks,
         "missing_attacks":missing_attacks,
+        "failed_attacks":failed_attacks,
         "blockers":blockers,
         "survivor_ids":prosecution.get("survivor_ids") or [],
         "execution_eligible":False,

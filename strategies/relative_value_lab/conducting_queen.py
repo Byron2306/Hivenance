@@ -24,6 +24,7 @@ from .ml_challenger import LearnedChallengerReceipt
 from .world_score import CanonicalScoreFrame
 from .vns_score_stream import VNSScorePhrase
 from .queen_input_assembly import QueenInputAssembly, REQUIRED_CHANNELS
+from .queen_input_v2 import QueenInputAssemblyV2, EXTENSION_CHANNELS
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -208,6 +209,12 @@ class QueenPolyphonicReceipt:
     input_disabled_channels: tuple[str, ...] = ()
     input_error_channels: tuple[str, ...] = ()
 
+    input_v2_assembly_id: str | None = None
+    input_v2_present_extensions: tuple[str, ...] = ()
+    input_v2_absent_extensions: tuple[str, ...] = ()
+    input_v2_disabled_extensions: tuple[str, ...] = ()
+    input_v2_error_extensions: tuple[str, ...] = ()
+
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -281,6 +288,7 @@ class ConductingQueen:
         metabolism: CognitiveMetabolismReceipt | None = None,
         learned_challengers: Sequence[LearnedChallengerReceipt] = (),
         queen_input_assembly: QueenInputAssembly | None = None,
+        queen_input_v2: QueenInputAssemblyV2 | None = None,
         world_frame: CanonicalScoreFrame | None = None,
         now_ms: int,
         world_state_id: str,
@@ -324,6 +332,22 @@ class ConductingQueen:
                 raise ValueError(
                     "queen_input_assembly_required_channels_incomplete"
                 )
+
+        if queen_input_v2 is not None:
+            if queen_input_assembly is None:
+                raise ValueError("queen_input_v2_requires_base_v1_assembly")
+            if (
+                queen_input_v2.world_state_id != world_state_id
+                or queen_input_v2.world_state_hash != world_state_hash
+            ):
+                raise ValueError("queen_input_v2_world_state_mismatch")
+            if queen_input_v2.base_v1_assembly_id != queen_input_assembly.assembly_id:
+                raise ValueError("queen_input_v2_base_assembly_mismatch")
+            extension_names = {
+                item.name for item in queen_input_v2.extension_channels
+            }
+            if extension_names != set(EXTENSION_CHANNELS):
+                raise ValueError("queen_input_v2_extensions_incomplete")
 
         epoch_consonance, world_state_tension = self._epoch_music(validation.reasons)
         acoustics = self._voice_acoustics(notes)
@@ -571,6 +595,11 @@ class ConductingQueen:
                 if queen_input_assembly is not None
                 else None
             ),
+            "input_v2_assembly_id": (
+                queen_input_v2.assembly_id
+                if queen_input_v2 is not None
+                else None
+            ),
         }
         return QueenPolyphonicReceipt(
             schema="hivenance_conducting_queen_v2",
@@ -669,6 +698,31 @@ class ConductingQueen:
             input_error_channels=(
                 queen_input_assembly.error_channels
                 if queen_input_assembly is not None
+                else ()
+            ),
+            input_v2_assembly_id=(
+                queen_input_v2.assembly_id
+                if queen_input_v2 is not None
+                else None
+            ),
+            input_v2_present_extensions=(
+                queen_input_v2.present_extensions
+                if queen_input_v2 is not None
+                else ()
+            ),
+            input_v2_absent_extensions=(
+                queen_input_v2.absent_extensions
+                if queen_input_v2 is not None
+                else ()
+            ),
+            input_v2_disabled_extensions=(
+                queen_input_v2.disabled_extensions
+                if queen_input_v2 is not None
+                else ()
+            ),
+            input_v2_error_extensions=(
+                queen_input_v2.error_extensions
+                if queen_input_v2 is not None
                 else ()
             ),
             authority=RELATIVE_VALUE_AUTHORITY,

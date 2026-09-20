@@ -66,7 +66,7 @@ def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
  statistical_family=family_payloads.get("STATISTICAL_SYNTHESIS") or ()
  if statistical_family and isinstance(statistical_family[0],dict):
   statistical = statistical or statistical_family[0]
- regime_family=family_payloads.get("REGIME") or ()
+ regime_family=family_payloads.get("REGIME_CONTEXT") or family_payloads.get("REGIME") or ()
  if regime_family and isinstance(regime_family[0],dict):
   regime_state=regime_family[0]
  research_context=build_research_context(

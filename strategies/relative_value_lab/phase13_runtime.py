@@ -103,6 +103,9 @@ class Phase13Runtime:
         frozen_forecasts=tuple(self.frozen_competition.evaluate(feature,self.horizons))
         adaptive_forecasts=tuple(self.adaptive_competition.evaluate(feature,self.horizons))
 
+        values=feature.values if isinstance(feature.values,dict) else {}
+        regime_inputs=values.get("regime_inputs") if isinstance(values.get("regime_inputs"),dict) else {}
+        regime=str(regime_inputs.get("regime_hint") or values.get("regime_hint") or "unknown")
         rows=route_phase13_forecast_books(
             freeze_id=self.freeze_id,
             world_state_id=world_id,
@@ -110,6 +113,8 @@ class Phase13Runtime:
             frozen_full_forecasts=frozen_forecasts,
             adaptive_forecasts=adaptive_forecasts,
             phoenix_primary_ids=self.frozen_competition.primary_ids,
+            entry_price=float(feature.price),
+            regime=regime,
         )
 
         inserted=self.ledger.persist_forecasts(rows)

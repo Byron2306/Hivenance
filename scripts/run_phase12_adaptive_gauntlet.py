@@ -267,6 +267,12 @@ def main() -> int:
             "census_path": str(args.census),
             "organ_runtime_control": control_plane,
             "runtime_mode_summary": _mode_summary(control_plane),
+            "runtime_mode_enforcement": {
+                "control_plane_loaded": True,
+                "coordinator_handoff_present": True,
+                "universal_legacy_organ_enforcement_complete": False,
+                "note": "modes are canonical and exposed; organ-by-organ consumers are being wired progressively",
+            },
             "recent_cycle_summaries": cycle_summaries,
             "cycle_errors": errors,
             "last_status": (last_payload or {}).get("status"),

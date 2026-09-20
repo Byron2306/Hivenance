@@ -54,6 +54,9 @@ class ResearchReuseGovernor:
             getattr(cfg, "phase2_transform_reuse_min_win_rate", self.min_win_rate) or self.min_win_rate
         )
         self.transform_reuse_enabled = bool(getattr(cfg, "phase2_transform_reuse_enabled", False))
+        self.worker_transfer_reuse_enabled = bool(
+            getattr(cfg, "phase2_worker_transfer_reuse_enabled", True)
+        )
 
     def config_hash(self) -> str:
         payload = {
@@ -86,6 +89,7 @@ class ResearchReuseGovernor:
             "phase2_transform_reuse_min_mean_net_bps": self.transform_min_mean_net_bps,
             "phase2_transform_reuse_min_win_rate": self.transform_min_win_rate,
             "phase2_transform_reuse_enabled": self.transform_reuse_enabled,
+            "phase2_worker_transfer_reuse_enabled": self.worker_transfer_reuse_enabled,
         }
         return _canonical_hash(payload)
 
@@ -161,7 +165,19 @@ class ResearchReuseGovernor:
             decision = "exact_reuse_too_weak"
             reason = "exact_match_prior_evidence_below_gate"
         else:
-            if str(model_id).startswith("worker_signal_") or not self.transform_reuse_enabled:
+            if (
+                str(model_id).startswith("worker_signal_")
+                and self.worker_transfer_reuse_enabled
+                and hasattr(self.data_store, "get_worker_transfer_reuse_stats")
+            ):
+                transform_stats = self.data_store.get_worker_transfer_reuse_stats(
+                    model_id=model_id,
+                    horizon_seconds=horizon_seconds,
+                    regime_hint=regime_hint,
+                    limit=max(50, self.transform_min_samples * 6),
+                    cutoff_ts=as_of_ts,
+                )
+            elif str(model_id).startswith("worker_signal_") or not self.transform_reuse_enabled:
                 transform_stats = {
                     "match_type": "none",
                     "sample_count": 0,
@@ -181,7 +197,41 @@ class ResearchReuseGovernor:
                 )
             transform_match_type = str(transform_stats.get("match_type") or "none")
             sample_count, mean_realized_net_bps, win_rate, latest_settled_ts = self._decision_payload(transform_stats)
-            if transform_match_type == "symbol_class":
+            if transform_match_type == "worker_regime":
+                if self._passes_gate(
+                    sample_count,
+                    mean_realized_net_bps,
+                    win_rate,
+                    min_samples=self.transform_min_samples,
+                    min_mean_net_bps=self.transform_min_mean_net_bps,
+                    min_win_rate=self.transform_min_win_rate,
+                ):
+                    decision = "transformed_worker_regime_candidate"
+                    reason = "worker_regime_transfer_prior_evidence_is_positive"
+                elif sample_count > 0:
+                    decision = "transformed_worker_regime_too_weak"
+                    reason = "worker_regime_transfer_prior_evidence_below_gate"
+                else:
+                    decision = "no_prior_evidence"
+                    reason = "no_worker_regime_transfer_match"
+            elif transform_match_type == "worker_horizon":
+                if self._passes_gate(
+                    sample_count,
+                    mean_realized_net_bps,
+                    win_rate,
+                    min_samples=self.transform_min_samples,
+                    min_mean_net_bps=self.transform_min_mean_net_bps,
+                    min_win_rate=self.transform_min_win_rate,
+                ):
+                    decision = "transformed_worker_horizon_candidate"
+                    reason = "worker_horizon_transfer_prior_evidence_is_positive"
+                elif sample_count > 0:
+                    decision = "transformed_worker_horizon_too_weak"
+                    reason = "worker_horizon_transfer_prior_evidence_below_gate"
+                else:
+                    decision = "no_prior_evidence"
+                    reason = "no_worker_horizon_transfer_match"
+            elif transform_match_type == "symbol_class":
                 if self._passes_gate(
                     sample_count,
                     mean_realized_net_bps,

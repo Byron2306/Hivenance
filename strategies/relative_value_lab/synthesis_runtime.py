@@ -317,27 +317,75 @@ class SynthesisRuntime:
    )
   else:
    ext=dict(external_context)
+   features=tuple(ext.get("features") or ())
    ext_roots=tuple(sorted({
     str(root)
-    for item in tuple(ext.get("features") or ())
+    for item in features
     if isinstance(item,Mapping)
     for root in (item.get("evidence_root"),)
     if root and str(root).startswith("sha256:")
    }))
-   node=g.add_node(
-    organ_id="EXTERNAL_STATISTICS",
-    family="EXTERNAL_STATISTICS",
-    created_at_ms=now_ms,
-    evidence_roots=ext_roots,
-    lineage_id=str(ext.get("sensorium_id") or "external_statistics"),
-    transformation_id=str(ext.get("schema") or "hivenance_external_statistics_context_v1"),
-    payload=ext,
-    freshness=1.0,
-    uncertainty=max(0.0,min(1.0,float(ext.get("uncertainty") or 0.0))),
-    synthetic=False,
-   )
-   external_nodes.append(node)
-   receipt("external_statistics","INVOKED",ext_roots,external_nodes)
+   if not ext_roots:
+    receipt(
+     "external_statistics",
+     "AVAILABLE_NOT_INVOKED",
+     details={"reason":"external_statistics_missing_evidence_roots"},
+    )
+   else:
+    evidence=build_bee_evidence(
+     family="EXTERNAL_STATISTICS",
+     source_kind="TIMESTAMPED_EXTERNAL_MARKET_STATISTIC",
+     source_ids=tuple(
+      str(
+       item.get("observation_id")
+       or item.get("feature_id")
+       or item.get("metric")
+       or f"external:{idx}"
+      )
+      for idx,item in enumerate(features)
+      if isinstance(item,Mapping)
+     ) or ("external_statistics_context",),
+     evidence_roots=ext_roots,
+     lineage=(
+      "hivenance.external_statistics_sensorium.v1",
+      "external_statistics.runtime_context.v1",
+     ),
+     transformation_version="external_statistics.runtime_to_bee_evidence.v1",
+     observed_at_ms=max(
+      0,
+      max(
+       [
+        int(item.get("as_of_ms") or now_ms)-1
+        for item in features
+        if isinstance(item,Mapping)
+       ]
+       or [int(now_ms)-1]
+      ),
+     ),
+     available_at_ms=max(
+      0,
+      max(
+       [
+        int(item.get("as_of_ms") or now_ms)-1
+        for item in features
+        if isinstance(item,Mapping)
+       ]
+       or [int(now_ms)-1]
+      ),
+     ),
+     freshness=1.0,
+     confidence=1.0,
+     missingness=(),
+     abstention=False,
+     payload=ext,
+    )
+    node=add_bee_evidence(
+     g,
+     evidence=evidence,
+     created_at_ms=now_ms,
+    )
+    external_nodes.append(node)
+    receipt("external_statistics","INVOKED",ext_roots,external_nodes)
 
   calibration_nodes=[]
   if calibration_context is None or "calibration_context" in disabled:

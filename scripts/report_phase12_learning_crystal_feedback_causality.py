@@ -35,6 +35,9 @@ STATISTICAL_ATTACKS = (
     "NEGATIVE_EDGE_ONLY",
     "CHANGE_POINT_ONLY",
     "UNCERTAINTY_ONLY",
+    "NO_NEGATIVE_EDGE_GATE",
+    "NO_CHANGE_POINT_GATE",
+    "NO_UNCERTAINTY_GATE",
 )
 
 
@@ -567,6 +570,7 @@ def main() -> None:
     previous_statistics_by_model: dict[str, Any] = {}
     previous_statistics_timestamp_ms: int | None = None
     statistical_veto_reasons = Counter()
+    statistical_trigger_overlap = Counter()
     census_outcomes = {
         "FULL_HIVE": [],
         "NO_LEARNING": [],
@@ -861,6 +865,13 @@ def main() -> None:
                             raw["change_point_probability"]=0.0
                             raw["edge_positive_probability"]=None
                             raw["effective_sample_size"]=0.0
+                        elif component=="no_edge":
+                            raw["edge_positive_probability"]=None
+                            raw["effective_sample_size"]=0.0
+                        elif component=="no_change":
+                            raw["change_point_probability"]=0.0
+                        elif component=="no_uncertainty":
+                            raw["uncertainty"]=0.0
                         mapped[model_id]=raw
                     values=dict(full_values)
                     values["phase2_statistical_hypothesis_context_by_model"]=mapped
@@ -874,6 +885,15 @@ def main() -> None:
                 )
                 attack_variants["UNCERTAINTY_ONLY"] = by_model(
                     full_comp.evaluate(component_feature("uncertainty"), (horizon,))
+                )
+                attack_variants["NO_NEGATIVE_EDGE_GATE"] = by_model(
+                    full_comp.evaluate(component_feature("no_edge"), (horizon,))
+                )
+                attack_variants["NO_CHANGE_POINT_GATE"] = by_model(
+                    full_comp.evaluate(component_feature("no_change"), (horizon,))
+                )
+                attack_variants["NO_UNCERTAINTY_GATE"] = by_model(
+                    full_comp.evaluate(component_feature("no_uncertainty"), (horizon,))
                 )
 
             if (
@@ -967,6 +987,11 @@ def main() -> None:
         world_key = (observation_run_id, symbol, float(forecast_ts), int(horizon))
 
         no_stats_map = variants.get("NO_STATISTICS", {})
+        raw_stats_map = (
+            full_feature.values.get("phase2_statistical_hypothesis_context_by_model")
+            if isinstance(full_feature.values, dict)
+            else {}
+        )
         for identity, full_forecast in full_map.items():
             blind = no_stats_map.get(identity)
             if blind is None:
@@ -975,6 +1000,23 @@ def main() -> None:
                 reason = str(full_forecast.reason or "unknown")
                 if reason.startswith("statistical_synthesis_"):
                     statistical_veto_reasons[reason] += 1
+
+                model_id = str(identity[0])
+                raw = raw_stats_map.get(model_id) if isinstance(raw_stats_map, dict) else None
+                if isinstance(raw, dict):
+                    triggers=[]
+                    if float(raw.get("uncertainty") or 0.0) >= 0.82:
+                        triggers.append("UNCERTAINTY")
+                    if float(raw.get("change_point_probability") or 0.0) >= 0.78:
+                        triggers.append("CHANGE_POINT")
+                    edge_p=raw.get("edge_positive_probability")
+                    if (
+                        edge_p is not None
+                        and float(raw.get("effective_sample_size") or 0.0) >= 5.0
+                        and float(edge_p) <= 0.35
+                    ):
+                        triggers.append("NEGATIVE_EDGE")
+                    statistical_trigger_overlap["+".join(triggers) if triggers else "NONE"] += 1
 
         for mask_id, blind_map in variants.items():
             stats[mask_id]["testable_worlds"] += 1
@@ -1087,6 +1129,11 @@ def main() -> None:
     print("STATISTICAL_VETO_REASONS")
     for reason,count in sorted(statistical_veto_reasons.items()):
         print(f"  {reason}=", count)
+
+    print()
+    print("STATISTICAL_TRIGGER_OVERLAP")
+    for trigger_set,count in sorted(statistical_trigger_overlap.items()):
+        print(f"  {trigger_set}=", count)
 
     print()
     print("STATISTICAL_ADVERSARIAL_ATTACKS")

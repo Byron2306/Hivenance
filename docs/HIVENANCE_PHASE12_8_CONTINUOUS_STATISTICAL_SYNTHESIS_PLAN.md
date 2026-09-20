@@ -420,3 +420,30 @@ Optimization principles:
 - local/dependency-light computation by default;
 - no side-channel may silently acquire authority;
 - every meaningful organ must be independently ablatable.
+
+
+## Implementation checkpoint — Singular Organism Pass
+
+Implemented in the current branch:
+- package-edge circular import repaired with lazy volatility_breakout orchestration exports;
+- full-organism findings locked into this phase plan;
+- canonical ResearchContext implemented;
+- canonical RegimeContext implemented and embedded inside ResearchContext;
+- deterministic/Bayesian regime disagreement now reduces hypothesis regime confidence;
+- strategy worker receipts consume the same canonical regime/context lineage;
+- least-privilege ResearchContext router implemented;
+- organ-specific context views projected at the common hypothesis adapter;
+- Queen Input v2 implemented without mutating the frozen 17-channel v1 contract;
+- ConductingQueen receipts now bind Queen Input v2 extension state;
+- EXTERNAL_STATISTICS, CALIBRATION_CONTEXT, and ML_CHALLENGER promoted to explicit SynthesisRuntime families;
+- NO_BAYES, NO_EXTERNAL, NO_CONFORMAL, and NO_ML added as genuine executable synthesis masks;
+- full-organism topology registry defines responsibility, allowed influence, forbidden authority, and disposition.
+
+Next singular-organism tranche:
+1. propagate least-privilege ResearchContext views into upper cognition invocation adapters;
+2. use Cognitive Metabolism to bound Recursive Queen recurrence by marginal information gain;
+3. version and expose explicit Queen v2 extension influence metrics without altering v1 historical receipts;
+4. add same-world full-organism causal replay across the expanded mask roster;
+5. generate per-organ invocation/influence/economic-value census;
+6. retire or quarantine only organs proven redundant, inert, or harmful;
+7. keep all positive influence research-only until prospective shadow evidence survives costs.

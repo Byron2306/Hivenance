@@ -1,0 +1,105 @@
+{
+  "schema": "hivenance_full_organism_phase11_completion_receipt_v1",
+  "phase": 11,
+  "name": "Canonical Hypothesis Envelope",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme": "HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19",
+
+  "objective": "Create one immutable object that captures exactly what the Hive knew, compared, proposed, challenged and concluded at decision time.",
+
+  "subphases": {
+    "11.0_canonical_envelope_contract": "PASS",
+    "11.1_full_organism_envelope_assembly": "PASS",
+    "11.2_deterministic_envelope_replay": "PASS",
+    "11.3_immutable_persistence_and_round_trip": "PASS"
+  },
+
+  "mandatory_sections": {
+    "canonical_score_frame": true,
+    "world_state_page": true,
+    "temporal_lattice": true,
+    "evidence_bees": true,
+    "comparison_packet": true,
+    "selection_state": true,
+    "regime": true,
+    "worker_proposals": true,
+    "phoenix_hypotheses": true,
+    "crystal_learning_context": true,
+    "quorum": true,
+    "pollen_state": true,
+    "triune_scores": true,
+    "queen_receipt": true,
+    "queen_epoch": true,
+    "recursive_research": true,
+    "controls": true
+  },
+
+  "immutability": {
+    "hash_addressed": true,
+    "canonical_bytes_deterministic": true,
+    "same_inputs_same_envelope_id": true,
+    "section_digests_frozen": true,
+    "post_freeze_external_mutation_has_no_effect": true,
+    "overwrite_refused": true,
+    "noncanonical_persisted_json_refused": true
+  },
+
+  "world_binding": {
+    "single_world_state_id_required": true,
+    "single_world_state_hash_required": true,
+    "nested_cross_world_id_refused": true,
+    "nested_cross_world_hash_refused": true
+  },
+
+  "influence_accounting": {
+    "declared_influence_ids_required": true,
+    "undeclared_influence_refused": true,
+    "declared_but_unused_influence_refused": true,
+    "unknown_sections_refused": true,
+    "conclusion_is_frozen_not_recomputed": true
+  },
+
+  "replay": {
+    "envelope_alone_reconstructs_conclusion": true,
+    "replay_is_byte_deterministic": true,
+    "serialized_round_trip_preserves_identity": true,
+    "stored_byte_round_trip_preserves_conclusion": true,
+    "section_tamper_detected": true,
+    "conclusion_tamper_detected": true,
+    "influence_tamper_detected": true
+  },
+
+  "authority": {
+    "nested_execution_authority_refused": true,
+    "nested_promotion_authority_refused": true,
+    "envelope_execution_eligible": false,
+    "envelope_promotion_eligible": false,
+    "conclusion_execution_eligible": false,
+    "conclusion_promotion_eligible": false,
+    "real_orders_submitted": 0
+  },
+
+  "test_results": {
+    "11.0_contract_gate": 15,
+    "11.1_focused": 18,
+    "11.1_organism_spine": 105,
+    "11.2_phase11_spine": 112,
+    "11.3_focused": 15,
+    "11.3_phase11_spine": 120
+  },
+
+  "exit_condition": {
+    "immutable_hypothesis_envelope_exists": true,
+    "full_organism_state_is_frozen": true,
+    "exact_replay_from_envelope": true,
+    "final_research_conclusion_reproduced_byte_for_byte": true,
+    "status": "PASS"
+  },
+
+  "next_phase": {
+    "phase": 12,
+    "name": "Full Organism Historical Causal Prosecution",
+    "gate": "Advance only after Phase 11 broad regression and commit are complete."
+  }
+}

@@ -172,6 +172,11 @@ class WorkerSignalModel:
             "worker_signal_receipt": receipt,
             "cost": asdict(cost),
             "feature_version": (features.values or {}).get("feature_version", "phase2.v1"),
+            "research_context": (
+                dict((features.values or {}).get("research_context") or {})
+                if isinstance((features.values or {}).get("research_context"), Mapping)
+                else {}
+            ),
             "regime_inputs": (features.values or {}).get("regime_inputs", {}),
             "return_5": features.return_5,
             "return_zscore": features.return_zscore,

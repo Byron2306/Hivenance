@@ -75,3 +75,45 @@ def test_census_requires_full_hive():
     import pytest
     with pytest.raises(ValueError,match="requires_full_hive"):
         run_full_organism_census(outcomes_by_mask={})
+
+
+
+def test_mixed_cohort_worker_effect_stays_historically_mixed():
+    full=[]
+    blind=[]
+    cohort_deltas=(10.0,-5.0,-4.0,-3.0,-2.0,-1.0,-0.5)
+    for i,delta in enumerate(cohort_deltas):
+        full.append(HistoricalWorldOutcome(
+            world_state_id=f"obs-{i}",
+            world_state_hash="sha256:"+str((i+1)%10)*64,
+            symbol="BTC/USD",
+            timestamp_ms=1_000_000+i,
+            horizon_seconds=60,
+            direction="UP",
+            abstain=False,
+            selected=True,
+            realized_net_bps=delta,
+            envelope_id="worker-model",
+        ))
+        blind.append(HistoricalWorldOutcome(
+            world_state_id=f"obs-{i}",
+            world_state_hash="sha256:"+str((i+1)%10)*64,
+            symbol="BTC/USD",
+            timestamp_ms=1_000_000+i,
+            horizon_seconds=60,
+            direction="ABSTAIN",
+            abstain=True,
+            selected=True,
+            realized_net_bps=0.0,
+            envelope_id="worker-model",
+        ))
+    row=prosecute_mask(
+        mask_id="NO_WORKERS",
+        organ_id="strategy_workers",
+        full_hive=tuple(full),
+        ablated=tuple(blind),
+        invoked_count=7,
+        minimum_independent_worlds=5,
+    )
+    assert row.dependence_adjusted_world_count==7
+    assert row.classification=="HISTORICALLY_MIXED"

@@ -35,8 +35,22 @@ class KrakenPublicClient:
  @staticmethod
  def _norm_asset(x:str)->str:
   x=str(x or "").upper()
-  aliases={"XXBT":"BTC","XBT":"BTC","XETH":"ETH","ZUSD":"USD","ZUSDT":"USDT","ZUSDC":"USDC"}
-  return aliases.get(x,x.lstrip("XZ"))
+  aliases={
+   "XXBT":"BTC","XBT":"BTC",
+   "XETH":"ETH",
+   "XDG":"DOGE","XXDG":"DOGE",
+   "ZUSD":"USD","ZUSDT":"USDT","ZUSDC":"USDC",
+   "ZEUR":"EUR","ZGBP":"GBP","ZJPY":"JPY","ZCAD":"CAD","ZAUD":"AUD",
+  }
+  if x in aliases:
+   return aliases[x]
+  # Kraken internal asset ids sometimes carry a single synthetic X/Z prefix
+  # (for example XXBT or ZUSD). Never strip those letters generically because
+  # legitimate assets such as XRP, XLM, XMR and ZEC begin with X/Z.
+  if len(x)==4 and x[0] in {"X","Z"}:
+   candidate=x[1:]
+   return aliases.get(x,aliases.get(candidate,candidate))
+  return x
 
  def load_markets(self)->dict[str,dict[str,Any]]:
   if self._pairs is not None:return self._pairs

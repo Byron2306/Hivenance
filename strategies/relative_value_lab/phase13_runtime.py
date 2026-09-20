@@ -54,11 +54,13 @@ class Phase13Runtime:
         *,
         freeze_path:str|Path="data/phase13_experiment_freeze.json",
         census_path:str|Path="data/full_organism_census.json",
+        adaptive_seed_path:str|Path="docs/HIVENANCE_PHASE12_ADAPTIVE_MODE_SEED.json",
         ledger_path:str|Path="data/hivenance_phase13_books.db",
     )->None:
         self.cfg=cfg
         self.freeze_path=Path(freeze_path)
         self.census_path=Path(census_path)
+        self.adaptive_seed_path=Path(adaptive_seed_path)
         if not self.freeze_path.exists():
             raise FileNotFoundError(self.freeze_path)
         self.freeze=json.loads(self.freeze_path.read_text(encoding="utf-8"))
@@ -71,9 +73,15 @@ class Phase13Runtime:
         self.ledger=Phase13BookLedger(ledger_path)
 
         control={}
+        control_source=None
         if self.census_path.exists():
             payload=json.loads(self.census_path.read_text(encoding="utf-8"))
             control=dict(payload.get("organ_runtime_control") or {})
+            control_source=str(self.census_path)
+        elif self.adaptive_seed_path.exists():
+            payload=json.loads(self.adaptive_seed_path.read_text(encoding="utf-8"))
+            control=dict(payload.get("organ_runtime_control") or {})
+            control_source=str(self.adaptive_seed_path)
         modes=build_phase13_mode_snapshot(adaptive_control=control)
 
         frozen_cfg=copy.copy(cfg)
@@ -83,18 +91,27 @@ class Phase13Runtime:
 
         self.frozen_modes=dict(modes.frozen_modes)
         self.adaptive_modes=dict(modes.adaptive_modes)
+        self.adaptive_control_source=control_source
         self.frozen_competition=HypothesisCompetition(frozen_cfg)
         self.adaptive_competition=HypothesisCompetition(adaptive_cfg)
 
     def refresh_adaptive_modes(self)->None:
-        if not self.census_path.exists():
+        payload=None
+        source=None
+        if self.census_path.exists():
+            payload=json.loads(self.census_path.read_text(encoding="utf-8"))
+            source=str(self.census_path)
+        elif self.adaptive_seed_path.exists():
+            payload=json.loads(self.adaptive_seed_path.read_text(encoding="utf-8"))
+            source=str(self.adaptive_seed_path)
+        if payload is None:
             return
-        payload=json.loads(self.census_path.read_text(encoding="utf-8"))
         control=dict(payload.get("organ_runtime_control") or {})
         modes=build_phase13_mode_snapshot(adaptive_control=control)
         adaptive_cfg=copy.copy(self.cfg)
         adaptive_cfg.phase12_organ_runtime_modes=dict(modes.adaptive_modes)
         self.adaptive_modes=dict(modes.adaptive_modes)
+        self.adaptive_control_source=source
         self.adaptive_competition=HypothesisCompetition(adaptive_cfg)
 
     def process_feature(self,feature:FeatureVector)->dict[str,Any]:
@@ -128,6 +145,7 @@ class Phase13Runtime:
             "inserted":inserted,
             "frozen_modes":dict(self.frozen_modes),
             "adaptive_modes":dict(self.adaptive_modes),
+            "adaptive_control_source":self.adaptive_control_source,
             "execution_eligible":False,
             "promotion_eligible":False,
         }

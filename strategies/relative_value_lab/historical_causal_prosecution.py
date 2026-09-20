@@ -96,6 +96,7 @@ class HistoricalWorldOutcome:
     realized_net_bps: float | None
 
     envelope_id: str | None = None
+    model_id: str | None = None
 
     execution_eligible: bool = False
     promotion_eligible: bool = False

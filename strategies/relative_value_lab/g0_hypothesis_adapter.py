@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 from strategies.volatility_breakout.models import FeatureVector
+from .hypothesis_statistics_bridge import bind_statistical_context
 
 def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
  if str(getattr(cycle,"world_state_id",""))!=str(feature.values.get("world_state_id") or getattr(cycle,"world_state_id","")):
@@ -59,7 +60,11 @@ def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
   "authority":"RESEARCH_CONTEXT_ONLY",
   "execution_eligible":False,
  }
- return replace(feature,values=values)
+ bound=replace(feature,values=values)
+ statistical=cycle.learning.get("probabilistic_synthesis") if isinstance(cycle.learning,dict) else None
+ if statistical is not None:
+  bound=bind_statistical_context(bound,statistical)
+ return bound
 
 def evaluate_synthesis_pair(*,competition:Any,feature:FeatureVector,horizons:tuple[int,...],
  full_cycle:Any,ablated_cycle:Any)->dict[str,Any]:

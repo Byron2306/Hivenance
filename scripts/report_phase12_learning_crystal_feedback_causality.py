@@ -30,7 +30,15 @@ class HistoricalReuseStore:
     settled_ts so no future outcome can enter a historical decision.
     """
 
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        evidence_lag_sec: float = 0.0,
+        strict_before: bool = True,
+    ) -> None:
+        self.evidence_lag_sec = max(0.0, float(evidence_lag_sec))
+        self.strict_before = bool(strict_before)
         self.exact: dict[tuple[str, str, int, str], list[tuple[float, float, int]]] = defaultdict(list)
         self.symbol_class: dict[tuple[str, int, str, str], list[tuple[float, float, int]]] = defaultdict(list)
         self.cohort: dict[tuple[str, int, str, str], list[tuple[float, float, int]]] = defaultdict(list)
@@ -93,8 +101,8 @@ class HistoricalReuseStore:
     def persist_research_reuse_receipt(self, payload: Mapping[str, Any]) -> bool:
         return True
 
-    @staticmethod
     def _slice(
+        self,
         rows: list[tuple[float, float, int]],
         *,
         cutoff_ts: float | None,
@@ -105,10 +113,17 @@ class HistoricalReuseStore:
         if cutoff_ts is None:
             hi = len(rows)
         else:
-            hi = bisect.bisect_right(
-                rows,
-                (float(cutoff_ts), float("inf"), 1),
-            )
+            effective_cutoff = float(cutoff_ts) - self.evidence_lag_sec
+            if self.strict_before:
+                hi = bisect.bisect_left(
+                    rows,
+                    (effective_cutoff, float("-inf"), -1),
+                )
+            else:
+                hi = bisect.bisect_right(
+                    rows,
+                    (effective_cutoff, float("inf"), 1),
+                )
         lo = max(0, hi - int(limit))
         return rows[lo:hi]
 
@@ -320,6 +335,7 @@ def compile_feature(
     crystals: list[dict[str, Any]],
     enable_learning: bool,
     enable_crystals: bool,
+    warning_floor: float = 0.60,
 ) -> tuple[FeatureVector, dict[str, Any]]:
     if not enable_learning:
         return feature, {
@@ -340,6 +356,24 @@ def compile_feature(
         min_samples_for_reuse=5,
         reusable_crystals=(crystals if enable_crystals else ()),
     )
+    threshold = max(0.0, min(1.0, float(warning_floor)))
+    priors = feedback.get("priors") if isinstance(feedback.get("priors"), dict) else {}
+    adjusted = {}
+    for key, prior in priors.items():
+        row = dict(prior) if isinstance(prior, dict) else {}
+        if float(row.get("warning_score") or 0.0) < threshold:
+            row["warning_score"] = 0.0
+        adjusted[key] = row
+    feedback = dict(feedback)
+    feedback["priors"] = adjusted
+    feedback["warning_score"] = max(
+        [float(x.get("warning_score") or 0.0) for x in adjusted.values()] or [0.0]
+    )
+    feedback["negative_priors"] = sum(
+        1 for x in adjusted.values()
+        if float(x.get("warning_score") or 0.0) > 0.0
+    )
+    feedback["audit_warning_floor"] = threshold
     return attach_learning_feedback(feature, feedback), feedback
 
 
@@ -420,6 +454,23 @@ def main() -> None:
         help="Path to historical HiveNance SQLite corpus",
     )
     parser.add_argument(
+        "--evidence-lag-sec",
+        type=float,
+        default=0.0,
+        help="Require learning evidence to have settled this many seconds before the forecast",
+    )
+    parser.add_argument(
+        "--allow-equal-settlement-ts",
+        action="store_true",
+        help="Allow settled_ts == forecast_ts; default is strict settled_ts < forecast_ts",
+    )
+    parser.add_argument(
+        "--warning-floor",
+        type=float,
+        default=0.60,
+        help="Only warnings at or above this score may influence the replay",
+    )
+    parser.add_argument(
         "--progress-every",
         type=int,
         default=250,
@@ -429,7 +480,11 @@ def main() -> None:
 
     conn = sqlite3.connect(args.db)
     conn.row_factory = sqlite3.Row
-    store = HistoricalReuseStore(conn)
+    store = HistoricalReuseStore(
+        conn,
+        evidence_lag_sec=args.evidence_lag_sec,
+        strict_before=not args.allow_equal_settlement_ts,
+    )
 
     observation_payloads = {
         (str(row["run_id"]), str(row["symbol"]), float(row["ts"])): row["payload"]
@@ -441,6 +496,12 @@ def main() -> None:
         ).fetchall()
     }
 
+    print(
+        f"audit_strict_before={not args.allow_equal_settlement_ts} "
+        f"evidence_lag_sec={args.evidence_lag_sec} "
+        f"warning_floor={args.warning_floor}",
+        flush=True,
+    )
     print(
         f"preloaded_reuse_outcomes={store.loaded_rows} "
         f"observation_snapshots={len(observation_payloads)}",
@@ -506,6 +567,7 @@ def main() -> None:
             crystals=list(full_registry.values()),
             enable_learning=True,
             enable_crystals=True,
+            warning_floor=args.warning_floor,
         )
         no_learning_feature, _ = compile_feature(
             feature,
@@ -514,6 +576,7 @@ def main() -> None:
             crystals=(),
             enable_learning=False,
             enable_crystals=False,
+            warning_floor=args.warning_floor,
         )
         no_crystal_feature, no_crystal_feedback = compile_feature(
             feature,
@@ -522,6 +585,7 @@ def main() -> None:
             crystals=(),
             enable_learning=True,
             enable_crystals=False,
+            warning_floor=args.warning_floor,
         )
         no_workers_feature, no_workers_feedback = compile_feature(
             feature,
@@ -530,6 +594,7 @@ def main() -> None:
             crystals=list(no_workers_registry.values()),
             enable_learning=True,
             enable_crystals=True,
+            warning_floor=args.warning_floor,
         )
 
         if int(full_feedback.get("positive_priors") or 0) or int(full_feedback.get("negative_priors") or 0):

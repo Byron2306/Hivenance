@@ -28,8 +28,7 @@ def _outcome_key(row: HistoricalWorldOutcome):
         str(row.symbol),
         int(row.timestamp_ms),
         int(row.horizon_seconds),
-        str(row.direction).upper(),
-        bool(row.abstain),
+        str(row.model_id or ""),
         str(row.envelope_id or ""),
     )
 

@@ -568,3 +568,32 @@ Implemented:
 Required truth rule:
 - old census bundles generated before this checkpoint must not be reused to classify Statistics or Bayes;
 - regenerate the strict replay bundle after pulling this checkpoint.
+
+
+## Implementation checkpoint — Hierarchical Statistical Backoff
+
+The first NO_STATISTICS replay was causally correct but informationally inert because only the exact
+model+symbol+horizon+regime scope was reconstructed. Phase 12.8 now uses the designed hierarchical
+backoff for historical Statistics reconstruction:
+
+- L0 exact: model + symbol + horizon + regime, specificity 1.00
+- L1 model-symbol-horizon: any regime, specificity 0.75
+- L2 model-horizon-regime: any symbol, specificity 0.55
+- L3 model-horizon: any symbol/regime, specificity 0.35
+
+Critical anti-inflation rule:
+- evidence consumed by a more-specific level is excluded from all broader levels;
+- the same settlement may not increase effective_n more than once in one synthesis state;
+- broader scopes provide transfer evidence without pretending to be exact evidence.
+
+Historical replay diagnostics now report:
+- worlds with nonzero statistical context;
+- statistical effective_n min/mean/max;
+- mean posterior edge-positive probability where defined;
+- worlds with prior Bayesian context;
+- Bayesian disagreement mean/max;
+- Bayesian change-point probability mean.
+
+Positive statistical evidence remains annotation-only.
+Statistics may only veto through the existing conservative uncertainty/change/negative-edge gates.
+No threshold is lowered merely to manufacture historical activity.

@@ -189,6 +189,14 @@ _MASK_DEFINITIONS = {
         "no_trade": False,
     },
 
+    "NO_STATISTICS": {
+        "organs": ("statistics_bee",),
+        "channels": (),
+        "families": ("STATISTICAL_SYNTHESIS",),
+        "model": None,
+        "no_trade": False,
+    },
+
     "NO_VNS_PHRASE": {
         "organs": (),
         "channels": ("vns_phrase_stream",),

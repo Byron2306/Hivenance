@@ -191,6 +191,30 @@ class Phase13BookLedger:
         self.conn.commit()
         return sid
 
+    def counts(self,*,freeze_id:str)->dict[str,int]:
+        forecasts=int(self.conn.execute(
+            "SELECT COUNT(*) FROM phase13_forecast_book WHERE freeze_id=?",
+            (str(freeze_id),),
+        ).fetchone()[0])
+        settlements=int(self.conn.execute(
+            "SELECT COUNT(*) FROM phase13_settlement_book WHERE freeze_id=?",
+            (str(freeze_id),),
+        ).fetchone()[0])
+        books=int(self.conn.execute(
+            "SELECT COUNT(DISTINCT book_id) FROM phase13_forecast_book WHERE freeze_id=?",
+            (str(freeze_id),),
+        ).fetchone()[0])
+        worlds=int(self.conn.execute(
+            "SELECT COUNT(DISTINCT world_state_id) FROM phase13_forecast_book WHERE freeze_id=?",
+            (str(freeze_id),),
+        ).fetchone()[0])
+        return {
+            "forecasts":forecasts,
+            "settlements":settlements,
+            "books":books,
+            "worlds":worlds,
+        }
+
     def export_settlements(self,*,freeze_id:str)->dict[str,Any]:
         rows=[]
         for row in self.conn.execute(

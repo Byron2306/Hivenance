@@ -139,12 +139,15 @@ class StatisticsBee:
         as_of_ms: int,
         max_age_ms: int | None = None,
         recent_fraction: float = 0.35,
+        exclude_evidence_ids: Sequence[str] = (),
     ) -> StatisticsSnapshot:
         cutoff_floor = None if max_age_ms is None else int(as_of_ms) - int(max_age_ms)
+        excluded = {str(x) for x in exclude_evidence_ids}
         rows = [
             row
             for row in self._rows
             if row.scope == str(scope)
+            and row.evidence_id not in excluded
             and int(row.available_at_ms) < int(as_of_ms)
             and (cutoff_floor is None or int(row.available_at_ms) >= cutoff_floor)
         ]

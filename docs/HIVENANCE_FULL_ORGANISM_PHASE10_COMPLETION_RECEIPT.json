@@ -1,0 +1,116 @@
+{
+  "schema": "hivenance_full_organism_phase10_completion_receipt_v1",
+  "phase": 10,
+  "name": "Learning and Crystal Applicability Repair",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme": "HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19",
+
+  "objective": "Make learning precise enough to influence research safely.",
+
+  "subphases": {
+    "10.0_canonical_applicability_tuple": "PASS",
+    "10.1_applicability_safe_learning_retrieval": "PASS",
+    "10.2_bounded_negative_learning_veto": "PASS",
+    "10.3_supersession_and_crystal_applicability": "PASS"
+  },
+
+  "required_applicability_tuple": {
+    "model_id": true,
+    "symbol": true,
+    "horizon_seconds": true,
+    "forecast_id_or_hypothesis_family": true,
+    "direction": true,
+    "regime": true,
+    "world_state_or_evidence_lineage": true,
+    "observed_at_ms": true,
+    "settled_at_ms": true
+  },
+
+  "applicability_states": {
+    "SUPPORTED": "context_only",
+    "CONTRADICTED": "veto_or_challenge_eligible",
+    "REGIME_DEPENDENT": "bounded_context_only",
+    "DECAYED": "no_influence",
+    "SUPERSEDED": "no_influence",
+    "INCOMPLETE": "no_influence",
+    "NOT_APPLICABLE": "no_influence"
+  },
+
+  "negative_learning_rules": {
+    "wrong_symbol_cannot_veto": true,
+    "wrong_model_cannot_veto": true,
+    "wrong_horizon_cannot_veto": true,
+    "wrong_direction_cannot_veto": true,
+    "wrong_regime_cannot_veto_when_regime_specific": true,
+    "matching_negative_learning_may_veto": true,
+    "matching_negative_learning_may_challenge_without_veto": true
+  },
+
+  "positive_learning_rules": {
+    "positive_learning_is_context_only": true,
+    "positive_learning_cannot_create_direction": true,
+    "positive_learning_cannot_flip_direction": true,
+    "positive_learning_cannot_remove_existing_abstention": true,
+    "positive_learning_cannot_grant_execution_authority": true,
+    "positive_learning_cannot_grant_promotion_authority": true
+  },
+
+  "temporal_rules": {
+    "future_settlement_cannot_apply": true,
+    "decay_supported": true,
+    "supersession_supported": true,
+    "newer_learning_only_supersedes_exact_same_scope": true,
+    "different_symbol_does_not_supersede": true,
+    "different_model_does_not_supersede": true
+  },
+
+  "crystal_rules": {
+    "positive_thesis_crystal_requires_exact_applicability": true,
+    "positive_thesis_crystal_is_context_only": true,
+    "negative_capability_crystal_requires_exact_applicability": true,
+    "matching_negative_capability_crystal_is_veto_eligible": true,
+    "wrong_scope_negative_crystal_has_no_influence": true,
+    "decayed_crystal_has_no_influence": true,
+    "superseded_crystal_has_no_influence": true
+  },
+
+  "legacy_memory_behavior": {
+    "legacy_receipts_may_remain_stored": true,
+    "legacy_receipts_without_required_scope_are_incomplete": true,
+    "incomplete_legacy_memory_is_not_silently_influential": true
+  },
+
+  "test_results": {
+    "10.0_focused": 14,
+    "10.0_learning_spine": 24,
+    "10.1_focused": 21,
+    "10.1_learning_spine": 31,
+    "10.2_focused": 18,
+    "10.2_phase10_spine": 42,
+    "10.3_focused": 17,
+    "10.3_phase10_spine": 53
+  },
+
+  "authority": {
+    "authority_class": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION",
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0
+  },
+
+  "exit_condition": {
+    "learning_memory_can_enter_g1_as_trustworthy_causal_organ": true,
+    "learning_influence_is_applicability_bound": true,
+    "crystal_influence_is_applicability_bound": true,
+    "negative_veto_is_scope_bounded": true,
+    "positive_memory_remains_context_only": true,
+    "status": "PASS"
+  },
+
+  "next_phase": {
+    "phase": 11,
+    "name": "Canonical Hypothesis Envelope",
+    "gate": "Advance only after Phase 10 broad regression and commit are complete."
+  }
+}

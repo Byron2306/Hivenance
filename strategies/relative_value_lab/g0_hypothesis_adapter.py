@@ -10,6 +10,7 @@ from dataclasses import replace
 from typing import Any
 from strategies.volatility_breakout.models import FeatureVector
 from .hypothesis_statistics_bridge import bind_statistical_context
+from .research_context import build_research_context, bind_research_context_values
 
 def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
  if str(getattr(cycle,"world_state_id",""))!=str(feature.values.get("world_state_id") or getattr(cycle,"world_state_id","")):
@@ -60,8 +61,25 @@ def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
   "authority":"RESEARCH_CONTEXT_ONLY",
   "execution_eligible":False,
  }
- bound=replace(feature,values=values)
  statistical=cycle.learning.get("probabilistic_synthesis") if isinstance(cycle.learning,dict) else None
+ regime_state=None
+ statistical_family=family_payloads.get("STATISTICAL_SYNTHESIS") or ()
+ if statistical_family and isinstance(statistical_family[0],dict):
+  statistical = statistical or statistical_family[0]
+ regime_family=family_payloads.get("REGIME") or ()
+ if regime_family and isinstance(regime_family[0],dict):
+  regime_state=regime_family[0]
+ research_context=build_research_context(
+  world_state_id=cycle.world_state_id,
+  world_state_hash=cycle.world_state_hash,
+  as_of_ms=int(feature.timestamp_ms),
+  feature_values=values,
+  synthesis_context=values["synthesis_context"],
+  statistical_state=statistical,
+  regime_state=regime_state,
+ )
+ values=bind_research_context_values(values,research_context)
+ bound=replace(feature,values=values)
  if statistical is not None:
   bound=bind_statistical_context(bound,statistical)
  return bound

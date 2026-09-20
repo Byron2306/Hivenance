@@ -19,6 +19,8 @@ def main()->int:
     skipped=set(payload.get("skipped_masks") or ())
     prosecution=((payload.get("historical_prosecution") or {}))
     attack_results=dict(payload.get("adversarial_attacks") or {})
+    explicit_unavailable_masks=dict(payload.get("explicit_unavailable_masks") or {})
+    control_masks_prosecuted=dict(payload.get("control_masks_prosecuted") or {})
 
     mandatory_masks=[x for x in PAIRED_MASKS if x!="FULL_HIVE"]
     missing_masks=[x for x in mandatory_masks if x not in paired]
@@ -50,7 +52,14 @@ def main()->int:
         for row in results
         if str(row.get("classification"))=="UNAVAILABLE"
     }
-    unresolved_masks=[x for x in missing_masks if x not in explicit_unavailable]
+    explicit_unavailable.update(str(x) for x in explicit_unavailable_masks)
+    controls={"SIMPLE_MOMENTUM","SIMPLE_REVERSION","DETERMINISTIC_RANDOM","NO_TRADE"}
+    resolved_controls={str(x) for x in control_masks_prosecuted}
+    unresolved_masks=[
+        x for x in missing_masks
+        if x not in explicit_unavailable
+        and not (x in controls and x in resolved_controls)
+    ]
 
     blockers=[]
     if unresolved_masks:
@@ -69,6 +78,8 @@ def main()->int:
         "paired_masks":sorted(paired),
         "skipped_masks":sorted(skipped),
         "explicit_unavailable_masks":sorted(explicit_unavailable),
+        "explicit_unavailable_reasons":explicit_unavailable_masks,
+        "control_masks_prosecuted":control_masks_prosecuted,
         "unresolved_masks":unresolved_masks,
         "measured_attacks":measured_attacks,
         "missing_attacks":missing_attacks,

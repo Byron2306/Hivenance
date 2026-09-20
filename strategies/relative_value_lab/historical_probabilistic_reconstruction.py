@@ -94,25 +94,54 @@ class HistoricalStatisticsReconstructor:
             horizon=int(row["horizon_seconds"])
             regime=str(row["regime_hint"] or "unknown")
             net=float(row["net_return_bps"])
-            evidence=StatisticalEvidence(
-                evidence_id="histstat:"+str(row["forecast_id"]),
-                scope=hypothesis_scope(
+            root=_root({
+                "forecast_id":row["forecast_id"],
+                "settled_ts":row["settled_ts"],
+                "net_return_bps":net,
+            })
+            evidence_id="histstat:"+str(row["forecast_id"])
+            scopes=(
+                hypothesis_scope(
                     model_id=model_id,
                     symbol=symbol,
                     horizon_seconds=horizon,
                     regime=regime,
+                    scope_kind="exact",
                 ),
-                observed_at_ms=observed_ms,
-                available_at_ms=available_ms,
-                realized_bps=net,
-                positive=bool(net>0.0),
-                evidence_root=_root({
-                    "forecast_id":row["forecast_id"],
-                    "settled_ts":row["settled_ts"],
-                    "net_return_bps":net,
-                }),
+                hypothesis_scope(
+                    model_id=model_id,
+                    symbol=symbol,
+                    horizon_seconds=horizon,
+                    regime="*",
+                    scope_kind="model_symbol_horizon",
+                ),
+                hypothesis_scope(
+                    model_id=model_id,
+                    symbol="*",
+                    horizon_seconds=horizon,
+                    regime=regime,
+                    scope_kind="model_horizon_regime",
+                ),
+                hypothesis_scope(
+                    model_id=model_id,
+                    symbol="*",
+                    horizon_seconds=horizon,
+                    regime="*",
+                    scope_kind="model_horizon",
+                ),
             )
-            self.bee.ingest(evidence)
+            for scope in scopes:
+                self.bee.ingest(
+                    StatisticalEvidence(
+                        evidence_id=evidence_id,
+                        scope=scope,
+                        observed_at_ms=observed_ms,
+                        available_at_ms=available_ms,
+                        realized_bps=net,
+                        positive=bool(net>0.0),
+                        evidence_root=root,
+                    )
+                )
             loaded+=1
         self.loaded_rows=loaded
 
@@ -126,17 +155,70 @@ class HistoricalStatisticsReconstructor:
         regime=str(deterministic_regime_payload(feature).get("regime_hint") or "unknown")
         out={}
         for model_id in model_ids:
-            scope=hypothesis_scope(
-                model_id=str(model_id),
-                symbol=str(feature.symbol),
-                horizon_seconds=int(horizon_seconds),
-                regime=regime,
+            scopes=(
+                (
+                    hypothesis_scope(
+                        model_id=str(model_id),
+                        symbol=str(feature.symbol),
+                        horizon_seconds=int(horizon_seconds),
+                        regime=regime,
+                        scope_kind="exact",
+                    ),
+                    1.0,
+                ),
+                (
+                    hypothesis_scope(
+                        model_id=str(model_id),
+                        symbol=str(feature.symbol),
+                        horizon_seconds=int(horizon_seconds),
+                        regime="*",
+                        scope_kind="model_symbol_horizon",
+                    ),
+                    0.75,
+                ),
+                (
+                    hypothesis_scope(
+                        model_id=str(model_id),
+                        symbol="*",
+                        horizon_seconds=int(horizon_seconds),
+                        regime=regime,
+                        scope_kind="model_horizon_regime",
+                    ),
+                    0.55,
+                ),
+                (
+                    hypothesis_scope(
+                        model_id=str(model_id),
+                        symbol="*",
+                        horizon_seconds=int(horizon_seconds),
+                        regime="*",
+                        scope_kind="model_horizon",
+                    ),
+                    0.35,
+                ),
             )
-            snapshot=self.bee.snapshot(
-                scope=scope,
-                as_of_ms=int(feature.timestamp_ms),
+
+            consumed=[]
+            snapshots=[]
+            for scope,specificity in scopes:
+                snap=self.bee.snapshot(
+                    scope=scope,
+                    as_of_ms=int(feature.timestamp_ms),
+                    exclude_evidence_ids=tuple(consumed),
+                )
+                snapshots.append((snap,specificity))
+                consumed.extend(snap.source_evidence_ids)
+
+            exact=snapshots[0][0]
+            broader=tuple(
+                (snap,specificity)
+                for snap,specificity in snapshots[1:]
+                if snap.n>0
             )
-            out[str(model_id)]=self.synthesis.synthesize(exact=snapshot)
+            out[str(model_id)]=self.synthesis.synthesize(
+                exact=exact,
+                broader=broader,
+            )
         return out
 
     def bind(

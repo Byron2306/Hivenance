@@ -28,6 +28,26 @@ from strategies.relative_value_lab.historical_probabilistic_reconstruction impor
 
 DB = "data/swarm_data.db"
 MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS", "NO_STATISTICS", "NO_BAYES")
+WORKER_MODEL_IDS = (
+    "worker_signal_sma_v1",
+    "worker_signal_rsi_v1",
+    "worker_signal_rsi2_v1",
+    "worker_signal_breakout_v1",
+    "worker_signal_momentum_v1",
+    "worker_signal_bollinger_v1",
+    "worker_signal_supertrend_v1",
+    "worker_signal_vol_expansion_v1",
+)
+WORKER_COMPONENT_MASKS = {
+    "NO_WORKER_SMA":"worker_signal_sma_v1",
+    "NO_WORKER_RSI":"worker_signal_rsi_v1",
+    "NO_WORKER_RSI2":"worker_signal_rsi2_v1",
+    "NO_WORKER_BREAKOUT":"worker_signal_breakout_v1",
+    "NO_WORKER_MOMENTUM":"worker_signal_momentum_v1",
+    "NO_WORKER_BOLLINGER":"worker_signal_bollinger_v1",
+    "NO_WORKER_SUPERTREND":"worker_signal_supertrend_v1",
+    "NO_WORKER_VOL_EXPANSION":"worker_signal_vol_expansion_v1",
+}
 STATISTICAL_ATTACKS = (
     "SHUFFLE_EVIDENCE",
     "TIME_SHIFT_PLACEBO",
@@ -316,12 +336,24 @@ def realized_net(forecast: Forecast, market_move_bps: float) -> float:
     return sign * float(market_move_bps) - float(forecast.expected_cost_bps)
 
 
-def competition(*, workers: bool) -> HypothesisCompetition:
+def competition(
+    *,
+    workers: bool,
+    worker_models: Iterable[str] | None = None,
+    coalition: bool | None = None,
+) -> HypothesisCompetition:
     return HypothesisCompetition(
         SimpleNamespace(
             exchange="kraken",
             phase2_worker_signal_federation_enabled=bool(workers),
-            phase2_worker_coalition_enabled=bool(workers),
+            phase2_worker_signal_models=(
+                list(worker_models)
+                if worker_models is not None
+                else list(WORKER_MODEL_IDS)
+            ),
+            phase2_worker_coalition_enabled=(
+                bool(workers) if coalition is None else bool(coalition)
+            ),
             medium_trend_phase2_model_enabled=False,
             derivatives_trend_phase2_model_enabled=False,
             phase2_transform_reuse_enabled=True,
@@ -521,6 +553,28 @@ def main() -> None:
 
     full_comp = competition(workers=True)
     no_workers_comp = competition(workers=False)
+    worker_scout_reference_comp = competition(
+        workers=True,
+        worker_models=WORKER_MODEL_IDS,
+        coalition=False,
+    )
+    no_worker_coalition_comp = competition(
+        workers=True,
+        worker_models=WORKER_MODEL_IDS,
+        coalition=False,
+    )
+    worker_component_comps = {
+        mask_id: competition(
+            workers=True,
+            worker_models=tuple(
+                model_id
+                for model_id in WORKER_MODEL_IDS
+                if model_id != removed_model_id
+            ),
+            coalition=False,
+        )
+        for mask_id, removed_model_id in WORKER_COMPONENT_MASKS.items()
+    }
     historical_statistics = HistoricalStatisticsReconstructor(conn)
     historical_bayes = HistoricalBayesianRegimeReconstructor()
 
@@ -549,6 +603,14 @@ def main() -> None:
     cohort_deltas = {mask: defaultdict(list) for mask in MASKS}
     attack_stats = {attack: Counter() for attack in STATISTICAL_ATTACKS}
     attack_world_deltas = {attack: defaultdict(list) for attack in STATISTICAL_ATTACKS}
+    worker_component_stats = {
+        mask_id: Counter()
+        for mask_id in (*WORKER_COMPONENT_MASKS.keys(), "NO_WORKER_COALITION")
+    }
+    worker_component_world_deltas = {
+        mask_id: defaultdict(list)
+        for mask_id in (*WORKER_COMPONENT_MASKS.keys(), "NO_WORKER_COALITION")
+    }
 
     worlds = 0
     learning_exposed_worlds = 0
@@ -774,6 +836,16 @@ def main() -> None:
             crystal_reused_worlds += 1
 
         full_map = by_model(full_comp.evaluate(full_feature, (horizon,)))
+        worker_scout_reference_map = by_model(
+            worker_scout_reference_comp.evaluate(full_feature, (horizon,))
+        )
+        worker_component_variants = {
+            mask_id: by_model(comp.evaluate(full_feature, (horizon,)))
+            for mask_id, comp in worker_component_comps.items()
+        }
+        no_worker_coalition_map = by_model(
+            no_worker_coalition_comp.evaluate(full_feature, (horizon,))
+        )
         variants = {
             "NO_LEARNING": by_model(full_comp.evaluate(no_learning_feature, (horizon,))),
             "NO_CRYSTALS": by_model(full_comp.evaluate(no_crystal_feature, (horizon,))),
@@ -1034,6 +1106,35 @@ def main() -> None:
                 world_deltas[mask_id][world_key].extend(deltas)
                 cohort_deltas[mask_id][observation_run_id].append(mean(deltas))
 
+        for mask_id, blind_map in worker_component_variants.items():
+            worker_component_stats[mask_id]["testable_worlds"] += 1
+            deltas=[]
+            compare_maps(
+                full=worker_scout_reference_map,
+                blind=blind_map,
+                market_move_bps=market_move_bps,
+                mask_id=mask_id,
+                stats=worker_component_stats[mask_id],
+                world_bucket=deltas,
+            )
+            if deltas:
+                worker_component_stats[mask_id]["changed_worlds"] += 1
+                worker_component_world_deltas[mask_id][world_key].extend(deltas)
+
+        worker_component_stats["NO_WORKER_COALITION"]["testable_worlds"] += 1
+        coalition_deltas=[]
+        compare_maps(
+            full=full_map,
+            blind=no_worker_coalition_map,
+            market_move_bps=market_move_bps,
+            mask_id="NO_WORKER_COALITION",
+            stats=worker_component_stats["NO_WORKER_COALITION"],
+            world_bucket=coalition_deltas,
+        )
+        if coalition_deltas:
+            worker_component_stats["NO_WORKER_COALITION"]["changed_worlds"] += 1
+            worker_component_world_deltas["NO_WORKER_COALITION"][world_key].extend(coalition_deltas)
+
         for attack_id, attacked_map in attack_variants.items():
             attack_stats[attack_id]["testable_worlds"] += 1
             deltas = []
@@ -1124,6 +1225,33 @@ def main() -> None:
         round(mean(bayes_change_probability_samples), 6)
         if bayes_change_probability_samples else None,
     )
+
+    print()
+    print("WORKER_COMPONENT_CAUSALITY")
+    for mask_id in (*WORKER_COMPONENT_MASKS.keys(), "NO_WORKER_COALITION"):
+        per_world = {
+            key: mean(values)
+            for key, values in worker_component_world_deltas[mask_id].items()
+            if values
+        }
+        grouped=defaultdict(list)
+        for key,value in per_world.items():
+            grouped[key[0]].append(value)
+        cohorts={
+            run_id:mean(values)
+            for run_id,values in grouped.items()
+            if values
+        }
+        print(mask_id)
+        print("  testable_worlds=", worker_component_stats[mask_id]["testable_worlds"])
+        print("  changed_worlds=", worker_component_stats[mask_id]["changed_worlds"])
+        print("  decision_changes=", worker_component_stats[mask_id]["decision_changes"])
+        print("  helpful_changes=", worker_component_stats[mask_id]["helpful_changes"])
+        print("  harmful_changes=", worker_component_stats[mask_id]["harmful_changes"])
+        print("  reference_minus_ablation_mean_delta_bps=", mean(per_world.values()) if per_world else None)
+        print("  dependence_adjusted_worlds=", len(cohorts))
+        print("  positive_cohorts=", sum(1 for x in cohorts.values() if x>0))
+        print("  negative_cohorts=", sum(1 for x in cohorts.values() if x<0))
 
     print()
     print("STATISTICAL_VETO_REASONS")

@@ -546,3 +546,25 @@ First strict corpus truth:
 - Crystals: no reuse; no decision effect.
 - Strategy Workers: causally active, 12 changed worlds / 33 decisions, 14 helpful vs 19 harmful, 7 independent cohorts, 1 positive and 6 negative; classification HISTORICALLY_MIXED.
 - No prospective utility is established.
+
+
+## Implementation checkpoint — Historical Statistics and Bayes Reconstruction
+
+Implemented:
+- hypothesis statistical priors are now model-specific;
+- one model's historical edge state cannot veto or annotate another model's forecast;
+- strict HistoricalStatisticsReconstructor loads only settled historical outcomes;
+- StatisticsBee snapshots continue to enforce available_at_ms < forecast as_of_ms;
+- Bayesian regime reconstruction is sequential and prior-only;
+- current timestamp regime evidence is staged and may only influence a later timestamp;
+- multiple horizons at the same symbol/timestamp cannot cross-contaminate Bayesian state;
+- conflicting deterministic regime truth at the same timestamp fails closed;
+- strict replay now includes NO_STATISTICS and NO_BAYES as genuine paired variants;
+- FULL_HIVE for the regenerated Phase 12.8 bundle includes both Statistics and prior Bayesian regime state;
+- NO_STATISTICS removes only the model-specific statistical gate;
+- NO_BAYES removes only the prior Bayesian regime context while retaining deterministic regime inputs;
+- external, conformal and ML historical utility remain unreconstructed until original point-in-time evidence is available.
+
+Required truth rule:
+- old census bundles generated before this checkpoint must not be reused to classify Statistics or Bayes;
+- regenerate the strict replay bundle after pulling this checkpoint.

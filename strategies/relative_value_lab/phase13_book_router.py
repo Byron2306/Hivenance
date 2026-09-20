@@ -32,6 +32,8 @@ class Phase13ForecastBookRow:
     expected_cost_bps: float | None
     expected_net_bps: float | None
     envelope_id: str | None
+    entry_price: float | None = None
+    regime: str | None = None
     execution_eligible: bool=False
     promotion_eligible: bool=False
 
@@ -53,6 +55,8 @@ def _rows(
     world_state_hash:str,
     forecasts:Iterable[Forecast],
     envelope_id:str|None=None,
+    entry_price:float|None=None,
+    regime:str|None=None,
 )->list[Phase13ForecastBookRow]:
     out=[]
     for forecast in forecasts:
@@ -72,6 +76,8 @@ def _rows(
             expected_cost_bps=forecast.expected_cost_bps,
             expected_net_bps=forecast.expected_net_bps,
             envelope_id=envelope_id,
+            entry_price=(None if entry_price is None else float(entry_price)),
+            regime=(None if regime is None else str(regime)),
             execution_eligible=False,
             promotion_eligible=False,
         ))
@@ -87,17 +93,19 @@ def route_phase13_forecast_books(
     adaptive_forecasts:Sequence[Forecast],
     phoenix_primary_ids:Sequence[str],
     envelope_id:str|None=None,
+    entry_price:float|None=None,
+    regime:str|None=None,
 )->tuple[Phase13ForecastBookRow,...]:
     rows=[]
     rows.extend(_rows(
         freeze_id=freeze_id,book_id="FULL_HIVE_FROZEN",
         world_state_id=world_state_id,world_state_hash=world_state_hash,
-        forecasts=frozen_full_forecasts,envelope_id=envelope_id,
+        forecasts=frozen_full_forecasts,envelope_id=envelope_id,entry_price=entry_price,regime=regime,
     ))
     rows.extend(_rows(
         freeze_id=freeze_id,book_id="ADAPTIVE_HIVE",
         world_state_id=world_state_id,world_state_hash=world_state_hash,
-        forecasts=adaptive_forecasts,envelope_id=envelope_id,
+        forecasts=adaptive_forecasts,envelope_id=envelope_id,entry_price=entry_price,regime=regime,
     ))
 
     full_by_model={}
@@ -114,7 +122,7 @@ def route_phase13_forecast_books(
             if model_id in primary
             for forecast in forecasts
         ],
-        envelope_id=envelope_id,
+        envelope_id=envelope_id,entry_price=entry_price,regime=regime,
     ))
 
     for book_id,model_ids in BOOK_MODEL_IDS.items():

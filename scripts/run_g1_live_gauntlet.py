@@ -31,8 +31,15 @@ if str(ROOT) not in sys.path:
 from main import load_config,apply_phase0_safety_policy
 from agents.coordinator import SwarmCoordinator
 from agents.kraken_public_client import KrakenPublicClient
-from strategies.relative_value_lab.g1_campaign_freeze import get_latest_g1_campaign_freeze
-from strategies.relative_value_lab.g1_research_target import get_latest_g1_research_target
+from strategies.relative_value_lab.g1_campaign_freeze import (
+    freeze_g1_campaign,
+    get_latest_g1_campaign_freeze,
+)
+from strategies.relative_value_lab.g1_research_target import (
+    ensure_g1_research_target,
+    get_latest_g1_research_target,
+)
+from strategies.relative_value_lab.g1_utility_campaign import G1CampaignPolicy
 
 STOP=False
 
@@ -134,10 +141,37 @@ def main()->int:
     if shadow is None:raise RuntimeError("shadow_flight_agent_unavailable")
     if store is None:raise RuntimeError("canonical_data_store_unavailable")
 
-    campaign=get_latest_g1_campaign_freeze(store)
     target=get_latest_g1_research_target(store)
-    if campaign is None:raise RuntimeError("g1_campaign_not_frozen")
-    if target is None:raise RuntimeError("g1_research_target_not_frozen")
+    if target is None:
+        target=ensure_g1_research_target(store,cfg,created_ts=time.time())
+        print("[GAUNTLET] bootstrapped research target="+str(target.get("target_id")),flush=True)
+
+    campaign=get_latest_g1_campaign_freeze(store)
+    if campaign is None:
+        policy=G1CampaignPolicy(
+            min_pairs=int(getattr(cfg,"g1_min_pairs",30) or 30),
+            confidence_z=float(getattr(cfg,"g1_confidence_z",1.96) or 1.96),
+            extra_cost_stress_bps=float(getattr(cfg,"g1_extra_cost_stress_bps",5.0) or 5.0),
+            min_mean_delta_bps=float(getattr(cfg,"g1_min_mean_delta_bps",0.0) or 0.0),
+            max_delta_drawdown_bps=float(getattr(cfg,"g1_max_delta_drawdown_bps",250.0) or 250.0),
+            min_distinct_worlds=int(getattr(cfg,"g1_min_distinct_worlds",10) or 10),
+        )
+        campaign=freeze_g1_campaign(
+            store,
+            policy=policy,
+            organs=(
+                "edge_ecology",
+                "horizon_context",
+                "temporal_participation_bee",
+                "learning_memory",
+                "comparison_engine",
+                "polyphonic_quorum",
+                "conducting_queen",
+            ),
+            created_ts=time.time(),
+        )
+        print("[GAUNTLET] bootstrapped campaign="+str(campaign.get("campaign_id")),flush=True)
+
     if campaign.get("research_target_id") and str(campaign.get("research_target_id"))!=str(target.get("target_id")):
         raise RuntimeError("latest_campaign_target_mismatch")
 

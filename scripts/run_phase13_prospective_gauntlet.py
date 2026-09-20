@@ -102,9 +102,9 @@ def main()->int:
     client=KrakenPublicClient(progress=not args.quiet_kraken) if str(cfg.exchange).lower()=="kraken" else None
     coordinator=SwarmCoordinator(cfg)
     coordinator.initialize(client)
-    shadow=coordinator.agents.get("shadow_flight")
-    if shadow is None:
-        raise RuntimeError("phase13_shadow_driver_unavailable")
+    hypothesis=coordinator.agents.get("hypothesis_swarm")
+    if hypothesis is None:
+        raise RuntimeError("phase13_hypothesis_driver_unavailable")
 
     started_wall=time.time()
     started_mono=time.monotonic()
@@ -130,9 +130,8 @@ def main()->int:
                 if _sha_file(args.freeze)!=freeze_file_digest:
                     raise RuntimeError("phase13_freeze_file_mutated")
 
-                payload=shadow.run_once(drive_upstream=True)
-                phase2=((payload.get("upstream_cycle") or {}).get("phase2_cycle") or {})
-                phase13=phase2.get("phase13") if isinstance(phase2,dict) else {}
+                payload=hypothesis.run_once()
+                phase13=payload.get("phase13") if isinstance(payload,dict) else {}
                 last_settlement=settle_mature_phase13_books(
                     freeze_id=freeze_id,
                     ledger_path=args.ledger,

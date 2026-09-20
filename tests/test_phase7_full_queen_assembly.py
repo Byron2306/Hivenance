@@ -8,6 +8,7 @@ from strategies.relative_value_lab.musical_cognition import (
 from strategies.relative_value_lab.polyphonic_entrainment import (
     PolyphonicEntrainment,
 )
+from strategies.relative_value_lab.queen_input_v2 import assemble_queen_inputs_v2, extension_channel
 from strategies.relative_value_lab.queen_input_assembly import (
     REQUIRED_CHANNELS,
     assemble_queen_inputs,
@@ -294,3 +295,57 @@ def test_queen_rejects_assembly_from_other_world():
         raise AssertionError(
             "expected mismatched assembly refusal"
         )
+
+
+
+def test_queen_receipt_carries_v2_extension_state_without_breaking_v1():
+    measure = VNSScoreConductor().conduct_cycle(cycle())
+    graph = WorldGraph(measure.frame)
+
+    assembly = assemble_queen_inputs(
+        queen_view=graph.queen_view(created_at_ms=3100),
+        created_at_ms=3100,
+        channels=full_channels(graph),
+    )
+    v2 = assemble_queen_inputs_v2(
+        base=assembly,
+        created_at_ms=3100,
+        extensions={
+            "STATISTICAL_SYNTHESIS": extension_channel(
+                name="STATISTICAL_SYNTHESIS",
+                state="PRESENT",
+                evidence_roots=("sha256:"+"9"*64,),
+                payload={"state_id":"stat-v2"},
+            ),
+            "REGIME_CONTEXT": extension_channel(
+                name="REGIME_CONTEXT",
+                state="PRESENT",
+                payload={"context_id":"reg-v2"},
+            ),
+        },
+    )
+
+    acc, motif, ent = music(measure.frame)
+    epoch = ResearchGovernanceEpochService.start_epoch_from_frame(
+        measure.frame,
+        started_at_ms=3000,
+        ttl_ms=10000,
+    )
+
+    receipt = ConductingQueen().conduct_against_frame(
+        frame=measure.frame,
+        now_ms=3200,
+        hypothesis_id="phase7-full",
+        notes=acc.notes("phase7-full"),
+        motif=motif,
+        entrainment=ent,
+        epoch=epoch,
+        queen_input_assembly=assembly,
+        queen_input_v2=v2,
+    )
+
+    assert receipt.input_assembly_id == assembly.assembly_id
+    assert receipt.input_v2_assembly_id == v2.assembly_id
+    assert "STATISTICAL_SYNTHESIS" in receipt.input_v2_present_extensions
+    assert "REGIME_CONTEXT" in receipt.input_v2_present_extensions
+    assert len(receipt.input_channel_states) == 17

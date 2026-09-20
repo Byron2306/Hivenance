@@ -1,0 +1,65 @@
+{
+  "schema": "hivenance_phase12_adaptive_mode_seed_v1",
+  "source": "HIVENANCE_FULL_ORGANISM_PHASE12_COMPLETION_RECEIPT",
+  "phase12_status": "PASS",
+  "historical_only": true,
+  "prospective_usefulness_proved": false,
+  "execution_eligible": false,
+  "promotion_eligible": false,
+  "organ_runtime_control": {
+    "bayesian_regime_filter": {
+      "mode": "DORMANT",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "decision_inert_but_periodic_shadow_probe_allowed"
+    },
+    "comparison_engine": {
+      "mode": "DORMANT",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "decision_inert_but_periodic_shadow_probe_allowed"
+    },
+    "crystals": {
+      "mode": "DORMANT",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "decision_inert_but_periodic_shadow_probe_allowed"
+    },
+    "learning_memory": {
+      "mode": "DORMANT",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "decision_inert_but_periodic_shadow_probe_allowed"
+    },
+    "liquidity": {
+      "mode": "DORMANT",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "decision_inert_but_periodic_shadow_probe_allowed"
+    },
+    "statistics_bee": {
+      "mode": "SHADOW",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "historically_useful_requires_prospective_confirmation"
+    },
+    "strategy_workers": {
+      "mode": "QUARANTINED",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "mixed_or_harmful_kept_shadow_probe_for_rehabilitation"
+    },
+    "temporal_participation_bee": {
+      "mode": "DORMANT",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "decision_inert_but_periodic_shadow_probe_allowed"
+    },
+    "worker_coalition": {
+      "mode": "SHADOW",
+      "influence": false,
+      "shadow_probe": true,
+      "reason": "component_underpowered_requires_prospective_confirmation"
+    }
+  }
+}

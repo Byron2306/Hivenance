@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import bisect
 import json
 import sqlite3
 from collections import Counter, defaultdict
@@ -22,13 +24,111 @@ MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS")
 
 
 class HistoricalReuseStore:
-    """Read-only point-in-time reuse view over the historical DB."""
+    """In-memory point-in-time reuse index over the historical DB.
+
+    The corpus is loaded once. Every lookup then uses a binary search on
+    settled_ts so no future outcome can enter a historical decision.
+    """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
-        self.conn = conn
+        self.exact: dict[tuple[str, str, int, str], list[tuple[float, float, int]]] = defaultdict(list)
+        self.symbol_class: dict[tuple[str, int, str, str], list[tuple[float, float, int]]] = defaultdict(list)
+        self.cohort: dict[tuple[str, int, str, str], list[tuple[float, float, int]]] = defaultdict(list)
+
+        rows = conn.execute(
+            """
+            SELECT
+                f.model_id,
+                f.symbol,
+                f.horizon_seconds,
+                COALESCE(
+                    json_extract(f.payload, '$.inputs.regime_hint'),
+                    json_extract(f.payload, '$.inputs.regime_inputs.regime_hint'),
+                    'unknown'
+                ) AS regime_hint,
+                COALESCE(
+                    json_extract(f.payload, '$.inputs.symbol_class'),
+                    'unknown'
+                ) AS symbol_class,
+                COALESCE(
+                    json_extract(f.payload, '$.inputs.cohort_bucket'),
+                    'unknown'
+                ) AS cohort_bucket,
+                o.net_return_bps,
+                o.positive_net,
+                o.settled_ts
+            FROM hypothesis_outcomes o
+            JOIN hypothesis_forecasts f
+              ON f.forecast_id=o.forecast_id
+            WHERE f.abstain=0
+              AND o.settled_ts IS NOT NULL
+            ORDER BY o.settled_ts
+            """
+        ).fetchall()
+
+        for row in rows:
+            settled_ts = float(row["settled_ts"])
+            net = float(row["net_return_bps"] or 0.0)
+            positive = int(row["positive_net"] or 0)
+            model_id = str(row["model_id"])
+            symbol = str(row["symbol"])
+            horizon = int(row["horizon_seconds"])
+            regime = str(row["regime_hint"] or "unknown")
+            symbol_class = str(row["symbol_class"] or "unknown")
+            cohort_bucket = str(row["cohort_bucket"] or "unknown")
+            point = (settled_ts, net, positive)
+
+            self.exact[
+                (model_id, symbol, horizon, regime)
+            ].append(point)
+            self.symbol_class[
+                (model_id, horizon, regime, symbol_class)
+            ].append(point)
+            self.cohort[
+                (model_id, horizon, regime, cohort_bucket)
+            ].append(point)
+
+        self.loaded_rows = len(rows)
 
     def persist_research_reuse_receipt(self, payload: Mapping[str, Any]) -> bool:
         return True
+
+    @staticmethod
+    def _slice(
+        rows: list[tuple[float, float, int]],
+        *,
+        cutoff_ts: float | None,
+        limit: int,
+    ) -> list[tuple[float, float, int]]:
+        if not rows:
+            return []
+        if cutoff_ts is None:
+            hi = len(rows)
+        else:
+            hi = bisect.bisect_right(
+                rows,
+                (float(cutoff_ts), float("inf"), 1),
+            )
+        lo = max(0, hi - int(limit))
+        return rows[lo:hi]
+
+    @staticmethod
+    def _stats_from_points(
+        rows: list[tuple[float, float, int]],
+    ) -> dict[str, Any]:
+        if not rows:
+            return {
+                "sample_count": 0,
+                "mean_realized_net_bps": None,
+                "win_rate": None,
+                "latest_settled_ts": None,
+            }
+        return {
+            "sample_count": len(rows),
+            "mean_realized_net_bps": sum(x[1] for x in rows) / len(rows),
+            "win_rate": sum(x[2] for x in rows) / len(rows),
+            "latest_settled_ts": rows[-1][0],
+        }
 
     def get_research_reuse_stats(
         self,
@@ -40,36 +140,18 @@ class HistoricalReuseStore:
         limit: int = 25,
         cutoff_ts: float | None = None,
     ) -> dict[str, Any]:
-        rows = self.conn.execute(
-            """
-            SELECT o.net_return_bps, o.positive_net, o.settled_ts
-            FROM hypothesis_outcomes o
-            JOIN hypothesis_forecasts f ON f.forecast_id=o.forecast_id
-            WHERE f.model_id=?
-              AND f.symbol=?
-              AND f.horizon_seconds=?
-              AND f.settled=1
-              AND f.abstain=0
-              AND COALESCE(
-                    json_extract(f.payload, '$.inputs.regime_hint'),
-                    json_extract(f.payload, '$.inputs.regime_inputs.regime_hint'),
-                    'unknown'
-                  )=?
-              AND (? IS NULL OR o.settled_ts <= ?)
-            ORDER BY o.settled_ts DESC
-            LIMIT ?
-            """,
-            (
-                str(model_id),
-                str(symbol),
-                int(horizon_seconds),
-                str(regime_hint or "unknown"),
-                cutoff_ts,
-                cutoff_ts,
-                int(limit),
-            ),
-        ).fetchall()
-        return _stats(rows)
+        key = (
+            str(model_id),
+            str(symbol),
+            int(horizon_seconds),
+            str(regime_hint or "unknown"),
+        )
+        rows = self._slice(
+            self.exact.get(key, []),
+            cutoff_ts=cutoff_ts,
+            limit=limit,
+        )
+        return self._stats_from_points(rows)
 
     def get_research_transform_reuse_stats(
         self,
@@ -82,68 +164,34 @@ class HistoricalReuseStore:
         limit: int = 50,
         cutoff_ts: float | None = None,
     ) -> dict[str, Any]:
-        rows = self.conn.execute(
-            """
-            SELECT o.net_return_bps, o.positive_net, o.settled_ts
-            FROM hypothesis_outcomes o
-            JOIN hypothesis_forecasts f ON f.forecast_id=o.forecast_id
-            WHERE f.model_id=?
-              AND f.horizon_seconds=?
-              AND COALESCE(
-                    json_extract(f.payload, '$.inputs.regime_hint'),
-                    json_extract(f.payload, '$.inputs.regime_inputs.regime_hint'),
-                    'unknown'
-                  )=?
-              AND COALESCE(json_extract(f.payload, '$.inputs.symbol_class'), 'unknown')=?
-              AND f.abstain=0
-              AND (? IS NULL OR o.settled_ts <= ?)
-            ORDER BY o.settled_ts DESC
-            LIMIT ?
-            """,
-            (
-                str(model_id),
-                int(horizon_seconds),
-                str(regime_hint or "unknown"),
-                str(symbol_class or "unknown"),
-                cutoff_ts,
-                cutoff_ts,
-                int(limit),
-            ),
-        ).fetchall()
+        sc_key = (
+            str(model_id),
+            int(horizon_seconds),
+            str(regime_hint or "unknown"),
+            str(symbol_class or "unknown"),
+        )
+        rows = self._slice(
+            self.symbol_class.get(sc_key, []),
+            cutoff_ts=cutoff_ts,
+            limit=limit,
+        )
         if rows:
-            out = _stats(rows)
+            out = self._stats_from_points(rows)
             out["match_type"] = "symbol_class"
             return out
 
-        rows = self.conn.execute(
-            """
-            SELECT o.net_return_bps, o.positive_net, o.settled_ts
-            FROM hypothesis_outcomes o
-            JOIN hypothesis_forecasts f ON f.forecast_id=o.forecast_id
-            WHERE f.model_id=?
-              AND f.horizon_seconds=?
-              AND COALESCE(
-                    json_extract(f.payload, '$.inputs.regime_hint'),
-                    json_extract(f.payload, '$.inputs.regime_inputs.regime_hint'),
-                    'unknown'
-                  )=?
-              AND COALESCE(json_extract(f.payload, '$.inputs.cohort_bucket'), 'unknown')=?
-              AND f.abstain=0
-              AND (? IS NULL OR o.settled_ts <= ?)
-            ORDER BY o.settled_ts DESC
-            LIMIT ?
-            """,
-            (
-                str(model_id),
-                int(horizon_seconds),
-                str(regime_hint or "unknown"),
-                str(cohort_bucket or "unknown"),
-                cutoff_ts,
-                cutoff_ts,
-                int(limit),
-            ),
-        ).fetchall()
-        out = _stats(rows)
+        cohort_key = (
+            str(model_id),
+            int(horizon_seconds),
+            str(regime_hint or "unknown"),
+            str(cohort_bucket or "unknown"),
+        )
+        rows = self._slice(
+            self.cohort.get(cohort_key, []),
+            cutoff_ts=cutoff_ts,
+            limit=limit,
+        )
+        out = self._stats_from_points(rows)
         out["match_type"] = "cohort" if rows else "none"
         return out
 
@@ -365,9 +413,39 @@ def compare_maps(
 
 
 def main() -> None:
-    conn = sqlite3.connect(DB)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--db",
+        default=DB,
+        help="Path to historical HiveNance SQLite corpus",
+    )
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=250,
+        help="Emit progress every N reconstructed market worlds",
+    )
+    args = parser.parse_args()
+
+    conn = sqlite3.connect(args.db)
     conn.row_factory = sqlite3.Row
     store = HistoricalReuseStore(conn)
+
+    observation_payloads = {
+        (str(row["run_id"]), str(row["symbol"]), float(row["ts"])): row["payload"]
+        for row in conn.execute(
+            """
+            SELECT run_id, symbol, ts, payload
+            FROM observation_snapshots
+            """
+        ).fetchall()
+    }
+
+    print(
+        f"preloaded_reuse_outcomes={store.loaded_rows} "
+        f"observation_snapshots={len(observation_payloads)}",
+        flush=True,
+    )
 
     full_comp = competition(workers=True)
     no_workers_comp = competition(workers=False)
@@ -397,19 +475,13 @@ def main() -> None:
         ),
         market_move_bps,
     ) in raw_worlds(conn):
-        obs = conn.execute(
-            """
-            SELECT payload
-            FROM observation_snapshots
-            WHERE run_id=? AND symbol=? AND ts=?
-            LIMIT 1
-            """,
-            (observation_run_id, symbol, forecast_ts),
-        ).fetchone()
-        if obs is None:
+        raw_payload = observation_payloads.get(
+            (observation_run_id, symbol, float(forecast_ts))
+        )
+        if raw_payload is None:
             continue
 
-        payload = json.loads(obs["payload"] or "{}")
+        payload = json.loads(raw_payload or "{}")
         feature = feature_from_payload(payload)
         if int(feature.timestamp_ms) != int(round(forecast_ts * 1000)):
             raise ValueError("historical_feature_timestamp_drift")
@@ -418,6 +490,14 @@ def main() -> None:
         values["_historical_horizon_seconds"] = int(horizon)
         feature = FeatureVector(**{**asdict(feature), "values": values})
         worlds += 1
+        if args.progress_every > 0 and worlds % args.progress_every == 0:
+            print(
+                f"progress worlds={worlds} "
+                f"learning_exposed={learning_exposed_worlds} "
+                f"crystal_reused={crystal_reused_worlds} "
+                f"crystals={len(full_registry)}",
+                flush=True,
+            )
 
         full_feature, full_feedback = compile_feature(
             feature,

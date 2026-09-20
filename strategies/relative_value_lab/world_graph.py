@@ -94,6 +94,7 @@ EDGE_TYPES = {
     "TEMPORALLY_PRECEDES",
     "SETTLES",
     "SUPERSEDES",
+    "INFLUENCES",
 }
 
 

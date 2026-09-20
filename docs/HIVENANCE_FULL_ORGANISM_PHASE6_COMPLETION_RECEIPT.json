@@ -1,0 +1,63 @@
+{
+  "schema": "hivenance_full_organism_phase6_completion_receipt_v1",
+  "phase": 6,
+  "name": "Regime, Workers, Crystals and Existing Phoenix Intelligence",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme": "HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19",
+  "acceptance": {
+    "canonical_cognition_contract": true,
+    "primary_hypotheses_worldgraph_bound": true,
+    "federated_candidates_worldgraph_bound": true,
+    "worker_proposals_worldgraph_bound": true,
+    "worker_coalition_worldgraph_bound": true,
+    "medium_horizon_trend_worldgraph_bound": true,
+    "derivatives_trend_worldgraph_bound": true,
+    "cex_multi_horizon_oracle_worldgraph_bound": true,
+    "regime_oracle_replay_safe": true,
+    "regime_suppression_memory_visible": true,
+    "worker_signal_memory_visible": true,
+    "profitability_frontier_visible": true,
+    "positive_thesis_crystals_visible": true,
+    "negative_capability_crystals_visible": true,
+    "queen_actual_influence_trace": true
+  },
+  "epistemic_boundaries": {
+    "workers_are_proposal_engines_not_evidence_bees": true,
+    "crystals_are_memory_not_authority": true,
+    "federated_models_are_challengers_unless_independent_roots_exist": true,
+    "historical_trend_context_is_not_current_evidence": true,
+    "shared_market_roots_do_not_multiply_independent_evidence": true,
+    "visibility_does_not_imply_influence": true,
+    "actual_influence_requires_explicit_influences_edge": true
+  },
+  "authority": {
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0,
+    "authority_class": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+  },
+  "tests": {
+    "phase6_8_focused": {
+      "status": "PASS",
+      "passed": 37
+    },
+    "graph_influence_regression": {
+      "status": "PASS",
+      "passed": 53
+    },
+    "phase5_phase6_authority_spine": {
+      "status": "PASS",
+      "passed": 92
+    }
+  },
+  "exit_condition": {
+    "operator_can_trace_actual_phoenix_influences_for_one_candidate": true,
+    "status": "PASS"
+  },
+  "next_phase": {
+    "phase": 7,
+    "name": "Full VNS / Polyphia Sensory Assembly",
+    "gate": "Do not advance until Phase 6 receipt is committed and the broader regression sweep passes."
+  }
+}

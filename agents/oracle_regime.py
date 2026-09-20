@@ -51,6 +51,79 @@ class RegimeOracle:
             "regime_change": changed,
         }
 
+    def evaluate_bound_frames(
+        self,
+        frames: Dict[str, List[List[float]]],
+        *,
+        observed_at_ms: int,
+        spread_bps: float | None = None,
+    ) -> Dict[str, Any]:
+        """Evaluate already-bound frames without fetching or wall-clock time.
+
+        This is the canonical replay/WorldGraph seam for RegimeOracle.
+        All frame rows must be at or before ``observed_at_ms``.
+        """
+        observed_at_ms = int(observed_at_ms)
+
+        normalized: Dict[str, List[List[float]]] = {}
+        for timeframe, rows in (frames or {}).items():
+            safe_rows: List[List[float]] = []
+            for row in rows or []:
+                if not row:
+                    continue
+                try:
+                    ts = int(row[0])
+                except Exception:
+                    raise ValueError("regime_bound_frame_timestamp_invalid")
+                if ts > observed_at_ms:
+                    raise ValueError("regime_bound_frame_future_row_forbidden")
+                safe_rows.append(list(row))
+            if safe_rows:
+                normalized[str(timeframe)] = safe_rows
+
+        if not normalized:
+            return {
+                "schema": "hivenance_regime_oracle_bound_snapshot_v1",
+                "timestamp": observed_at_ms,
+                "symbol": self.symbol,
+                "regime": self._last_label or "CHOP_RANGE",
+                "confidence": 0.0,
+                "features": {},
+                "scores": {},
+                "regime_change": False,
+                "source_mode": "BOUND_FRAMES",
+            }
+
+        features = self._compute_features(normalized, execution=None)
+
+        if spread_bps is not None:
+            # _spread_pct() expresses spread relative to a 1% reference.
+            # 100 bps == 1%, therefore normalized spread = spread_bps / 100.
+            features["spread"] = self._clamp01(
+                max(0.0, float(spread_bps)) / 100.0
+            )
+
+        scores = self._score_regimes(features)
+        proposed_label, confidence = self._choose_label(scores)
+        label, changed = self._apply_hysteresis_at(
+            proposed_label,
+            confidence,
+            now_ts=observed_at_ms / 1000.0,
+        )
+
+        return {
+            "schema": "hivenance_regime_oracle_bound_snapshot_v1",
+            "timestamp": observed_at_ms,
+            "symbol": self.symbol,
+            "regime": label,
+            "proposed_regime": proposed_label,
+            "confidence": confidence,
+            "features": features,
+            "scores": scores,
+            "regime_change": changed,
+            "source_mode": "BOUND_FRAMES",
+        }
+
     def _fetch_frames(self, market_data) -> Dict[str, List[List[float]]]:
         """Return OHLCV frames per timeframe using ccxt client when available."""
         frames = {}
@@ -170,7 +243,25 @@ class RegimeOracle:
         return top_label, confidence
 
     def _apply_hysteresis(self, label: str, confidence: float) -> Tuple[str, bool]:
-        now = time.time()
+        return self._apply_hysteresis_at(
+            label,
+            confidence,
+            now_ts=time.time(),
+        )
+
+    def _apply_hysteresis_at(
+        self,
+        label: str,
+        confidence: float,
+        *,
+        now_ts: float,
+    ) -> Tuple[str, bool]:
+        """Apply hysteresis against an explicit clock.
+
+        Live callers may continue using _apply_hysteresis(). Replay and
+        WorldGraph callers must supply the observation clock explicitly.
+        """
+        now = float(now_ts)
         changed = False
         if self._last_label is None:
             self._last_label = label

@@ -27,8 +27,31 @@ def _probability(score: float, *, floor: float = 0.50, ceiling: float = 0.82) ->
     return round(floor + (ceiling - floor) * _clip(score), 6)
 
 
+def _regime_context(features: FeatureVector) -> dict:
+    values = features.values if isinstance(features.values, dict) else {}
+    direct = values.get("regime_context")
+    if isinstance(direct, dict):
+        return direct
+    research = values.get("research_context")
+    if isinstance(research, dict) and isinstance(research.get("regime"), dict):
+        return dict(research["regime"])
+    return {}
+
+
 def _regime_inputs(features: FeatureVector) -> dict:
     values = features.values if isinstance(features.values, dict) else {}
+    canonical = _regime_context(features)
+    if canonical:
+        return {
+            "regime_hint": canonical.get("deterministic_hint") or "unknown",
+            "confidence": canonical.get("deterministic_confidence") or 0.0,
+            "bayesian_probabilities": dict(canonical.get("bayesian_probabilities") or {}),
+            "dominant_posterior_regime": canonical.get("dominant_posterior_regime"),
+            "posterior_entropy": canonical.get("posterior_entropy"),
+            "change_point_probability": canonical.get("change_point_probability") or 0.0,
+            "disagreement_score": canonical.get("disagreement_score") or 0.0,
+            "canonical_regime_context_id": canonical.get("context_id"),
+        }
     regime_inputs = values.get("regime_inputs") if isinstance(values.get("regime_inputs"), dict) else {}
     return regime_inputs
 
@@ -82,7 +105,17 @@ def _regime_confidence(features: FeatureVector) -> float:
     if not regime_inputs:
         regime_inputs = _infer_regime_inputs(features)
     try:
-        return float(regime_inputs.get("confidence") or 0.0)
+        deterministic = float(regime_inputs.get("confidence") or 0.0)
+        probabilities = regime_inputs.get("bayesian_probabilities")
+        dominant = regime_inputs.get("dominant_posterior_regime")
+        if isinstance(probabilities, dict) and dominant:
+            posterior = float(probabilities.get(str(dominant)) or 0.0)
+            disagreement = float(regime_inputs.get("disagreement_score") or 0.0)
+            change = float(regime_inputs.get("change_point_probability") or 0.0)
+            combined = 0.55 * deterministic + 0.45 * posterior
+            combined *= max(0.0, 1.0 - 0.45 * disagreement - 0.35 * change)
+            return _clip(combined)
+        return deterministic
     except (TypeError, ValueError):
         return 0.0
 

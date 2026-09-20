@@ -162,6 +162,7 @@ class LearnedChallenger:
         drift_score:float,
         known_dependence_groups:Sequence[str]=(),
         synthesis_state:Mapping[str,Any]|None=None,
+        calibration_health_state:Mapping[str,Any]|None=None,
     )->LearnedChallengerReceipt:
         for name,value in (
             ("model_artifact_digest",provenance.model_artifact_digest),
@@ -216,7 +217,26 @@ class LearnedChallenger:
         if age>self.config.stale_after_ms:
             reasons.append("challenger_stale")
 
-        drift_pressure=_clamp(float(drift_score)/max(1e-9,self.config.drift_reference))
+        effective_drift_score=float(drift_score)
+        if calibration_health_state is not None:
+            effective_drift_score=max(
+                effective_drift_score,
+                float(calibration_health_state.get("overall_drift_score") or 0.0),
+            )
+            measured_calibration=calibration_health_state.get("calibration_error")
+            if measured_calibration is not None:
+                calibration_fit=min(
+                    calibration_fit,
+                    _clamp(
+                        1.0-float(measured_calibration)/max(1e-9,self.config.calibration_error_reference)
+                    ),
+                )
+            if float(calibration_health_state.get("overall_drift_score") or 0.0)>.6:
+                reasons.append("rolling_calibration_drift_high")
+        else:
+            reasons.append("calibration_health_state_missing")
+
+        drift_pressure=_clamp(effective_drift_score/max(1e-9,self.config.drift_reference))
         synthesis_change=None
         synthesis_uncertainty=None
         synthesis_win=None
@@ -284,6 +304,7 @@ class LearnedChallenger:
             "health":round(voice_health,6),
             "reasons":sorted(set(reasons)),
             "synthesis_state":dict(synthesis_state or {}),
+            "calibration_health_state":dict(calibration_health_state or {}),
         }
         return LearnedChallengerReceipt(
             schema="hivenance_learned_challenger_v1",

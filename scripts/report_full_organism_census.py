@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+from strategies.relative_value_lab.full_organism_census_runner import run_full_organism_census
+from strategies.relative_value_lab.historical_causal_prosecution import HistoricalWorldOutcome
+from strategies.relative_value_lab.organ_route_census import build_route_census
+
+
+def _load_bundle(path: str) -> dict[str, Any]:
+    payload=json.loads(Path(path).read_text(encoding="utf-8"))
+    if payload.get("schema")!="hivenance_full_organism_census_replay_bundle_v1":
+        raise ValueError("unsupported_census_bundle_schema:" + str(payload.get("schema")))
+    return payload
+
+
+def _outcomes(rows):
+    return tuple(HistoricalWorldOutcome(**row) for row in rows)
+
+
+def main() -> None:
+    parser=argparse.ArgumentParser(
+        description="Run the Hivenance Phase 12.8 full-organism historical census over strict replay bundles."
+    )
+    parser.add_argument(
+        "--bundle",
+        action="append",
+        required=True,
+        help="Replay bundle JSON. May be repeated; later bundles may add masks but may not conflict.",
+    )
+    parser.add_argument(
+        "--out",
+        default="data/full_organism_census.json",
+        help="Output JSON report path.",
+    )
+    parser.add_argument(
+        "--minimum-independent-worlds",
+        type=int,
+        default=5,
+    )
+    args=parser.parse_args()
+
+    outcomes_by_mask={}
+    invocation_counts={}
+    sources=[]
+
+    for path in args.bundle:
+        bundle=_load_bundle(path)
+        sources.append({
+            "path":path,
+            "source":bundle.get("source"),
+            "strict_before":bundle.get("strict_before"),
+            "evidence_lag_sec":bundle.get("evidence_lag_sec"),
+            "warning_floor":bundle.get("warning_floor"),
+        })
+        for mask_id,rows in dict(bundle.get("outcomes_by_mask") or {}).items():
+            parsed=_outcomes(rows)
+            existing=outcomes_by_mask.get(mask_id)
+            if existing is not None and tuple(x.to_dict() for x in existing)!=tuple(x.to_dict() for x in parsed):
+                raise ValueError("conflicting_replay_mask:" + str(mask_id))
+            outcomes_by_mask[mask_id]=parsed
+        for mask_id,count in dict(bundle.get("invocation_counts") or {}).items():
+            invocation_counts[mask_id]=max(int(invocation_counts.get(mask_id,0)),int(count))
+
+    run=run_full_organism_census(
+        outcomes_by_mask=outcomes_by_mask,
+        invocation_counts=invocation_counts,
+        minimum_independent_worlds=int(args.minimum_independent_worlds),
+    )
+
+    runtime_seen_ids=set()
+    runtime_invocations={}
+    mask_to_runtime={
+        "NO_LEARNING":"learning_memory",
+        "NO_CRYSTALS":"crystals",
+        "NO_WORKERS":"strategy_workers",
+        "NO_STATISTICS":"statistics_bee",
+        "NO_BAYES":"bayesian_regime_filter",
+        "NO_EXTERNAL":"external_statistics_sensorium",
+        "NO_CONFORMAL":"stochastic_calibration",
+        "NO_ML":"ml_challenger",
+    }
+    for mask_id,count in invocation_counts.items():
+        runtime_id=mask_to_runtime.get(mask_id)
+        if runtime_id:
+            runtime_seen_ids.add(runtime_id)
+            runtime_invocations[runtime_id]=int(count)
+
+    route=build_route_census(
+        invocation_counts=runtime_invocations,
+        runtime_seen_ids=tuple(sorted(runtime_seen_ids)),
+    )
+
+    payload={
+        "schema":"hivenance_full_organism_census_report_v1",
+        "sources":sources,
+        "historical_only":True,
+        "prospective_usefulness_proven":False,
+        "execution_eligible":False,
+        "promotion_eligible":False,
+        "paired_masks":run.paired_masks,
+        "skipped_masks":run.skipped_masks,
+        "skipped_mask_reason":"SKIPPED_NO_HISTORICAL_RECONSTRUCTION",
+        "historical_prosecution":run.prosecution.to_dict(),
+        "organ_utility_census":run.utility_census.to_dict(),
+        "organ_route_census":route.to_dict(),
+    }
+
+    out=Path(args.out)
+    out.parent.mkdir(parents=True,exist_ok=True)
+    out.write_text(json.dumps(payload,sort_keys=True,indent=2),encoding="utf-8")
+
+    print("HIVENANCE_FULL_ORGANISM_CENSUS")
+    print("historical_only=True")
+    print("prospective_usefulness_proven=False")
+    print("paired_masks=",",".join(run.paired_masks) if run.paired_masks else "none")
+    print("skipped_masks=",",".join(run.skipped_masks) if run.skipped_masks else "none")
+    print("useful_organs=",",".join(run.utility_census.useful_organs) if run.utility_census.useful_organs else "none")
+    print("harmful_organs=",",".join(run.utility_census.harmful_organs) if run.utility_census.harmful_organs else "none")
+    print("inert_organs=",",".join(run.utility_census.inert_organs) if run.utility_census.inert_organs else "none")
+    print("underpowered_organs=",",".join(run.utility_census.underpowered_organs) if run.utility_census.underpowered_organs else "none")
+    print("dead_routes=",",".join(route.dead_routes) if route.dead_routes else "none")
+    print("report=",str(out))
+
+
+if __name__=="__main__":
+    main()

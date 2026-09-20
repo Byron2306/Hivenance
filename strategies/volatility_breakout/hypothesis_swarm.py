@@ -1168,6 +1168,12 @@ class HypothesisSwarmAgent:
             raise RuntimeError("phase1 observer unavailable")
 
         started_ms = int(time.time() * 1000)
+        if self.phase13_runtime is not None:
+            try:
+                self.phase13_runtime.refresh_adaptive_modes()
+            except Exception:
+                self._phase13_errors += 1
+                logging.exception("Failed to refresh Phase-13 adaptive modes")
         observation = self.observer.run_once()
         observation_run = observation.get("run") or {}
         observation_run_id = str(observation_run.get("run_id") or "")

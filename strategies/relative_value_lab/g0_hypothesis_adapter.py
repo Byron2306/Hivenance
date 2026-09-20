@@ -11,6 +11,7 @@ from typing import Any
 from strategies.volatility_breakout.models import FeatureVector
 from .hypothesis_statistics_bridge import bind_statistical_context
 from .research_context import build_research_context, bind_research_context_values
+from .research_context_router import project_research_context
 
 def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
  if str(getattr(cycle,"world_state_id",""))!=str(feature.values.get("world_state_id") or getattr(cycle,"world_state_id","")):
@@ -79,6 +80,20 @@ def bind_synthesis_context(feature:FeatureVector,cycle:Any)->FeatureVector:
   regime_state=regime_state,
  )
  values=bind_research_context_values(values,research_context)
+ values["organ_context_views"]={
+  organ_id:project_research_context(research_context,organ_id=organ_id).to_dict()
+  for organ_id in (
+   "hypothesis_competition",
+   "strategy_workers",
+   "ml_challenger",
+   "market_hunting",
+   "mystique",
+   "pollen_economy",
+   "cognitive_metabolism",
+   "recursive_queen",
+   "conducting_queen",
+  )
+ }
  bound=replace(feature,values=values)
  if statistical is not None:
   bound=bind_statistical_context(bound,statistical)

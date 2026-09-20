@@ -620,3 +620,28 @@ Interpretation rule:
 - if pooled/global or a single component reproduces the benefit, prefer the simpler organ;
 - hierarchical/model-specific complexity must earn its retention through causal differentiation;
 - no increase in authority follows from historical usefulness alone.
+
+
+## Statistical attack correction — alignment supported, gate overlap unresolved
+
+Correction to the prior checkpoint:
+- attack deltas are computed as FULL_HIVE minus attacked variant;
+- positive SHUFFLE_EVIDENCE delta therefore means correctly aligned model-specific Statistics outperformed shuffled model histories;
+- positive POOLED_GLOBAL_CONTEXT delta means correctly aligned hierarchical Statistics outperformed a pooled context;
+- the observed +42.45 bps shuffle delta across 9/9 positive cohorts and +40.58 bps pooled delta with 6 positive / 1 negative cohort support model-specific statistical alignment.
+
+Remaining ambiguity:
+- UNCERTAINTY_ONLY reproduced Full Hive decisions;
+- recorded veto reasons were dominated by NEGATIVE_EDGE because reason labels reflect first-fired gate order, not all simultaneously active conditions;
+- gate triggers may overlap heavily.
+
+New diagnostics and attacks:
+- STATISTICAL_TRIGGER_OVERLAP records every simultaneously active gate on changed decisions;
+- NO_NEGATIVE_EDGE_GATE removes only the negative-edge gate;
+- NO_CHANGE_POINT_GATE removes only the change-point gate;
+- NO_UNCERTAINTY_GATE removes only the uncertainty gate.
+
+Retention rule:
+- preserve only gates whose removal materially worsens historical outcomes or changes the protection profile;
+- overlapping gates that add no independent protection become simplification candidates;
+- historical usefulness still does not grant prospective or execution authority.

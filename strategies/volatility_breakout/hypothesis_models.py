@@ -101,21 +101,19 @@ def _regime_hint(features: FeatureVector) -> str:
 
 
 def _regime_confidence(features: FeatureVector) -> float:
+    """Return the deterministic regime confidence used by hypothesis gates.
+
+    Phase 12.8 historical causal prosecution found Bayesian RegimeContext to be
+    information-rich but decision-inert across the strict corpus. Preserve the
+    Bayesian posterior, disagreement and change-point fields in RegimeContext
+    for Queen/calibration/diagnostics, but do not let them directly alter a
+    hypothesis gate until prospective causal evidence earns that authority.
+    """
     regime_inputs = _regime_inputs(features)
     if not regime_inputs:
         regime_inputs = _infer_regime_inputs(features)
     try:
-        deterministic = float(regime_inputs.get("confidence") or 0.0)
-        probabilities = regime_inputs.get("bayesian_probabilities")
-        dominant = regime_inputs.get("dominant_posterior_regime")
-        if isinstance(probabilities, dict) and dominant:
-            posterior = float(probabilities.get(str(dominant)) or 0.0)
-            disagreement = float(regime_inputs.get("disagreement_score") or 0.0)
-            change = float(regime_inputs.get("change_point_probability") or 0.0)
-            combined = 0.55 * deterministic + 0.45 * posterior
-            combined *= max(0.0, 1.0 - 0.45 * disagreement - 0.35 * change)
-            return _clip(combined)
-        return deterministic
+        return _clip(float(regime_inputs.get("confidence") or 0.0))
     except (TypeError, ValueError):
         return 0.0
 

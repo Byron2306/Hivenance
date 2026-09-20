@@ -43,7 +43,10 @@ def _organ_mode(cfg: Any, organ_id: str, default: str = "ACTIVE") -> str:
 
 def _organ_influence_enabled(cfg: Any, organ_id: str, default: bool = True) -> bool:
     mode = _organ_mode(cfg, organ_id, "ACTIVE" if default else "SHADOW")
-    return mode in {"ADVISORY", "ACTIVE"}
+    # Direct hypothesis influence is reserved for ACTIVE authority.
+    # ADVISORY may contribute context/explanation elsewhere, but must not steer
+    # forecast selection or model activation.
+    return mode == "ACTIVE"
 
 
 class HypothesisCompetition:
@@ -263,6 +266,10 @@ class HypothesisCompetition:
     @property
     def all_model_ids(self) -> tuple[str, ...]:
         return (*self.primary_ids, *self.federated_ids, *self.baseline_ids)
+
+    def active_model_ids_for(self, features: FeatureVector) -> tuple[str, ...]:
+        """Return the exact research roster eligible to emit on this world."""
+        return tuple(str(model.model_id) for model in self._active_models_for(features))
 
     def federation_manifest(self) -> dict[str, Any]:
         manifest = self.federation.manifest()

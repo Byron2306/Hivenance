@@ -135,7 +135,7 @@ def route_phase13_forecast_books(
                 if model_id in model_ids
                 for forecast in forecasts
             ],
-            envelope_id=envelope_id,
+            envelope_id=envelope_id,entry_price=entry_price,regime=regime,
         ))
 
     return tuple(rows)

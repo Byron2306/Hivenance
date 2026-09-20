@@ -22,6 +22,44 @@ def _outcomes(rows):
     return tuple(HistoricalWorldOutcome(**row) for row in rows)
 
 
+def _outcome_key(row: HistoricalWorldOutcome):
+    return (
+        str(row.world_state_id),
+        str(row.symbol),
+        int(row.timestamp_ms),
+        int(row.horizon_seconds),
+        str(row.direction).upper(),
+        bool(row.abstain),
+        str(row.envelope_id or ""),
+    )
+
+
+def _merge_full_hive(existing, incoming):
+    """Merge compatible FULL_HIVE references from different prosecution runners.
+
+    Different runners may emit different subsets/model rows for the same frozen
+    worlds. Overlapping rows must agree on realized outcomes; non-overlapping
+    rows are unioned. This exception applies only to FULL_HIVE.
+    """
+    by_key={_outcome_key(row):row for row in existing}
+    for row in incoming:
+        key=_outcome_key(row)
+        prior=by_key.get(key)
+        if prior is None:
+            by_key[key]=row
+            continue
+        if (
+            prior.realized_net_bps != row.realized_net_bps
+            or prior.selected != row.selected
+            or prior.world_state_hash != row.world_state_hash
+        ):
+            raise ValueError("conflicting_replay_mask:FULL_HIVE")
+    return tuple(
+        by_key[key]
+        for key in sorted(by_key)
+    )
+
+
 def main() -> None:
     parser=argparse.ArgumentParser(
         description="Run the Hivenance Phase 12.8 full-organism historical census over strict replay bundles."
@@ -64,8 +102,12 @@ def main() -> None:
         for mask_id,rows in dict(bundle.get("outcomes_by_mask") or {}).items():
             parsed=_outcomes(rows)
             existing=outcomes_by_mask.get(mask_id)
-            if existing is not None and tuple(x.to_dict() for x in existing)!=tuple(x.to_dict() for x in parsed):
-                raise ValueError("conflicting_replay_mask:" + str(mask_id))
+            if existing is not None:
+                if str(mask_id)=="FULL_HIVE":
+                    outcomes_by_mask[mask_id]=_merge_full_hive(existing,parsed)
+                    continue
+                if tuple(x.to_dict() for x in existing)!=tuple(x.to_dict() for x in parsed):
+                    raise ValueError("conflicting_replay_mask:" + str(mask_id))
             outcomes_by_mask[mask_id]=parsed
         for mask_id,count in dict(bundle.get("invocation_counts") or {}).items():
             invocation_counts[mask_id]=max(int(invocation_counts.get(mask_id,0)),int(count))

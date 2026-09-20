@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import hashlib
 import json
 import sqlite3
 from collections import Counter, defaultdict
@@ -18,6 +19,7 @@ from strategies.volatility_breakout.learning_crystal_feedback import (
 )
 from strategies.volatility_breakout.models import FeatureVector, Forecast
 from strategies.volatility_breakout.research_reuse import ResearchReuseGovernor
+from strategies.relative_value_lab.historical_causal_prosecution import HistoricalWorldOutcome
 
 DB = "data/swarm_data.db"
 MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS")
@@ -476,6 +478,11 @@ def main() -> None:
         default=250,
         help="Emit progress every N reconstructed market worlds",
     )
+    parser.add_argument(
+        "--census-json-out",
+        default=None,
+        help="Optional path to write FULL_HIVE and replay-mask world outcomes for the organism census",
+    )
     args = parser.parse_args()
 
     conn = sqlite3.connect(args.db)
@@ -533,6 +540,12 @@ def main() -> None:
     learning_lifecycles = Counter()
     learning_age_samples: list[float] = []
     crystal_reused_worlds = 0
+    census_outcomes = {
+        "FULL_HIVE": [],
+        "NO_LEARNING": [],
+        "NO_CRYSTALS": [],
+        "NO_WORKERS": [],
+    }
 
     for (
         (
@@ -653,6 +666,66 @@ def main() -> None:
             "NO_CRYSTALS": by_model(full_comp.evaluate(no_crystal_feature, (horizon,))),
             "NO_WORKERS": by_model(no_workers_comp.evaluate(no_workers_feature, (horizon,))),
         }
+
+        world_hash = "sha256:" + hashlib.sha256(
+            str(raw_payload).encode("utf-8")
+        ).hexdigest()
+        timestamp_ms = int(feature.timestamp_ms)
+
+        for identity, forecast in full_map.items():
+            model_id, model_horizon = identity
+            census_outcomes["FULL_HIVE"].append(
+                HistoricalWorldOutcome(
+                    world_state_id=str(observation_run_id),
+                    world_state_hash=world_hash,
+                    symbol=str(symbol),
+                    timestamp_ms=timestamp_ms,
+                    horizon_seconds=int(model_horizon),
+                    direction=str(forecast.direction),
+                    abstain=bool(forecast.abstain),
+                    selected=None,
+                    realized_net_bps=realized_net(forecast, market_move_bps),
+                    envelope_id=str(model_id),
+                ).to_dict()
+            )
+
+        for mask_id, blind_map in variants.items():
+            identities = sorted(set(full_map) | set(blind_map))
+            for identity in identities:
+                model_id, model_horizon = identity
+                blind = blind_map.get(identity)
+                if blind is None:
+                    if mask_id != "NO_WORKERS":
+                        continue
+                    census_outcomes[mask_id].append(
+                        HistoricalWorldOutcome(
+                            world_state_id=str(observation_run_id),
+                            world_state_hash=world_hash,
+                            symbol=str(symbol),
+                            timestamp_ms=timestamp_ms,
+                            horizon_seconds=int(model_horizon),
+                            direction="ABSTAIN",
+                            abstain=True,
+                            selected=None,
+                            realized_net_bps=0.0,
+                            envelope_id=str(model_id),
+                        ).to_dict()
+                    )
+                    continue
+                census_outcomes[mask_id].append(
+                    HistoricalWorldOutcome(
+                        world_state_id=str(observation_run_id),
+                        world_state_hash=world_hash,
+                        symbol=str(symbol),
+                        timestamp_ms=timestamp_ms,
+                        horizon_seconds=int(model_horizon),
+                        direction=str(blind.direction),
+                        abstain=bool(blind.abstain),
+                        selected=None,
+                        realized_net_bps=realized_net(blind, market_move_bps),
+                        envelope_id=str(model_id),
+                    ).to_dict()
+                )
 
         world_key = (observation_run_id, symbol, float(forecast_ts), int(horizon))
 
@@ -776,6 +849,24 @@ def main() -> None:
         print("  positive_cohorts=", sum(1 for x in normalized_cohorts.values() if x > 0))
         print("  negative_cohorts=", sum(1 for x in normalized_cohorts.values() if x < 0))
         print("  world_normalized_classification=", classification)
+
+    if args.census_json_out:
+        bundle = {
+            "schema": "hivenance_full_organism_census_replay_bundle_v1",
+            "source": "report_phase12_learning_crystal_feedback_causality",
+            "strict_before": not args.allow_equal_settlement_ts,
+            "evidence_lag_sec": float(args.evidence_lag_sec),
+            "warning_floor": float(args.warning_floor),
+            "outcomes_by_mask": census_outcomes,
+            "invocation_counts": {
+                "NO_LEARNING": int(stats["NO_LEARNING"]["testable_worlds"]),
+                "NO_CRYSTALS": int(stats["NO_CRYSTALS"]["testable_worlds"]),
+                "NO_WORKERS": int(stats["NO_WORKERS"]["testable_worlds"]),
+            },
+        }
+        with open(args.census_json_out, "w", encoding="utf-8") as fh:
+            json.dump(bundle, fh, sort_keys=True, indent=2)
+        print("census_json_out=", args.census_json_out)
 
     conn.close()
 

@@ -597,3 +597,26 @@ Historical replay diagnostics now report:
 Positive statistical evidence remains annotation-only.
 Statistics may only veto through the existing conservative uncertainty/change/negative-edge gates.
 No threshold is lowered merely to manufacture historical activity.
+
+
+## Statistical attack checkpoint — alignment not yet proven
+
+The first adversarial replay materially revised the interpretation of Statistics Bee:
+
+- correctly aligned Statistics remained strongly historically beneficial versus NO_STATISTICS;
+- SHUFFLE_EVIDENCE also preserved most of that benefit;
+- therefore model-specific statistical alignment is not yet proven to be the source of utility;
+- TIME_SHIFT_PLACEBO changed relatively few decisions and did not show a clear freshness advantage;
+- the currently proven object is a strong historical statistical abstention mechanism, not yet a model-specific learned edge substrate.
+
+New decomposition attacks:
+- POOLED_GLOBAL_CONTEXT: every model receives the same pooled statistical context;
+- NEGATIVE_EDGE_ONLY: preserve only the negative-edge veto component;
+- CHANGE_POINT_ONLY: preserve only the change-point veto component;
+- UNCERTAINTY_ONLY: preserve only the uncertainty veto component;
+- explicit statistical veto reason counts are emitted.
+
+Interpretation rule:
+- if pooled/global or a single component reproduces the benefit, prefer the simpler organ;
+- hierarchical/model-specific complexity must earn its retention through causal differentiation;
+- no increase in authority follows from historical usefulness alone.

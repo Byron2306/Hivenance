@@ -47,12 +47,16 @@ def _quality_support(
         "exact_reuse_candidate",
         "transformed_symbol_class_candidate",
         "transformed_cohort_candidate",
+        "transformed_worker_regime_candidate",
+        "transformed_worker_horizon_candidate",
     }:
         return 0.0
     match_weight = {
         "exact_reuse_candidate": 1.0,
         "transformed_symbol_class_candidate": 0.78,
         "transformed_cohort_candidate": 0.64,
+        "transformed_worker_regime_candidate": 0.55,
+        "transformed_worker_horizon_candidate": 0.40,
     }[decision]
     sample_strength = _clip(sample_count / max(1.0, float(min_samples)))
     net_strength = _clip((float(mean_net_bps or 0.0) + 2.0) / 20.0)

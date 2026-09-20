@@ -53,6 +53,21 @@ def bind_statistical_context(
     return replace(feature, values=values)
 
 
+def bind_statistical_contexts(
+    feature: FeatureVector,
+    states_by_model: Mapping[str, Any],
+) -> FeatureVector:
+    values = dict(feature.values or {})
+    bound = {}
+    for model_id, state in states_by_model.items():
+        context = context_from_synthesis_state(state)
+        if context.as_of_ms > int(feature.timestamp_ms):
+            raise ValueError("hypothesis_statistical_context_from_future")
+        bound[str(model_id)] = context.to_dict()
+    values["phase2_statistical_hypothesis_context_by_model"] = bound
+    return replace(feature, values=values)
+
+
 def statistical_hypothesis_gate(
     forecast: Forecast,
     feature: FeatureVector,
@@ -70,7 +85,16 @@ def statistical_hypothesis_gate(
     causal tests explicitly promote stronger influence.
     """
     values = feature.values if isinstance(feature.values, Mapping) else {}
-    raw = values.get("phase2_statistical_hypothesis_context")
+    raw = None
+    by_model = values.get("phase2_statistical_hypothesis_context_by_model")
+    if isinstance(by_model, Mapping):
+        candidate = by_model.get(str(forecast.model_id))
+        if isinstance(candidate, Mapping):
+            raw = candidate
+    if raw is None:
+        candidate = values.get("phase2_statistical_hypothesis_context")
+        if isinstance(candidate, Mapping):
+            raw = candidate
     if not isinstance(raw, Mapping):
         return forecast
 

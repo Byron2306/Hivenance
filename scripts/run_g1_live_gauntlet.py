@@ -111,6 +111,14 @@ def main()->int:
         help="minimum pause between completed cycles; cycle runtime itself counts toward wall clock")
     parser.add_argument("--quiet-kraken",action="store_true",
         help="hide individual Kraken request lines")
+    parser.add_argument("--market-db",type=Path,default=None,
+        help="campaign-local canonical observation/data-store SQLite path")
+    parser.add_argument("--phase13-ledger",type=Path,default=None,
+        help="campaign-local Phase-13 forecast/settlement ledger path")
+    parser.add_argument("--campaign-label",type=str,default="",
+        help="human-readable research campaign label embedded in the result")
+    parser.add_argument("--result-out",type=Path,default=None,
+        help="optional path for the final gauntlet JSON result")
     args=parser.parse_args()
     duration=max(60.0,float(args.minutes)*60.0)
     pause=max(0.0,float(args.pause_sec))
@@ -131,6 +139,12 @@ def main()->int:
     cfg.kraken_api_secret=""
     cfg.binance_api_key=""
     cfg.binance_api_secret=""
+    if args.market_db is not None:
+        args.market_db.parent.mkdir(parents=True,exist_ok=True)
+        cfg.db_path=str(args.market_db)
+    if args.phase13_ledger is not None:
+        args.phase13_ledger.parent.mkdir(parents=True,exist_ok=True)
+        cfg.phase13_ledger_path=str(args.phase13_ledger)
 
     client=KrakenPublicClient(progress=not args.quiet_kraken) if str(cfg.exchange).lower()=="kraken" else None
     coordinator=SwarmCoordinator(cfg)
@@ -176,6 +190,10 @@ def main()->int:
         raise RuntimeError("latest_campaign_target_mismatch")
 
     print("[GAUNTLET] campaign="+str(campaign.get("campaign_id")),flush=True)
+    if args.campaign_label:
+        print("[GAUNTLET] label="+str(args.campaign_label),flush=True)
+    print("[GAUNTLET] market_db="+str(getattr(cfg,"db_path","")),flush=True)
+    print("[GAUNTLET] phase13_ledger="+str(getattr(cfg,"phase13_ledger_path","data/hivenance_phase13_books.db")),flush=True)
     print("[GAUNTLET] target="+str(target.get("target_id"))+" models="+json.dumps(target.get("model_ids") or [target.get("model_id")]),flush=True)
     print(f"[GAUNTLET] LIVE PUBLIC RESEARCH WINDOW {duration:.0f}s",flush=True)
 
@@ -260,6 +278,9 @@ def main()->int:
             "cycles_completed":cycles,
             "interrupted":bool(STOP),
             "campaign_id":campaign.get("campaign_id"),
+            "campaign_label":str(args.campaign_label or ""),
+            "market_db":str(getattr(cfg,"db_path","")),
+            "phase13_ledger":str(getattr(cfg,"phase13_ledger_path","data/hivenance_phase13_books.db")),
             "research_target_id":target.get("target_id"),
             "research_models":target.get("model_ids") or ([target.get("model_id")] if target.get("model_id") else []),
             "g0_cumulative":total,
@@ -275,8 +296,13 @@ def main()->int:
             "real_orders_submitted":0,
             "promotion_eligible":False,
         }
+        rendered=json.dumps(result,indent=2,sort_keys=True,default=str)
+        if args.result_out is not None:
+            args.result_out.parent.mkdir(parents=True,exist_ok=True)
+            args.result_out.write_text(rendered+"\n",encoding="utf-8")
+            print("[GAUNTLET] result_out="+str(args.result_out),flush=True)
         print("G1_LIVE_GAUNTLET_RESULT")
-        print(json.dumps(result,indent=2,sort_keys=True,default=str))
+        print(rendered)
         return 0 if not cycle_errors else 2
     finally:
         print("[GAUNTLET] stopping agents...",flush=True)

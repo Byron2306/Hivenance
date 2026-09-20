@@ -82,17 +82,17 @@ def _uncertainty(values: Sequence[float]) -> float | None:
     return statistics.pstdev(values) / math.sqrt(len(values))
 
 
-def _dependence_adjusted_count(rows: Sequence[HistoricalWorldOutcome]) -> int:
-    # Conservative world buckets: same symbol/horizon/timestamp day collapse.
-    buckets = {
-        (
-            str(row.symbol),
-            int(row.horizon_seconds),
-            int(row.timestamp_ms) // 86_400_000,
-        )
-        for row in rows
-    }
-    return len(buckets)
+def _world_key_without_model(row: HistoricalWorldOutcome) -> tuple[str, str, int, int]:
+    return (
+        str(row.world_state_id),
+        str(row.symbol),
+        int(row.timestamp_ms),
+        int(row.horizon_seconds),
+    )
+
+
+def _cohort_key(row: HistoricalWorldOutcome) -> str:
+    return str(row.world_state_id)
 
 
 def prosecute_mask(
@@ -116,13 +116,14 @@ def prosecute_mask(
     direction_changes = 0
     abstention_changes = 0
     selection_changes = 0
-    deltas: list[float] = []
 
     full_nets: list[float] = []
     masked_nets: list[float] = []
+    changed_deltas_by_world: dict[tuple[str, str, int, int], list[float]] = defaultdict(list)
 
     for full, blind in zip(paired_full, paired_masked):
-        if _decision(full) != _decision(blind):
+        changed = _decision(full) != _decision(blind)
+        if changed:
             decision_changes += 1
         if str(full.direction).upper() != str(blind.direction).upper():
             direction_changes += 1
@@ -136,17 +137,59 @@ def prosecute_mask(
             b = float(blind.realized_net_bps)
             full_nets.append(a)
             masked_nets.append(b)
-            deltas.append(a - b)
+            if changed:
+                changed_deltas_by_world[_world_key_without_model(full)].append(a - b)
 
-    dep_n = _dependence_adjusted_count(paired_full)
-    delta = _mean(deltas)
-    classification = classify_historical_result(
-        available=bool(common),
-        invoked_count=int(invoked_count),
-        decision_change_count=decision_changes,
-        historical_paired_delta_bps=delta,
-        minimum_paired_worlds_met=(dep_n >= int(minimum_independent_worlds)),
-    )
+    world_means = {
+        key: _mean(values)
+        for key, values in changed_deltas_by_world.items()
+        if values
+    }
+    cohort_values: dict[str, list[float]] = defaultdict(list)
+    for key, value in world_means.items():
+        if value is None:
+            continue
+        cohort_values[str(key[0])].append(float(value))
+    cohort_means = {
+        cohort: _mean(values)
+        for cohort, values in cohort_values.items()
+        if values
+    }
+
+    dep_n = len(cohort_means)
+    delta = _mean([float(v) for v in world_means.values() if v is not None])
+    cohort_signs = [
+        1 if float(value) > 0 else (-1 if float(value) < 0 else 0)
+        for value in cohort_means.values()
+        if value is not None
+    ]
+
+    if not common:
+        classification = "UNAVAILABLE"
+    elif int(invoked_count) <= 0:
+        classification = "AVAILABLE"
+    elif decision_changes <= 0:
+        classification = "INVOKED"
+    elif dep_n < int(minimum_independent_worlds):
+        classification = "INSUFFICIENT_EVIDENCE"
+    elif cohort_signs and all(sign > 0 for sign in cohort_signs):
+        classification = "HISTORICALLY_USEFUL"
+    elif cohort_signs and all(sign < 0 for sign in cohort_signs):
+        classification = "HISTORICALLY_HARMFUL"
+    elif cohort_signs and any(sign > 0 for sign in cohort_signs) and any(sign < 0 for sign in cohort_signs):
+        classification = "HISTORICALLY_MIXED"
+    elif delta is None:
+        classification = "INFLUENTIAL"
+    elif delta == 0.0:
+        classification = "HISTORICALLY_NEUTRAL"
+    else:
+        classification = classify_historical_result(
+            available=True,
+            invoked_count=int(invoked_count),
+            decision_change_count=decision_changes,
+            historical_paired_delta_bps=delta,
+            minimum_paired_worlds_met=True,
+        )
 
     return HistoricalOrganProsecution(
         organ_id=str(organ_id or MASK_TO_ORGAN.get(mask_id, mask_id.lower())),
@@ -165,7 +208,9 @@ def prosecute_mask(
         full_hive_mean_net_bps=_mean(full_nets),
         ablated_mean_net_bps=_mean(masked_nets),
         historical_paired_delta_bps=delta,
-        uncertainty_bps=_uncertainty(deltas),
+        uncertainty_bps=_uncertainty(
+            [float(v) for v in cohort_means.values() if v is not None]
+        ),
         classification=classification,
     )
 

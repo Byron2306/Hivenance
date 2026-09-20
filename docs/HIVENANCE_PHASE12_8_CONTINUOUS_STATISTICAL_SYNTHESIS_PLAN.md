@@ -645,3 +645,25 @@ Retention rule:
 - preserve only gates whose removal materially worsens historical outcomes or changes the protection profile;
 - overlapping gates that add no independent protection become simplification candidates;
 - historical usefulness still does not grant prospective or execution authority.
+
+
+## Optimization checkpoint — Statistical gate simplification
+
+Historical gate-isolation results on the strict 203-world corpus:
+
+- NEGATIVE_EDGE triggered independently on 323 protected decisions;
+- CHANGE_POINT triggered independently on 3 decisions and overlapped NEGATIVE_EDGE on 3;
+- UNCERTAINTY triggered independently on 0 protected decisions;
+- removing NEGATIVE_EDGE materially degraded the protection profile;
+- removing CHANGE_POINT affected only a small minority of decisions;
+- removing UNCERTAINTY changed no decisions.
+
+Resulting simplification:
+- negative-edge veto is now the primary Statistics Bee forecast veto;
+- change-point remains a secondary veto;
+- uncertainty is retained in statistical context for Queen, calibration, diagnostics and future prospective study;
+- uncertainty may no longer independently suppress a forecast in the Phase 12.8 hypothesis gate;
+- no statistical signal gains execution or promotion authority.
+
+This is the first census-driven simplification of the singular organism:
+retain information, remove unevidenced control authority.

@@ -31,8 +31,8 @@ def test_research_context_unifies_legacy_organs_without_authority_gain():
         },
         calibration_state={"health_id":"h1","overall_drift_score":.1},
     )
-    assert ctx.regime["deterministic"]["regime_hint"]=="trend_expansion"
-    assert ctx.regime["bayesian"]["probabilities"]["TREND"]==.7
+    assert ctx.regime["deterministic_hint"]=="trend_expansion"
+    assert ctx.regime["bayesian_probabilities"]["TREND"]==.7
     assert ctx.statistics["state_id"]=="s1"
     assert ctx.learning["support_score"]==.4
     assert ctx.crystals["warning_score"]==.2

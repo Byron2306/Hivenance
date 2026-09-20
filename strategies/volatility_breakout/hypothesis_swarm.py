@@ -11,6 +11,12 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from .hypothesis_competition import HypothesisCompetition
+from .learning_crystal_feedback import (
+    attach_learning_feedback,
+    compile_learning_feedback,
+    learning_crystal_rows,
+    prior_for_forecast,
+)
 from .models import FeatureVector, HypothesisRunSummary
 from .research_reuse import ResearchReuseGovernor
 from .walk_forward_calibration import WalkForwardForecastCalibrator
@@ -1250,6 +1256,38 @@ class HypothesisSwarmAgent:
                 thesis_crystals=thesis_crystals,
                 negative_crystals=negative_crystals,
             )
+
+            learning_model_ids = [
+                *self.competition.all_model_ids,
+                *[model.model_id for model in self.competition.medium_trend_models],
+                *[model.model_id for model in self.competition.derivatives_trend_models],
+            ]
+            learning_feedback = compile_learning_feedback(
+                feature,
+                model_ids=learning_model_ids,
+                horizons=(
+                    *self.horizons,
+                    *self.medium_trend_horizons,
+                    *self.derivatives_trend_horizons,
+                ),
+                reuse_governor=self.reuse_governor,
+                max_age_sec=float(getattr(self.cfg, "phase2_learning_reuse_max_age_sec", 86400.0) or 86400.0),
+                min_samples_for_reuse=max(
+                    1,
+                    int(getattr(self.cfg, "phase2_learning_reuse_min_samples", 5) or 5),
+                ),
+            )
+            feature = attach_learning_feedback(feature, learning_feedback)
+
+            if phase_store is not None and hasattr(phase_store, "persist_crystal_registry_entry"):
+                for learning_crystal in learning_crystal_rows(
+                    feature,
+                    learning_feedback,
+                    venue=venue,
+                    expiry_sec=float(getattr(self.cfg, "phase2_learning_crystal_expiry_sec", 86400.0) or 86400.0),
+                ):
+                    phase_store.persist_crystal_registry_entry(learning_crystal)
+
             commons_candidates.append((candidate, feature))
             if g0_live is not None:
                 try:
@@ -1310,31 +1348,29 @@ class HypothesisSwarmAgent:
                         row["research_route_priority"] += 1
                     elif row["crystal_priority_adjustment"] < 0:
                         row["research_route_priority"] -= 1
-                if self.reuse_governor is not None and not row.get("abstain"):
-                    reuse = self.reuse_governor.decide(
-                        model_id=str(row.get("model_id") or ""),
-                        symbol=str(row.get("symbol") or ""),
-                        horizon_seconds=int(row.get("horizon_seconds") or 0),
-                        regime_hint=regime_hint,
-                        cohort_bucket=cohort_bucket,
-                        symbol_class=symbol_class,
-                    )
+                reuse = prior_for_forecast(feature, forecast)
+                if reuse:
                     row["reuse_context"] = reuse
-                    if str(reuse.get("decision") or "") == "exact_reuse_candidate":
+                    decision = str(reuse.get("decision") or "")
+                    lifecycle = str(reuse.get("lifecycle") or "")
+                    if lifecycle == "DETERMINISTIC_RESEARCH_REUSE_CANDIDATE":
+                        row["research_route"] = "deterministic_research_reuse_candidate"
+                        row["research_route_priority"] = max(2, int(row.get("research_route_priority") or 0))
+                    elif decision == "exact_reuse_candidate":
                         row["research_route"] = "exact_reuse"
-                        row["research_route_priority"] = 2
-                    elif str(reuse.get("decision") or "") == "transformed_symbol_class_candidate":
+                        row["research_route_priority"] = max(2, int(row.get("research_route_priority") or 0))
+                    elif decision == "transformed_symbol_class_candidate":
                         row["research_route"] = "symbol_class_transform"
-                        row["research_route_priority"] = 1
-                    elif str(reuse.get("decision") or "") == "transformed_cohort_candidate":
+                        row["research_route_priority"] = max(1, int(row.get("research_route_priority") or 0))
+                    elif decision == "transformed_cohort_candidate":
                         row["research_route"] = "cohort_transform"
-                        row["research_route_priority"] = 1
-                    elif str(reuse.get("decision") or "") == "exact_reuse_too_weak":
+                        row["research_route_priority"] = max(1, int(row.get("research_route_priority") or 0))
+                    elif float(reuse.get("warning_score") or 0.0) > 0:
+                        row["research_route"] = "negative_learning_memory"
+                        row["research_route_priority"] = min(-1, int(row.get("research_route_priority") or 0))
+                    elif decision in {"exact_reuse_too_weak", "transformed_symbol_class_too_weak", "transformed_cohort_too_weak"}:
                         row["research_route"] = "prior_evidence_rejected"
-                        row["research_route_priority"] = -1
-                    elif str(reuse.get("decision") or "") in {"transformed_symbol_class_too_weak", "transformed_cohort_too_weak"}:
-                        row["research_route"] = "transform_evidence_rejected"
-                        row["research_route_priority"] = -1
+                        row["research_route_priority"] = min(-1, int(row.get("research_route_priority") or 0))
                     reuse_receipts.append(reuse)
                 forecast_rows.append(row)
             medium_context = (

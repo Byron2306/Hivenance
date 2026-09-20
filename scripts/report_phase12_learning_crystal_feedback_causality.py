@@ -28,7 +28,14 @@ from strategies.relative_value_lab.historical_probabilistic_reconstruction impor
 
 DB = "data/swarm_data.db"
 MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS", "NO_STATISTICS", "NO_BAYES")
-STATISTICAL_ATTACKS = ("SHUFFLE_EVIDENCE", "TIME_SHIFT_PLACEBO")
+STATISTICAL_ATTACKS = (
+    "SHUFFLE_EVIDENCE",
+    "TIME_SHIFT_PLACEBO",
+    "POOLED_GLOBAL_CONTEXT",
+    "NEGATIVE_EDGE_ONLY",
+    "CHANGE_POINT_ONLY",
+    "UNCERTAINTY_ONLY",
+)
 
 
 class HistoricalReuseStore:
@@ -559,6 +566,7 @@ def main() -> None:
     bayes_change_probability_samples: list[float] = []
     previous_statistics_by_model: dict[str, Any] = {}
     previous_statistics_timestamp_ms: int | None = None
+    statistical_veto_reasons = Counter()
     census_outcomes = {
         "FULL_HIVE": [],
         "NO_LEARNING": [],
@@ -775,6 +783,11 @@ def main() -> None:
         current_stats = full_values.get("phase2_statistical_hypothesis_context_by_model")
         if isinstance(current_stats, dict) and current_stats:
             model_ids = sorted(current_stats)
+            rows = [
+                dict(current_stats[model_id])
+                for model_id in model_ids
+                if isinstance(current_stats.get(model_id), dict)
+            ]
             rotated = {}
             if len(model_ids) > 1:
                 for idx, model_id in enumerate(model_ids):
@@ -788,6 +801,80 @@ def main() -> None:
             attack_variants["SHUFFLE_EVIDENCE"] = by_model(
                 full_comp.evaluate(shuffled_feature, (horizon,))
             )
+
+            if rows:
+                pooled = {
+                    "schema":"hivenance_hypothesis_statistical_context_v1",
+                    "state_id":"pooled-global",
+                    "as_of_ms":int(feature.timestamp_ms),
+                    "win_probability":mean(
+                        float(row.get("win_probability") or .5)
+                        for row in rows
+                    ),
+                    "edge_positive_probability":(
+                        mean(
+                            float(row["edge_positive_probability"])
+                            for row in rows
+                            if row.get("edge_positive_probability") is not None
+                        )
+                        if any(row.get("edge_positive_probability") is not None for row in rows)
+                        else None
+                    ),
+                    "uncertainty":mean(
+                        float(row.get("uncertainty") or 0.0)
+                        for row in rows
+                    ),
+                    "change_point_probability":mean(
+                        float(row.get("change_point_probability") or 0.0)
+                        for row in rows
+                    ),
+                    "effective_sample_size":mean(
+                        float(row.get("effective_sample_size") or 0.0)
+                        for row in rows
+                    ),
+                    "authority":"RESEARCH_CONTEXT_ONLY",
+                    "execution_eligible":False,
+                    "promotion_eligible":False,
+                }
+                pooled_values = dict(full_values)
+                pooled_values["phase2_statistical_hypothesis_context_by_model"] = {
+                    model_id:dict(pooled)
+                    for model_id in model_ids
+                }
+                pooled_feature = FeatureVector(**{**asdict(full_feature), "values": pooled_values})
+                attack_variants["POOLED_GLOBAL_CONTEXT"] = by_model(
+                    full_comp.evaluate(pooled_feature, (horizon,))
+                )
+
+                def component_feature(component):
+                    mapped={}
+                    for model_id in model_ids:
+                        raw=dict(current_stats[model_id])
+                        if component=="edge":
+                            raw["uncertainty"]=0.0
+                            raw["change_point_probability"]=0.0
+                        elif component=="change":
+                            raw["uncertainty"]=0.0
+                            raw["edge_positive_probability"]=None
+                            raw["effective_sample_size"]=0.0
+                        elif component=="uncertainty":
+                            raw["change_point_probability"]=0.0
+                            raw["edge_positive_probability"]=None
+                            raw["effective_sample_size"]=0.0
+                        mapped[model_id]=raw
+                    values=dict(full_values)
+                    values["phase2_statistical_hypothesis_context_by_model"]=mapped
+                    return FeatureVector(**{**asdict(full_feature),"values":values})
+
+                attack_variants["NEGATIVE_EDGE_ONLY"] = by_model(
+                    full_comp.evaluate(component_feature("edge"), (horizon,))
+                )
+                attack_variants["CHANGE_POINT_ONLY"] = by_model(
+                    full_comp.evaluate(component_feature("change"), (horizon,))
+                )
+                attack_variants["UNCERTAINTY_ONLY"] = by_model(
+                    full_comp.evaluate(component_feature("uncertainty"), (horizon,))
+                )
 
             if (
                 previous_statistics_by_model
@@ -878,6 +965,16 @@ def main() -> None:
                 )
 
         world_key = (observation_run_id, symbol, float(forecast_ts), int(horizon))
+
+        no_stats_map = variants.get("NO_STATISTICS", {})
+        for identity, full_forecast in full_map.items():
+            blind = no_stats_map.get(identity)
+            if blind is None:
+                continue
+            if full_forecast.abstain and not blind.abstain:
+                reason = str(full_forecast.reason or "unknown")
+                if reason.startswith("statistical_synthesis_"):
+                    statistical_veto_reasons[reason] += 1
 
         for mask_id, blind_map in variants.items():
             stats[mask_id]["testable_worlds"] += 1
@@ -985,6 +1082,11 @@ def main() -> None:
         round(mean(bayes_change_probability_samples), 6)
         if bayes_change_probability_samples else None,
     )
+
+    print()
+    print("STATISTICAL_VETO_REASONS")
+    for reason,count in sorted(statistical_veto_reasons.items()):
+        print(f"  {reason}=", count)
 
     print()
     print("STATISTICAL_ADVERSARIAL_ATTACKS")

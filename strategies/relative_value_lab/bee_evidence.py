@@ -728,3 +728,37 @@ def slow_capital_onchain_abstention(
             ),
         },
     )
+
+
+
+def external_metric_feature_evidence(feature: Any) -> BeeEvidence:
+    """Canonicalize one timestamped external statistic for Queen inspection."""
+    payload = feature.to_dict() if hasattr(feature, "to_dict") else dict(feature)
+    root = str(payload.get("evidence_root") or "")
+    if not root.startswith("sha256:"):
+        raise ValueError("external_metric_feature_evidence_root_unbound")
+    metric = str(payload.get("metric") or "UNKNOWN")
+    symbol_scope = str(payload.get("symbol_scope") or "UNKNOWN")
+    as_of_ms = int(payload.get("as_of_ms") or 0)
+    return build_bee_evidence(
+        family="EXTERNAL_STATISTICS",
+        source_kind="TIMESTAMPED_EXTERNAL_MARKET_STATISTIC",
+        source_ids=(str(payload.get("observation_id") or payload.get("feature_id") or metric),),
+        evidence_roots=(root,),
+        lineage=(
+            "hivenance.external_statistics_sensorium.v1",
+            f"external_metric.{metric.lower()}.v1",
+        ),
+        transformation_version="external_statistics.normalized_feature.v1",
+        observed_at_ms=max(0, as_of_ms - 1),
+        available_at_ms=max(0, as_of_ms - 1),
+        freshness=1.0,
+        confidence=1.0,
+        missingness=(),
+        abstention=False,
+        payload={
+            **payload,
+            "metric": metric,
+            "symbol_scope": symbol_scope,
+        },
+    )

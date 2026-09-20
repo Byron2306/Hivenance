@@ -478,3 +478,39 @@ def test_worker_transfer_candidate_gets_lower_support_than_exact():
         min_samples_for_reuse=5,
     )
     assert fb["priors"]["worker_signal_rsi_v1|300"]["support_score"] < fb["priors"]["model_a|300"]["support_score"]
+
+
+
+class SparseExactWorkerTransferStore(WorkerTransferStore):
+    def get_research_reuse_stats(self, **kwargs):
+        self.calls.append(("exact", dict(kwargs)))
+        return {
+            "sample_count":1,
+            "mean_realized_net_bps":-5.0,
+            "win_rate":0.0,
+            "latest_settled_ts":900.0,
+        }
+
+
+def test_sparse_exact_worker_evidence_backs_off_to_transfer_instead_of_stopping():
+    store=SparseExactWorkerTransferStore()
+    gov=ResearchReuseGovernor(
+        SimpleNamespace(
+            phase2_transform_reuse_enabled=True,
+            phase2_worker_transfer_reuse_enabled=True,
+            phase2_transform_reuse_min_samples=8,
+        ),
+        store,
+    )
+    row=gov.decide(
+        model_id="worker_signal_rsi_v1",
+        symbol="BTC/USD",
+        horizon_seconds=300,
+        regime_hint="trend_expansion",
+        cohort_bucket="event_driven",
+        symbol_class="major",
+        as_of_ts=1000.0,
+    )
+    assert row["decision"]=="transformed_worker_regime_candidate"
+    assert row["sample_count"]==10
+    assert [kind for kind,_ in store.calls]==["exact","worker_transfer"]

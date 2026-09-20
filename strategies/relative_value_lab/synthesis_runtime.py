@@ -20,6 +20,7 @@ from .learning_attention import obligations_from_learning
 from .learning_attention_router import LearningAttentionRouter
 from .comparison_engine import add_comparison_result
 from .statistical_synthesis import ProbabilisticSynthesisState
+from .regime_context import RegimeContext
 
 def _digest(v:Any)->str:
  raw=json.dumps(v,sort_keys=True,separators=(",",":"),default=str).encode()
@@ -53,6 +54,7 @@ class SynthesisRuntime:
          temporal_participation:Any|None=None,
          learning_receipts:Sequence[Mapping[str,Any]]=(),comparison_results:Sequence[Any]=(),
          statistical_state:ProbabilisticSynthesisState|None=None,
+         regime_context:RegimeContext|None=None,
          disabled_organs:Sequence[str]=())->SynthesisCycle:
   disabled={str(x) for x in disabled_organs};g=WorldGraph(frame);rs=[]
 
@@ -262,6 +264,48 @@ class SynthesisRuntime:
     change_point_probability=statistical_state.change_point_probability,
    )
 
+  regime_nodes=[]
+  if regime_context is None or "regime_context" in disabled:
+   receipt(
+    "regime_context",
+    "DISABLED" if "regime_context" in disabled else "AVAILABLE_NOT_INVOKED",
+   )
+  else:
+   if int(regime_context.as_of_ms)>int(now_ms):
+    raise ValueError("regime_context_from_future")
+   roots=tuple(sorted(set(
+    str(root)
+    for root in tuple(regime_context.provenance.get("evidence_roots") or ())
+    if str(root).startswith("sha256:")
+   )))
+   node=g.add_node(
+    organ_id="REGIME_CONTEXT",
+    family="REGIME_CONTEXT",
+    created_at_ms=now_ms,
+    evidence_roots=roots,
+    lineage_id=regime_context.context_id,
+    transformation_id=regime_context.schema,
+    payload=regime_context.to_dict(),
+    freshness=1.0,
+    uncertainty=max(
+     float(regime_context.posterior_entropy or 0.0),
+     float(regime_context.disagreement_score),
+     float(regime_context.change_point_probability),
+    ),
+    synthetic=False,
+   )
+   regime_nodes.append(node)
+   receipt(
+    "regime_context",
+    "INVOKED",
+    roots,
+    regime_nodes,
+    context_id=regime_context.context_id,
+    dominant_posterior_regime=regime_context.dominant_posterior_regime,
+    disagreement_score=regime_context.disagreement_score,
+    change_point_probability=regime_context.change_point_probability,
+   )
+
   compared=[]
   if "comparison_engine" in disabled:
    receipt("comparison_engine","DISABLED")
@@ -270,7 +314,7 @@ class SynthesisRuntime:
    receipt("comparison_engine","INVOKED" if compared else "AVAILABLE_NOT_INVOKED",
            (r for n in compared for r in n.evidence_roots),compared,count=len(compared))
 
-  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON","STATISTICAL_SYNTHESIS"))
+  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON","STATISTICAL_SYNTHESIS","REGIME_CONTEXT"))
   brief=learning_brief(view)
   learning_context=dict(brief.to_dict())
   learning_context["probabilistic_synthesis"]=(

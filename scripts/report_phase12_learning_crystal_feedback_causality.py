@@ -463,8 +463,8 @@ def compare_maps(
             continue
 
         if b is None:
-            # Only NO_WORKERS is allowed to remove model identities.
-            if mask_id != "NO_WORKERS":
+            # Worker ablations may intentionally remove one or all worker identities.
+            if mask_id != "NO_WORKERS" and not str(mask_id).startswith("NO_WORKER_"):
                 raise ValueError("forecast_identity_drift:" + repr((mask_id, identity)))
             b_net = 0.0
             b_decision = (True, "ABSTAIN")

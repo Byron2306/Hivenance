@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 from agents.horizon_context import HorizonContext
 from .edge_ecology import EdgeEcologySnapshot
 from .world_graph import WorldGraph, WorldGraphNode
+from .bee_evidence import BeeEvidence
 
 
 def _digest(payload: Any) -> str:
@@ -117,4 +118,34 @@ def add_temporal_participation(
         payload=evidence.to_dict(),
         freshness=freshness,
         uncertainty=uncertainty,
+    )
+
+
+def add_bee_evidence(
+    graph: WorldGraph,
+    *,
+    evidence: BeeEvidence,
+    created_at_ms: int | None = None,
+) -> WorldGraphNode:
+    """Admit canonical Phase-5 BeeEvidence into the current WorldGraph.
+
+    Evidence identity and roots are preserved. Different transformations sharing
+    the same roots therefore remain visibly dependent to Queen/Harmony.
+    """
+    created = (
+        int(evidence.available_at_ms)
+        if created_at_ms is None
+        else int(created_at_ms)
+    )
+
+    return graph.add_node(
+        organ_id="bee_evidence",
+        family=str(evidence.family),
+        created_at_ms=created,
+        evidence_roots=evidence.evidence_roots,
+        lineage_id="|".join(evidence.lineage),
+        transformation_id=str(evidence.transformation_version),
+        payload=evidence.to_dict(),
+        freshness=float(evidence.freshness),
+        uncertainty=max(0.0, min(1.0, 1.0 - float(evidence.confidence))),
     )

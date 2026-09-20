@@ -1,3 +1,4 @@
+import pytest
 from agents.horizon_context import HorizonContextAgent
 from strategies.relative_value_lab.edge_ecology import EdgeEcology
 from strategies.relative_value_lab.temporal_participation_bee import (
@@ -70,15 +71,23 @@ def test_existing_senses_and_temporal_bee_enter_same_queen_view():
     evidence = bee.observe(observed_at_ms=base, volume=180, history=history)
     add_temporal_participation(graph, evidence=evidence, created_at_ms=base)
 
-    view = graph.queen_view(
-        created_at_ms=base,
-        expected_families=("HORIZON", "FLOW", "VOLATILITY", "TEMPORAL_PARTICIPATION", "LIQUIDITY"),
-    )
-    assert "HORIZON" in view.families
-    assert "FLOW" in view.families
-    assert "TEMPORAL_PARTICIPATION" in view.families
-    assert view.missing_expected_families == ("LIQUIDITY",)
-    assert view.execution_eligible is False
+    # Phase 5 tightened Queen's boundary: these legacy sense adapters may
+    # still construct graph testimony, but major evidence families cannot
+    # enter Queen except through canonical BeeEvidence.
+    with pytest.raises(
+        ValueError,
+        match="queen_noncanonical_phase5_evidence",
+    ):
+        graph.queen_view(
+            created_at_ms=base,
+            expected_families=(
+                "HORIZON",
+                "FLOW",
+                "VOLATILITY",
+                "TEMPORAL_PARTICIPATION",
+                "LIQUIDITY",
+            ),
+        )
 
 
 def test_temporal_bee_uses_only_prior_same_hour_history():
@@ -97,3 +106,73 @@ def test_temporal_bee_uses_only_prior_same_hour_history():
     assert evidence.historical_same_hour_n == 6
     assert evidence.volume_ratio_to_same_hour_median == 2.0
     assert evidence.activity_state == "PARTICIPATION_ELEVATED"
+
+
+def test_worker_realized_move_uses_only_backward_closes():
+    from strategies.relative_value_lab.g0_live_evidence import _worker_realized_move_bps
+
+    ws = {
+        "closes": [100, 101, 102, 103, 104, 105],
+    }
+
+    move = _worker_realized_move_bps(ws, 5)
+
+    assert move == pytest.approx(500.0)
+
+
+def test_worker_realized_move_refuses_insufficient_history():
+    from strategies.relative_value_lab.g0_live_evidence import _worker_realized_move_bps
+
+    ws = {
+        "closes": [100, 101, 102],
+    }
+
+    assert _worker_realized_move_bps(ws, 5) is None
+
+
+def test_temporal_move_normalization_ignores_future_history():
+    from strategies.relative_value_lab.temporal_participation_bee import (
+        ParticipationObservation,
+        TemporalParticipationBee,
+    )
+
+    base = 1_700_000_000_000
+    day = 86_400_000
+
+    prior = [
+        ParticipationObservation(
+            observed_at_ms=base - day * i,
+            volume=100,
+            realized_move_bps=10.0,
+        )
+        for i in range(1, 7)
+    ]
+
+    future = ParticipationObservation(
+        observed_at_ms=base + day,
+        volume=999999,
+        realized_move_bps=999999.0,
+    )
+
+    bee = TemporalParticipationBee()
+
+    without_future = bee.observe(
+        observed_at_ms=base,
+        volume=200,
+        history=prior,
+        realized_move_bps=20.0,
+    )
+
+    with_future = bee.observe(
+        observed_at_ms=base,
+        volume=200,
+        history=prior + [future],
+        realized_move_bps=20.0,
+    )
+
+    assert without_future.move_ratio_to_same_hour_median == pytest.approx(2.0)
+    assert with_future.move_ratio_to_same_hour_median == pytest.approx(2.0)
+    assert (
+        with_future.move_ratio_to_same_hour_median
+        == without_future.move_ratio_to_same_hour_median
+    )

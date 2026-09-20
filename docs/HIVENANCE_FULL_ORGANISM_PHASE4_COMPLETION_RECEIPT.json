@@ -1,0 +1,38 @@
+{
+  "schema": "hivenance_full_organism_phase4_completion_receipt_v1",
+  "phase": 4,
+  "phase_name": "CoinSelector and Selection-Regret Truth",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "verified_run_id": "obs-1789849918096-c13d3952",
+  "maturation_protocol": "FROZEN_SYMBOL_FOLLOW_V1",
+  "settlement_schema": "hivenance_selector_opportunity_settlement_v3",
+  "settlement_clock": "FROZEN_COHORT_FOLLOW_CUSTODY_TS",
+  "acceptance": {
+    "frozen_n": 48,
+    "selected_n": 16,
+    "rejected_n": 32,
+    "settled_n": 48,
+    "coinselector_ablation_changed_n": 16,
+    "selected_future_rows": 16,
+    "rejected_future_rows": 32,
+    "selected_minus_rejected_bps": 19.784206399650742,
+    "selector_minus_blind_bps": 7.203186147485354,
+    "ranking_regret_bps": 29.499839626106038,
+    "reasons": [],
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0
+  },
+  "interpretation": {
+    "selector_improved_opportunity_set": true,
+    "selector_proved_profitability": false,
+    "note": "Selected opportunities were less negative than rejected opportunities. Phase 4 establishes prospective selection utility, not positive economic edge."
+  },
+  "next_phase": {
+    "phase": 5,
+    "name": "Complete Evidence Bee Colony",
+    "gate": "No Phase 6 work until major evidence families enter through the canonical BeeEvidence adapter with explicit provenance and missingness."
+  },
+  "authority": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+}

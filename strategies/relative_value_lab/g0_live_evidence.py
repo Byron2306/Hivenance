@@ -89,30 +89,78 @@ def horizon_from_feature(feature:Any)->HorizonContext|None:
   readiness={"micro":False,"meso":r2 is not None or r5 is not None,"macro_15m":r15 is not None,
              "macro_1h":r1h is not None,"macro_24h_ticker":r24 is not None})
 
+def _worker_realized_move_bps(worker_series:dict[str,Any],short_window:int=5)->float|None:
+ closes=worker_series.get("closes") or []
+ try:
+  xs=[float(x) for x in closes if x is not None]
+ except Exception:
+  return None
+ window=max(1,int(short_window))
+ if len(xs)<=window:
+  return None
+ start=xs[-(window+1)]
+ end=xs[-1]
+ if start<=0:
+  return None
+ return ((end-start)/start)*10000.0
+
+
 def temporal_from_store(data_store:Any,feature:Any)->Any|None:
  values=feature.values if isinstance(feature.values,dict) else {}
  ws=values.get("worker_series") if isinstance(values.get("worker_series"),dict) else {}
  vols=ws.get("volumes") or []
  if not vols:return None
- current=float(vols[-1]);history=[]
+
+ current=float(vols[-1])
+ current_move=_worker_realized_move_bps(ws,5)
+ history=[]
+
  try:
   with data_store._lock:
-   cur=data_store.conn.execute("SELECT ts,payload FROM observation_snapshots WHERE symbol=? AND ts<? ORDER BY ts DESC LIMIT 500",
-    (str(feature.symbol),float(feature.timestamp_ms)/1000.0))
+   cur=data_store.conn.execute(
+    "SELECT ts,payload FROM observation_snapshots WHERE symbol=? AND ts<? ORDER BY ts DESC LIMIT 500",
+    (str(feature.symbol),float(feature.timestamp_ms)/1000.0)
+   )
    rows=cur.fetchall()
- except Exception:return None
+ except Exception:
+  return None
+
  for ts,raw in rows:
-  try:p=json.loads(raw or "{}")
-  except Exception:continue
-  fv=((p.get("values") or {}).get("feature_vector") if isinstance(p.get("values"),dict) else None)
-  if not isinstance(fv,dict):continue
+  try:
+   p=json.loads(raw or "{}")
+  except Exception:
+   continue
+
+  fv=((p.get("values") or {}).get("feature_vector")
+      if isinstance(p.get("values"),dict) else None)
+  if not isinstance(fv,dict):
+   continue
+
   iv=fv.get("values") if isinstance(fv.get("values"),dict) else {}
   iws=iv.get("worker_series") if isinstance(iv.get("worker_series"),dict) else {}
-  xs=iws.get("volumes") or []
-  if xs:history.append(ParticipationObservation(int(float(ts)*1000),float(xs[-1]),None))
- if not history:return None
+  volumes=iws.get("volumes") or []
+  if not volumes:
+   continue
+
+  historical_move=_worker_realized_move_bps(iws,5)
+
+  history.append(
+   ParticipationObservation(
+    int(float(ts)*1000),
+    float(volumes[-1]),
+    historical_move,
+   )
+  )
+
+ if not history:
+  return None
+
  return TemporalParticipationBee(min_same_hour_samples=5).observe(
-  observed_at_ms=int(feature.timestamp_ms),volume=current,history=history,realized_move_bps=None)
+  observed_at_ms=int(feature.timestamp_ms),
+  volume=current,
+  history=history,
+  realized_move_bps=current_move,
+ )
 
 
 def latest_shadow_learning(data_store:Any)->tuple[dict[str,Any],...]:

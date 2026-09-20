@@ -18,6 +18,70 @@ def _digest(payload: Any) -> str:
     return "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
+PHASE5_MAJOR_EVIDENCE_FAMILIES = {
+    "TEMPORAL_PARTICIPATION",
+    "FLOW",
+    "LIQUIDITY",
+    "VOLATILITY",
+    "CROSS_MARKET",
+    "PATH_GEOMETRY",
+    "REGIME",
+    "DERIVATIVES_CARRY",
+    "INFORMATION_ARRIVAL",
+    "SLOW_CAPITAL_ONCHAIN",
+}
+
+
+def _validate_phase5_queen_evidence(nodes: Sequence["WorldGraphNode"]) -> None:
+    """Fail closed if a Phase-5 evidence family bypasses BeeEvidence."""
+
+    violations = []
+
+    for node in nodes:
+        if node.synthetic:
+            continue
+
+        if node.family not in PHASE5_MAJOR_EVIDENCE_FAMILIES:
+            continue
+
+        payload = node.payload if isinstance(node.payload, Mapping) else {}
+
+        if node.organ_id != "bee_evidence":
+            violations.append(
+                f"{node.family}:noncanonical_organ:{node.organ_id}"
+            )
+            continue
+
+        if payload.get("schema") != "hivenance_bee_evidence_v1":
+            violations.append(
+                f"{node.family}:noncanonical_schema:"
+                f"{payload.get('schema')}"
+            )
+            continue
+
+        if payload.get("family") != node.family:
+            violations.append(
+                f"{node.family}:payload_family_mismatch:"
+                f"{payload.get('family')}"
+            )
+
+        if payload.get("execution_eligible") is not False:
+            violations.append(
+                f"{node.family}:execution_authority_not_false"
+            )
+
+        if payload.get("promotion_eligible") is not False:
+            violations.append(
+                f"{node.family}:promotion_authority_not_false"
+            )
+
+    if violations:
+        raise ValueError(
+            "queen_noncanonical_phase5_evidence:"
+            + "|".join(sorted(violations))
+        )
+
+
 EDGE_TYPES = {
     "DERIVED_FROM",
     "COMPARES_WITH",
@@ -236,6 +300,12 @@ class WorldGraph:
         uncertain_above: float = 0.70,
     ) -> QueenView:
         nodes = tuple(sorted(self._nodes.values(), key=lambda n: n.node_id))
+
+        # Phase-5 exit gate:
+        # major evidence families may reach Queen only through canonical
+        # BeeEvidence envelopes.
+        _validate_phase5_queen_evidence(nodes)
+
         edges = tuple(sorted(self._edges.values(), key=lambda e: e.edge_id))
         families = tuple(sorted({n.family for n in nodes if not n.synthetic}))
         expected = {str(x) for x in expected_families}

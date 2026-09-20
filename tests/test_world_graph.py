@@ -1,4 +1,6 @@
+from strategies.relative_value_lab.bee_evidence import build_bee_evidence
 from strategies.relative_value_lab.world_graph import WorldGraph
+from strategies.relative_value_lab.world_graph_adapters import add_bee_evidence
 from strategies.relative_value_lab.world_score import CanonicalWorldScore, ScoreObservation
 
 
@@ -23,16 +25,23 @@ def _frame():
 def test_world_graph_preserves_world_binding_and_queen_view():
     frame = _frame()
     graph = WorldGraph(frame)
-    flow = graph.add_node(
-        organ_id="edge_ecology",
+    flow_evidence = build_bee_evidence(
         family="FLOW",
-        created_at_ms=1_003,
-        evidence_roots=["sha256:" + "b" * 64],
-        lineage_id="flow-v1",
-        transformation_id="flow-imbalance-v1",
-        payload={"state": "FLOW_MIXED"},
+        source_kind="PUBLIC_TRADE_OR_BOOK_DELTA_FLOW",
+        source_ids=("flow-test-1",),
+        evidence_roots=("sha256:" + "b" * 64,),
+        lineage=("flow-v1",),
+        transformation_version="flow-imbalance-v1",
+        observed_at_ms=1_000,
+        available_at_ms=1_003,
         freshness=0.9,
-        uncertainty=0.2,
+        confidence=0.8,
+        payload={"state": "FLOW_MIXED"},
+    )
+    flow = add_bee_evidence(
+        graph,
+        evidence=flow_evidence,
+        created_at_ms=1_003,
     )
     horizon = graph.add_node(
         organ_id="horizon",

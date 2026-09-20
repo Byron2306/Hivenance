@@ -1,0 +1,108 @@
+{
+  "schema": "hivenance_full_organism_phase5_completion_receipt_v1",
+  "phase": 5,
+  "phase_name": "Complete Evidence Bee Colony",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "canonical_evidence_schema": "hivenance_bee_evidence_v1",
+  "families": {
+    "TEMPORAL_PARTICIPATION": {
+      "status": "CANONICAL",
+      "realized_move_normalization": true,
+      "timestamp_safe": true
+    },
+    "FLOW": {
+      "status": "CANONICAL_PRESENT_OR_ABSTAIN",
+      "true_flow_required": true,
+      "book_imbalance_proxy_not_promoted_to_true_flow": true
+    },
+    "LIQUIDITY": {
+      "status": "CANONICAL",
+      "inputs": [
+        "spread_bps",
+        "depth_usd_25bps",
+        "book_imbalance"
+      ]
+    },
+    "VOLATILITY": {
+      "status": "CANONICAL",
+      "inputs": [
+        "realized_volatility_fast",
+        "realized_volatility_baseline",
+        "volatility_expansion"
+      ]
+    },
+    "CROSS_MARKET": {
+      "status": "CANONICAL_PRESENT_OR_ABSTAIN",
+      "comparison_engine_reused": true,
+      "peer_roots_preserved": true
+    },
+    "PATH_GEOMETRY": {
+      "status": "CANONICAL",
+      "timestamp_safe": true,
+      "features": [
+        "path_efficiency",
+        "flip_rate",
+        "range_bps",
+        "range_position",
+        "acceleration_bps",
+        "path_length_bps",
+        "net_displacement_bps"
+      ]
+    },
+    "REGIME": {
+      "status": "CANONICAL",
+      "timestamp_safe": true,
+      "component_roots_exposed": true,
+      "independent_root_minting_forbidden": true
+    },
+    "DERIVATIVES_CARRY": {
+      "status": "CANONICAL_WHEN_TIMESTAMP_CORRECT_PUBLIC_DATA_EXISTS",
+      "manual_funding_inputs_rejected_as_market_evidence": true
+    },
+    "INFORMATION_ARRIVAL": {
+      "status": "CANONICAL_ABSTAIN",
+      "reason": "timestamp_proven_external_information_feed_unavailable",
+      "internal_event_spine_not_treated_as_market_information_arrival": true
+    },
+    "SLOW_CAPITAL_ONCHAIN": {
+      "status": "CANONICAL_ABSTAIN",
+      "reason": "explicit_slow_latency_timestamp_provenance_unavailable",
+      "existing_dex_context_not_promoted_to_slow_capital_evidence": true
+    }
+  },
+  "canonical_contract": {
+    "source_kind": true,
+    "source_ids": true,
+    "evidence_roots": true,
+    "lineage": true,
+    "transformation_version": true,
+    "observed_at": true,
+    "available_at": true,
+    "freshness": true,
+    "confidence": true,
+    "missingness": true,
+    "abstention": true,
+    "authority": true
+  },
+  "queen_gate": {
+    "major_evidence_families_require_bee_evidence": true,
+    "private_shape_admission_refused": true,
+    "legacy_major_family_nodes_refused_at_queen_boundary": true,
+    "horizon_and_learning_remain_downstream_cognition_layers": true
+  },
+  "authority": {
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0,
+    "mode": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+  },
+  "exit_condition": {
+    "no_major_evidence_family_enters_queen_through_ad_hoc_private_shape": true
+  },
+  "next_phase": {
+    "phase": 6,
+    "name": "Regime, Workers, Crystals and Existing Phoenix Intelligence",
+    "gate": "Do not allow existing Phoenix cognition, workers, models or crystals to bypass the canonical WorldGraph/Hypothesis Envelope."
+  }
+}

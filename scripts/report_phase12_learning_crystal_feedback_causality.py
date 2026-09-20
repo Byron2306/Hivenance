@@ -25,6 +25,7 @@ from strategies.relative_value_lab.historical_probabilistic_reconstruction impor
     HistoricalStatisticsReconstructor,
     bind_regime_context,
 )
+from strategies.relative_value_lab.worker_component_census import classify_worker_component
 
 DB = "data/swarm_data.db"
 MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS", "NO_STATISTICS", "NO_BAYES")
@@ -1228,6 +1229,11 @@ def main() -> None:
 
     print()
     print("WORKER_COMPONENT_CAUSALITY")
+    worker_component_receipts = {}
+    worker_component_model_ids = {
+        **WORKER_COMPONENT_MASKS,
+        "NO_WORKER_COALITION":"worker_coalition_meta_v1",
+    }
     for mask_id in (*WORKER_COMPONENT_MASKS.keys(), "NO_WORKER_COALITION"):
         per_world = {
             key: mean(values)
@@ -1250,8 +1256,26 @@ def main() -> None:
         print("  harmful_changes=", worker_component_stats[mask_id]["harmful_changes"])
         print("  reference_minus_ablation_mean_delta_bps=", mean(per_world.values()) if per_world else None)
         print("  dependence_adjusted_worlds=", len(cohorts))
-        print("  positive_cohorts=", sum(1 for x in cohorts.values() if x>0))
-        print("  negative_cohorts=", sum(1 for x in cohorts.values() if x<0))
+        positive_cohorts = sum(1 for x in cohorts.values() if x>0)
+        negative_cohorts = sum(1 for x in cohorts.values() if x<0)
+        print("  positive_cohorts=", positive_cohorts)
+        print("  negative_cohorts=", negative_cohorts)
+        receipt = classify_worker_component(
+            mask_id=mask_id,
+            model_id=worker_component_model_ids[mask_id],
+            testable_worlds=int(worker_component_stats[mask_id]["testable_worlds"]),
+            changed_worlds=int(worker_component_stats[mask_id]["changed_worlds"]),
+            decision_changes=int(worker_component_stats[mask_id]["decision_changes"]),
+            helpful_changes=int(worker_component_stats[mask_id]["helpful_changes"]),
+            harmful_changes=int(worker_component_stats[mask_id]["harmful_changes"]),
+            mean_delta_bps=(mean(per_world.values()) if per_world else None),
+            dependence_adjusted_worlds=len(cohorts),
+            positive_cohorts=positive_cohorts,
+            negative_cohorts=negative_cohorts,
+        )
+        worker_component_receipts[mask_id] = receipt.to_dict()
+        print("  classification=", receipt.classification)
+        print("  recommendation=", receipt.recommendation)
 
     print()
     print("STATISTICAL_VETO_REASONS")
@@ -1369,6 +1393,7 @@ def main() -> None:
                 "NO_STATISTICS": int(stats["NO_STATISTICS"]["testable_worlds"]),
                 "NO_BAYES": int(stats["NO_BAYES"]["testable_worlds"]),
             },
+            "worker_component_causality": worker_component_receipts,
         }
         with open(args.census_json_out, "w", encoding="utf-8") as fh:
             json.dump(bundle, fh, sort_keys=True, indent=2)

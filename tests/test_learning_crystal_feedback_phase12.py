@@ -393,3 +393,88 @@ def test_learning_crystal_is_reused_only_on_exact_applicability_key():
     )
     assert third["priors"]["model_a|300"]["crystal_reused"] is False
     assert third["crystal_reuse_count"] == 0
+
+
+
+class WorkerTransferStore:
+    def __init__(self):
+        self.calls=[]
+        self.receipts=[]
+
+    def get_research_reuse_stats(self, **kwargs):
+        self.calls.append(("exact", dict(kwargs)))
+        return {
+            "sample_count":0,
+            "mean_realized_net_bps":None,
+            "win_rate":None,
+            "latest_settled_ts":None,
+        }
+
+    def get_worker_transfer_reuse_stats(self, **kwargs):
+        self.calls.append(("worker_transfer", dict(kwargs)))
+        return {
+            "match_type":"worker_regime",
+            "sample_count":10,
+            "mean_realized_net_bps":12.0,
+            "win_rate":.7,
+            "latest_settled_ts":900.0,
+        }
+
+    def persist_research_reuse_receipt(self, row):
+        self.receipts.append(dict(row))
+        return True
+
+
+def test_worker_transfer_reuse_stays_same_model_horizon_and_point_in_time():
+    store=WorkerTransferStore()
+    gov=ResearchReuseGovernor(
+        SimpleNamespace(
+            phase2_transform_reuse_enabled=True,
+            phase2_worker_transfer_reuse_enabled=True,
+            phase2_transform_reuse_min_samples=8,
+        ),
+        store,
+    )
+    row=gov.decide(
+        model_id="worker_signal_rsi_v1",
+        symbol="BTC/USD",
+        horizon_seconds=300,
+        regime_hint="trend_expansion",
+        cohort_bucket="event_driven",
+        symbol_class="major",
+        as_of_ts=1000.0,
+    )
+    assert row["decision"]=="transformed_worker_regime_candidate"
+    transfer=[payload for kind,payload in store.calls if kind=="worker_transfer"][0]
+    assert transfer["model_id"]=="worker_signal_rsi_v1"
+    assert transfer["horizon_seconds"]==300
+    assert transfer["regime_hint"]=="trend_expansion"
+    assert transfer["cutoff_ts"]==1000.0
+
+
+def test_worker_transfer_candidate_gets_lower_support_than_exact():
+    gov = FakeReuseGovernor({
+        ("worker_signal_rsi_v1", 300): {
+            "decision": "transformed_worker_regime_candidate",
+            "sample_count": 10,
+            "mean_realized_net_bps": 12.0,
+            "win_rate": 0.7,
+            "latest_settled_ts": 900.0,
+        },
+        ("model_a", 300): {
+            "decision": "exact_reuse_candidate",
+            "sample_count": 10,
+            "mean_realized_net_bps": 12.0,
+            "win_rate": 0.7,
+            "latest_settled_ts": 900.0,
+        },
+    })
+    fb=compile_learning_feedback(
+        feature(),
+        model_ids=["worker_signal_rsi_v1","model_a"],
+        horizons=[300],
+        reuse_governor=gov,
+        max_age_sec=500.0,
+        min_samples_for_reuse=5,
+    )
+    assert fb["priors"]["worker_signal_rsi_v1|300"]["support_score"] < fb["priors"]["model_a|300"]["support_score"]

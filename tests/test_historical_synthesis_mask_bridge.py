@@ -12,6 +12,11 @@ from strategies.relative_value_lab.historical_synthesis_mask_bridge import (
 from strategies.relative_value_lab.synthesis_runtime import (
     SynthesisRuntime,
 )
+from strategies.relative_value_lab.statistical_synthesis import (
+    StatisticalEvidence,
+    StatisticsBee,
+    SynthesisBee,
+)
 from strategies.relative_value_lab.world_score import (
     CanonicalWorldScore,
     ScoreObservation,
@@ -274,3 +279,46 @@ def test_mask_bridge_never_grants_authority():
         run.cycle.execution_eligible
         is False
     )
+
+
+
+def test_no_statistics_disables_statistics_bee_without_changing_world():
+    base=inputs()
+    bee=StatisticsBee()
+    bee.ingest(
+        StatisticalEvidence(
+            evidence_id="stat-1",
+            scope="exact|m|BTC/USD|10|TREND",
+            observed_at_ms=1,
+            available_at_ms=5,
+            realized_bps=4.0,
+            positive=True,
+            evidence_root="sha256:"+"e"*64,
+        )
+    )
+    base["statistical_state"]=SynthesisBee().synthesize(
+        exact=bee.snapshot(
+            scope="exact|m|BTC/USD|10|TREND",
+            as_of_ms=10,
+        )
+    )
+
+    full=run_masked_synthesis(
+        runtime=SynthesisRuntime(),
+        mask=historical_mask_plan("FULL_HIVE"),
+        runtime_inputs=base,
+    )
+    masked=run_masked_synthesis(
+        runtime=SynthesisRuntime(),
+        mask=historical_mask_plan("NO_STATISTICS"),
+        runtime_inputs=base,
+    )
+
+    assert "STATISTICAL_SYNTHESIS" in families(full)
+    assert "STATISTICAL_SYNTHESIS" not in families(masked)
+    receipt=next(
+        x for x in masked.cycle.organ_receipts
+        if x.organ_id=="statistics_bee"
+    )
+    assert receipt.state=="DISABLED"
+    assert full.cycle.world_state_hash==masked.cycle.world_state_hash

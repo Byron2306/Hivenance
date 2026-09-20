@@ -1,0 +1,80 @@
+{
+  "schema": "hivenance_full_organism_phase12_completion_receipt_v1",
+  "phase": 12,
+  "phase_name": "Full Organism Historical Causal Prosecution",
+  "status": "PASS",
+  "branch": "phase12-learning-causality-audit",
+  "closure": {
+    "blockers": [],
+    "unresolved_masks": [],
+    "missing_attacks": [],
+    "failed_attacks": [],
+    "survivor_ids": [
+      "statistics_bee",
+      "strategy_workers"
+    ],
+    "paired_masks": [
+      "NO_BAYES",
+      "NO_COMPARISON",
+      "NO_CRYSTALS",
+      "NO_LEARNING",
+      "NO_LIQUIDITY",
+      "NO_STATISTICS",
+      "NO_TEMPORAL_PARTICIPATION",
+      "NO_WORKERS"
+    ],
+    "control_masks_prosecuted": [
+      "DETERMINISTIC_RANDOM",
+      "NO_TRADE",
+      "SIMPLE_MOMENTUM",
+      "SIMPLE_REVERSION"
+    ],
+    "explicit_unavailable_masks": [
+      "NO_CEX_ORACLE",
+      "NO_COIN_SELECTOR",
+      "NO_CONFORMAL",
+      "NO_CROSS_MARKET",
+      "NO_EXTERNAL",
+      "NO_FLOW",
+      "NO_LONG_HORIZON_LATTICE",
+      "NO_METABOLISM",
+      "NO_ML",
+      "NO_MYSTIQUE",
+      "NO_POLLEN",
+      "NO_QUEEN",
+      "NO_QUORUM",
+      "NO_REGIME",
+      "NO_TEMPORAL_TEXTURE",
+      "NO_VNS_PHRASE",
+      "NO_VOLATILITY"
+    ],
+    "measured_adversarial_attacks": [
+      "SHUFFLE_EVIDENCE",
+      "DELAY_EVIDENCE",
+      "DUPLICATE_LINEAGE",
+      "FALSE_UNISON",
+      "STALE_WORLD_BINDING",
+      "MISSING_VOICE",
+      "ROOT_SUBSTITUTION",
+      "TIME_SHIFT_PLACEBO"
+    ]
+  },
+  "findings": {
+    "statistics_bee": "HISTORICALLY_USEFUL_CANDIDATE",
+    "strategy_workers": "HISTORICALLY_MIXED_WITH_COMPONENT_LEVEL_VARIATION",
+    "bayesian_regime_filter": "DECISION_INERT_AT_CURRENT_HYPOTHESIS_BOUNDARY_CONTEXT_RETAINED",
+    "learning_memory": "MEMORY_FORMING_BUT_NO_CAUSAL_DECISION_EFFECT_YET",
+    "crystals": "GENERATED_BUT_NOT_REUSED_YET",
+    "comparison_engine": "INVOKED_NO_CAUSAL_EFFECT_ON_TESTED_WORLDS",
+    "liquidity": "INVOKED_NO_CAUSAL_EFFECT_ON_TESTED_WORLDS",
+    "temporal_participation_bee": "INVOKED_NO_CAUSAL_EFFECT_ON_TESTED_WORLDS"
+  },
+  "boundaries": {
+    "historical_only": true,
+    "prospective_usefulness_proved": false,
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "unavailable_masks_mean_useless": false,
+    "unavailable_masks_roll_to_phase13_shadow_measurement": true
+  }
+}

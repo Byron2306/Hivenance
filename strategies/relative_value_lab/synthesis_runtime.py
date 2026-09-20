@@ -55,6 +55,9 @@ class SynthesisRuntime:
          learning_receipts:Sequence[Mapping[str,Any]]=(),comparison_results:Sequence[Any]=(),
          statistical_state:ProbabilisticSynthesisState|None=None,
          regime_context:RegimeContext|None=None,
+         external_context:Mapping[str,Any]|None=None,
+         calibration_context:Mapping[str,Any]|None=None,
+         ml_challengers:Sequence[Any]=(),
          disabled_organs:Sequence[str]=())->SynthesisCycle:
   disabled={str(x) for x in disabled_organs};g=WorldGraph(frame);rs=[]
 
@@ -306,6 +309,92 @@ class SynthesisRuntime:
     change_point_probability=regime_context.change_point_probability,
    )
 
+  external_nodes=[]
+  if external_context is None or "external_statistics" in disabled:
+   receipt(
+    "external_statistics",
+    "DISABLED" if "external_statistics" in disabled else "AVAILABLE_NOT_INVOKED",
+   )
+  else:
+   ext=dict(external_context)
+   ext_roots=tuple(sorted({
+    str(root)
+    for item in tuple(ext.get("features") or ())
+    if isinstance(item,Mapping)
+    for root in (item.get("evidence_root"),)
+    if root and str(root).startswith("sha256:")
+   }))
+   node=g.add_node(
+    organ_id="EXTERNAL_STATISTICS",
+    family="EXTERNAL_STATISTICS",
+    created_at_ms=now_ms,
+    evidence_roots=ext_roots,
+    lineage_id=str(ext.get("sensorium_id") or "external_statistics"),
+    transformation_id=str(ext.get("schema") or "hivenance_external_statistics_context_v1"),
+    payload=ext,
+    freshness=1.0,
+    uncertainty=max(0.0,min(1.0,float(ext.get("uncertainty") or 0.0))),
+    synthetic=False,
+   )
+   external_nodes.append(node)
+   receipt("external_statistics","INVOKED",ext_roots,external_nodes)
+
+  calibration_nodes=[]
+  if calibration_context is None or "calibration_context" in disabled:
+   receipt(
+    "calibration_context",
+    "DISABLED" if "calibration_context" in disabled else "AVAILABLE_NOT_INVOKED",
+   )
+  else:
+   cal=dict(calibration_context)
+   cal_roots=tuple(sorted({
+    str(root) for root in tuple(cal.get("evidence_roots") or ())
+    if str(root).startswith("sha256:")
+   }))
+   node=g.add_node(
+    organ_id="CALIBRATION_CONTEXT",
+    family="CALIBRATION_CONTEXT",
+    created_at_ms=now_ms,
+    evidence_roots=cal_roots,
+    lineage_id=str(cal.get("health_id") or cal.get("interval_id") or "calibration_context"),
+    transformation_id=str(cal.get("schema") or "hivenance_calibration_context_v1"),
+    payload=cal,
+    freshness=1.0,
+    uncertainty=max(
+     0.0,min(1.0,float(cal.get("overall_drift_score") or cal.get("coverage_error") or 0.0))
+    ),
+    synthetic=False,
+   )
+   calibration_nodes.append(node)
+   receipt("calibration_context","INVOKED",cal_roots,calibration_nodes)
+
+  ml_nodes=[]
+  if "ml_challenger" in disabled:
+   receipt("ml_challenger","DISABLED")
+  elif not ml_challengers:
+   receipt("ml_challenger","AVAILABLE_NOT_INVOKED")
+  else:
+   ml_roots=[]
+   for challenger in ml_challengers:
+    payload=challenger.to_dict() if hasattr(challenger,"to_dict") else dict(challenger)
+    root=str(payload.get("evidence_root") or "")
+    roots=(root,) if root.startswith("sha256:") else ()
+    ml_roots.extend(roots)
+    node=g.add_node(
+     organ_id="ML_CHALLENGER",
+     family="ML_CHALLENGER",
+     created_at_ms=now_ms,
+     evidence_roots=roots,
+     lineage_id=str(payload.get("forecast_id") or payload.get("receipt_id") or payload.get("model_id") or "ml_challenger"),
+     transformation_id=str(payload.get("schema") or "hivenance_ml_challenger_context_v1"),
+     payload=payload,
+     freshness=max(0.0,min(1.0,float(payload.get("freshness") or 1.0))),
+     uncertainty=max(0.0,min(1.0,float(payload.get("uncertainty_pressure") or payload.get("synthesis_uncertainty") or 0.0))),
+     synthetic=False,
+    )
+    ml_nodes.append(node)
+   receipt("ml_challenger","INVOKED",ml_roots,ml_nodes,count=len(ml_nodes))
+
   compared=[]
   if "comparison_engine" in disabled:
    receipt("comparison_engine","DISABLED")
@@ -314,7 +403,7 @@ class SynthesisRuntime:
    receipt("comparison_engine","INVOKED" if compared else "AVAILABLE_NOT_INVOKED",
            (r for n in compared for r in n.evidence_roots),compared,count=len(compared))
 
-  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON","STATISTICAL_SYNTHESIS","REGIME_CONTEXT"))
+  view=g.queen_view(created_at_ms=now_ms,expected_families=("HORIZON","FLOW","LIQUIDITY","TEMPORAL_PARTICIPATION","LEARNING","COMPARISON","STATISTICAL_SYNTHESIS","REGIME_CONTEXT","EXTERNAL_STATISTICS","CALIBRATION_CONTEXT","ML_CHALLENGER"))
   brief=learning_brief(view)
   learning_context=dict(brief.to_dict())
   learning_context["probabilistic_synthesis"]=(

@@ -10,7 +10,8 @@ from dataclasses import asdict,dataclass
 from typing import Any,Mapping,Sequence
 from .world_graph import WorldGraph,QueenView
 from .world_score import CanonicalScoreFrame
-from .world_graph_adapters import add_horizon_context,add_edge_ecology,add_temporal_participation
+from .world_graph_adapters import add_horizon_context,add_temporal_participation,add_bee_evidence
+from .bee_evidence import build_bee_evidence
 from .learning_memory import add_learning_receipt
 from .learning_retrieval import learning_brief
 from .learning_attention import obligations_from_learning
@@ -65,8 +66,60 @@ class SynthesisRuntime:
    receipt("edge_ecology","DISABLED" if "edge_ecology" in disabled else "AVAILABLE_NOT_INVOKED")
   else:
    roots=edge_roots or {}
-   ns=add_edge_ecology(g,snapshot=edge_snapshot,created_at_ms=now_ms,family_source_roots=roots)
-   receipt("edge_ecology","INVOKED",(r for xs in roots.values() for r in xs),ns)
+   ns=[]
+   for voice in edge_snapshot.voices:
+    family=str(voice.family).upper()
+    source_roots=tuple(sorted(set(map(str,roots.get(family,())))))
+    if not source_roots:
+     raise ValueError(f"edge_voice_missing_source_roots:{family}")
+
+    payload={
+     "pair_id":edge_snapshot.pair_id,
+     "timestamp_ms":edge_snapshot.timestamp_ms,
+     **voice.to_dict(),
+    }
+
+    evidence=build_bee_evidence(
+     family=family,
+     source_kind="EDGE_ECOLOGY_DERIVED_FROM_PUBLIC_MARKET",
+     source_ids=(
+      f"{edge_snapshot.pair_id}:{edge_snapshot.timestamp_ms}:{family}",
+     ),
+     evidence_roots=source_roots,
+     lineage=(
+      "hivenance.edge_ecology.v1",
+      f"{family.lower()}.v1",
+     ),
+     transformation_version=f"edge_ecology.{family.lower()}_to_bee_evidence.v1",
+     observed_at_ms=int(edge_snapshot.timestamp_ms),
+     available_at_ms=max(
+      int(edge_snapshot.timestamp_ms),
+      int(now_ms),
+     ),
+     freshness=1.0,
+     confidence=max(
+      0.0,
+      min(1.0,float(voice.confidence)),
+     ),
+     missingness=(),
+     abstention=False,
+     payload=payload,
+    )
+
+    ns.append(
+     add_bee_evidence(
+      g,
+      evidence=evidence,
+      created_at_ms=now_ms,
+     )
+    )
+
+   receipt(
+    "edge_ecology",
+    "INVOKED",
+    (r for xs in roots.values() for r in xs),
+    ns,
+   )
 
   if temporal_participation is None or "temporal_participation_bee" in disabled:
    receipt("temporal_participation_bee","DISABLED" if "temporal_participation_bee" in disabled else "AVAILABLE_NOT_INVOKED")

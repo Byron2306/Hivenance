@@ -30,3 +30,47 @@ def test_learning_enters_same_cycle_without_authority_gain():
  assert "LEARNING" in x.queen_view.families
  assert "shadow:x" in x.learning["learning_ids"]
  assert any("TIME_SHIFT_PLACEBO" in z for z in x.learning["next_falsifications"])
+
+
+def test_synthesis_runtime_phase5_edge_families_are_canonical_bee_evidence():
+    f=frame()
+    snap=EdgeEcology().snapshot(
+        timestamp_ms=10,
+        pair_id="BTC/USD",
+        voices=(
+            EdgeEcology.flow_voice(
+                taker_buy_volume=60,
+                taker_sell_volume=40,
+            ),
+            EdgeEcology.liquidity_voice(
+                bid_depth=60,
+                ask_depth=40,
+                spread_bps=2,
+            ),
+        ),
+    )
+    roots={
+        "FLOW":("sha256:"+"b"*64,),
+        "LIQUIDITY":("sha256:"+"c"*64,),
+    }
+
+    cycle=SynthesisRuntime().run(
+        frame=f,
+        now_ms=10,
+        edge_snapshot=snap,
+        edge_roots=roots,
+    )
+
+    nodes=[
+        node for node in cycle.queen_view.nodes
+        if node.family in {"FLOW","LIQUIDITY"}
+    ]
+
+    assert len(nodes)==2
+
+    for node in nodes:
+        assert node.organ_id=="bee_evidence"
+        assert node.payload["schema"]=="hivenance_bee_evidence_v1"
+        assert node.payload["family"]==node.family
+        assert node.payload["execution_eligible"] is False
+        assert node.payload["promotion_eligible"] is False

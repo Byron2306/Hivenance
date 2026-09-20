@@ -1,0 +1,128 @@
+{
+  "schema": "hivenance_full_organism_phase8_completion_receipt_v1",
+  "phase": 8,
+  "name": "Recursive Queen Conducting Loop",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme": "HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19",
+
+  "objective": "Implement the cognition loop originally designed rather than a one-pass post-filter.",
+
+  "loop": [
+    "WorldGraph",
+    "Queen reads Hive",
+    "Triune scores",
+    "notation / organ request / attention obligation",
+    "bounded research response",
+    "WorldGraph update",
+    "Queen conducts again"
+  ],
+
+  "subphases": {
+    "8.0_recursive_contract_and_world_guard": "PASS",
+    "8.1_notation_to_bounded_request_translation": "PASS",
+    "8.2_bounded_challenge_dispatch": "PASS",
+    "8.3_same_root_reconduct_proof": "PASS",
+    "8.4_deterministic_bounded_recursive_loop": "PASS"
+  },
+
+  "supported_request_kinds": [
+    "REFRESH",
+    "CHALLENGE",
+    "COMPARE",
+    "INVITE_INDEPENDENT_CORROBORATION",
+    "PRESERVE_COUNTERPOINT",
+    "THIN",
+    "AMPLIFY",
+    "RETIRE_FROM_ACTIVE_SCORE",
+    "REHEARSE_EDGE_RESOLUTION",
+    "CHANGE_EPOCH",
+    "WAIT_REST"
+  ],
+
+  "safety_invariants": {
+    "same_world_state_id_through_recurrence": true,
+    "same_world_state_hash_through_recurrence": true,
+    "same_observed_root_digest_through_recurrence": true,
+    "later_market_data_forbidden_inside_recurrence": true,
+    "queen_cannot_invent_observed_evidence": true,
+    "synthetic_mystique_roots_not_observed_evidence": true,
+    "deterministic_max_recurrence_count": true,
+    "every_request_receipted": true,
+    "every_response_receipted": true,
+    "every_recurrence_step_receipted": true,
+    "semantic_interpretation_change_required": true,
+    "receipt_id_change_alone_does_not_count_as_cognition": true
+  },
+
+  "stop_conditions": [
+    "NO_REQUESTS",
+    "WAIT_REST",
+    "RESPONSE_ABSTAINED",
+    "RESPONSE_REFUSED",
+    "NO_GRAPH_CHANGE",
+    "INTERPRETATION_STABLE",
+    "MAX_RECURRENCES"
+  ],
+
+  "canonical_proof": {
+    "queen_request_generated": true,
+    "bounded_organ_response_generated": true,
+    "lawful_graph_evidence_added": true,
+    "queen_reconducted": true,
+    "queen_interpretation_changed": true,
+    "world_state_unchanged": true,
+    "observed_market_root_unchanged": true,
+    "new_market_data_entered_recurrence": false,
+    "execution_authority_created": false,
+    "promotion_authority_created": false
+  },
+
+  "phase8_test_results": {
+    "8.0_focused": 8,
+    "8.0_spine_before_legacy_repair": 25,
+    "legacy_synthesis_repair_focused": 3,
+    "8.0_spine_after_repair": 27,
+    "phase5_to_phase8_guardrail": 48,
+
+    "8.1_focused": 12,
+    "8.1_spine": 33,
+
+    "8.2_focused": 17,
+    "8.2_spine": 32,
+
+    "8.3_focused": 19,
+    "8.3_spine": 50,
+
+    "8.4_focused": 24,
+    "8.4_spine": 57
+  },
+
+  "cross_phase_repair": {
+    "synthesis_runtime_edge_ecology_bypass_found": true,
+    "noncanonical_flow_liquidity_nodes_removed_from_queen_path": true,
+    "flow_admitted_as_bee_evidence": true,
+    "liquidity_admitted_as_bee_evidence": true,
+    "phase5_guard_preserved": true
+  },
+
+  "authority": {
+    "authority_class": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION",
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0
+  },
+
+  "exit_condition": {
+    "queen_request_to_new_lawful_graph_evidence": true,
+    "changed_queen_interpretation": true,
+    "immutable_world_root_preserved": true,
+    "status": "PASS"
+  },
+
+  "next_phase": {
+    "phase": 9,
+    "name": "Polyphonic Quorum, Pollen and Research Economy",
+    "gate": "Advance only after Phase 8 broad regression and commit are complete."
+  }
+}

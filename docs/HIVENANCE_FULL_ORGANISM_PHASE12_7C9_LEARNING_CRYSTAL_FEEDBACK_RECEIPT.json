@@ -1,0 +1,32 @@
+{
+  "schema": "hivenance_full_organism_phase12_7c9_learning_crystal_feedback_receipt_v1",
+  "phase": "12.7c9",
+  "status": "IMPLEMENTED_AWAITING_TESTS",
+  "objective": "close the Learning -> Crystal -> Hypothesis feedback loop before further Phase-12 organ prosecution",
+  "branch": "hivenance-phase12-learning-crystal-feedback",
+  "authority": {
+    "learning": "RESEARCH_PRIOR_ONLY",
+    "crystal_reuse": "RESEARCH_PRIOR_ONLY",
+    "execution_eligible": false,
+    "promotion_eligible": false
+  },
+  "implemented": {
+    "point_in_time_reuse_cutoff": true,
+    "pre_prediction_learning_compilation": true,
+    "positive_learning_prior": true,
+    "negative_learning_veto": true,
+    "bounded_adaptive_threshold_influence": true,
+    "deterministic_learning_crystal_materialization": true,
+    "next_cycle_exact_crystal_applicability_reuse": true,
+    "stale_or_future_evidence_refusal": true,
+    "crystal_demotion_by_current_evidence": true
+  },
+  "claim_boundary": {
+    "profitability_proved": false,
+    "prospective_edge_proved": false,
+    "historical_causal_value_proved": false,
+    "execution_authority_granted": false
+  },
+  "previous_phase12_learning_crystal_dispositions": "PROVISIONAL_PENDING_RETEST",
+  "phase12_complete": false
+}

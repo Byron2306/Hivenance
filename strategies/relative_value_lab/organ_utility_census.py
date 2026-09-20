@@ -49,6 +49,7 @@ class OrganUtilityCensus:
     harmful_organs: tuple[str,...]
     inert_organs: tuple[str,...]
     underpowered_organs: tuple[str,...]
+    mixed_organs: tuple[str,...]
     unavailable_organs: tuple[str,...]
     historical_only: bool=True
     execution_eligible: bool=False
@@ -139,6 +140,7 @@ def build_organ_utility_census(
     harmful=tuple(sorted(r.organ_id for r in rows if r.utility_state=="HISTORICALLY_HARMFUL"))
     inert=tuple(sorted(r.organ_id for r in rows if r.utility_state=="INERT_ON_TESTED_WORLDS"))
     underpowered=tuple(sorted(r.organ_id for r in rows if r.utility_state=="INFLUENTIAL_UNDERPOWERED"))
+    mixed=tuple(sorted(r.organ_id for r in rows if r.utility_state=="HISTORICALLY_MIXED"))
     unavailable=tuple(sorted(r.organ_id for r in rows if r.utility_state=="UNAVAILABLE"))
 
     body={
@@ -158,5 +160,6 @@ def build_organ_utility_census(
         harmful_organs=harmful,
         inert_organs=inert,
         underpowered_organs=underpowered,
+        mixed_organs=mixed,
         unavailable_organs=unavailable,
     )

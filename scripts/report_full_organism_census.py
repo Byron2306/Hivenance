@@ -45,6 +45,7 @@ def main() -> None:
 
     outcomes_by_mask={}
     invocation_counts={}
+    worker_component_causality={}
     sources=[]
 
     for path in args.bundle:
@@ -64,6 +65,11 @@ def main() -> None:
             outcomes_by_mask[mask_id]=parsed
         for mask_id,count in dict(bundle.get("invocation_counts") or {}).items():
             invocation_counts[mask_id]=max(int(invocation_counts.get(mask_id,0)),int(count))
+        for mask_id,row in dict(bundle.get("worker_component_causality") or {}).items():
+            existing=worker_component_causality.get(mask_id)
+            if existing is not None and existing!=row:
+                raise ValueError("conflicting_worker_component_causality:" + str(mask_id))
+            worker_component_causality[mask_id]=row
 
     run=run_full_organism_census(
         outcomes_by_mask=outcomes_by_mask,
@@ -108,6 +114,7 @@ def main() -> None:
         "historical_prosecution":run.prosecution.to_dict(),
         "organ_utility_census":run.utility_census.to_dict(),
         "organ_route_census":route.to_dict(),
+        "worker_component_causality":worker_component_causality,
     }
 
     out=Path(args.out)
@@ -124,6 +131,15 @@ def main() -> None:
     print("inert_organs=",",".join(run.utility_census.inert_organs) if run.utility_census.inert_organs else "none")
     print("underpowered_organs=",",".join(run.utility_census.underpowered_organs) if run.utility_census.underpowered_organs else "none")
     print("mixed_organs=",",".join(run.utility_census.mixed_organs) if run.utility_census.mixed_organs else "none")
+    if worker_component_causality:
+        print("worker_components=")
+        for mask_id,row in sorted(worker_component_causality.items()):
+            print(
+                " ",
+                mask_id,
+                row.get("classification"),
+                row.get("recommendation"),
+            )
     print("dead_routes=",",".join(route.dead_routes) if route.dead_routes else "none")
     print("unmeasured_routes=",",".join(route.unmeasured_routes) if route.unmeasured_routes else "none")
     print("report=",str(out))

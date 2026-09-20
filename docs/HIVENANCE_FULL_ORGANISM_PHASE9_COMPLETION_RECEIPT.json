@@ -1,0 +1,118 @@
+{
+  "schema": "hivenance_full_organism_phase9_completion_receipt_v1",
+  "phase": 9,
+  "name": "Polyphonic Quorum, Pollen and Research Economy",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme": "HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19",
+
+  "objective": "Test the actual social and choral cognition rather than treating its existence as utility.",
+
+  "subphases": {
+    "9.0_prospective_causal_receipt_contract": "PASS",
+    "9.1_queen_request_to_pollen_bounty": "PASS",
+    "9.2_adversarial_social_economy_gauntlet": "PASS",
+    "9.3_pollen_and_reputation_independent_ablation": "PASS"
+  },
+
+  "quorum_semantics": {
+    "call_preserved": true,
+    "response_preserved": true,
+    "counterpoint_preserved": true,
+    "resolution_preserved": true,
+    "majority_agreement_required": false,
+    "directional_agreement_required": false,
+    "same_root_clones_count_as_independent": false,
+    "shared_lineage_can_manufacture_quorum": false
+  },
+
+  "pollen_economy": {
+    "queen_research_request_can_issue_bounty": true,
+    "challenge_maps_to_dissent_research": true,
+    "independent_corroboration_maps_to_corroboration_bounty": true,
+    "search_amplification_maps_to_search_bounty": true,
+    "governance_only_requests_remain_non_economic": true,
+    "settlement_requires_prospective_outcome": true,
+    "future_truth_controls_reward": true,
+    "pollen_cannot_create_evidence": true,
+    "pollen_cannot_create_independence": true,
+    "pollen_cannot_create_execution_authority": true,
+    "pollen_cannot_create_promotion_authority": true
+  },
+
+  "prospective_causal_receipts": {
+    "bounty_bound": true,
+    "claims_bound": true,
+    "quorum_bound": true,
+    "future_outcome_bound": true,
+    "settlement_bound": true,
+    "information_usefulness_measured": true,
+    "useful_dissent_measured": true,
+    "wrong_consensus_measured": true,
+    "clone_discount_measured": true
+  },
+
+  "adversarial_attacks": {
+    "duplicate_lineage_false_unison": "PASS",
+    "same_root_clone_swarm": "PASS",
+    "delayed_response": "PASS",
+    "stale_testimony": "PASS",
+    "coordinated_wrong_agreement": "PASS",
+    "useful_dissent": "PASS"
+  },
+
+  "temporal_custody": {
+    "claim_predating_bounty_refused": true,
+    "claim_after_bounty_expiry_refused": true,
+    "late_response_cannot_fake_call_response_quorum": true,
+    "late_quorum_cannot_retroactively_change_frozen_treatment": true
+  },
+
+  "ablation": {
+    "pollen_reward_organ_separately_ablatable": true,
+    "reputation_organ_separately_ablatable": true,
+    "pollen_reward_ablation_does_not_change_prospective_truth": true,
+    "reputation_ablation_does_not_change_reward_allocation": true,
+    "two_by_two_ablation_verified": true
+  },
+
+  "test_results": {
+    "9.0_focused": 8,
+    "9.0_social_stack": 33,
+    "9.1_focused": 20,
+    "9.1_social_stack": 56,
+    "9.2_focused": 11,
+    "9.2_social_stack": 56,
+    "9.3_focused": 14,
+    "9.3_social_stack": 59
+  },
+
+  "epistemic_boundary": {
+    "phase9_proves_social_mechanism_causality": true,
+    "phase9_proves_social_mechanisms_are_measurable": true,
+    "phase9_proves_social_mechanisms_are_independently_ablatable": true,
+    "phase9_proves_trading_profitability": false,
+    "phase9_proves_pollen_improves_economic_edge": false,
+    "economic_edge_remains_downstream_gate": true
+  },
+
+  "authority": {
+    "authority_class": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION",
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0
+  },
+
+  "exit_condition": {
+    "quorum_has_prospective_causal_receipts": true,
+    "pollen_has_prospective_causal_receipts": true,
+    "not_merely_choreography_receipts": true,
+    "status": "PASS"
+  },
+
+  "next_phase": {
+    "phase": 10,
+    "name": "Learning and Crystal Applicability Repair",
+    "gate": "Advance only after Phase 9 broad regression and commit are complete."
+  }
+}

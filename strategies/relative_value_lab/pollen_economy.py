@@ -360,6 +360,8 @@ class QueenPollenEconomy:
             raise ValueError("unknown_pollen_bounty")
         if bounty.bounty_id in self._settled_bounties:
             raise ValueError("pollen_bounty_already_settled")
+        if submitted_at_ms < bounty.issued_at_ms:
+            raise ValueError("pollen_claim_predates_bounty")
         if submitted_at_ms > bounty.expires_at_ms:
             raise ValueError("pollen_bounty_expired")
         if receipt.hypothesis_id != bounty.hypothesis_id:
@@ -451,6 +453,8 @@ class QueenPollenEconomy:
         bounty: PollenBounty,
         outcome: ProspectivePollenOutcome,
         quorum: PolyphonicQuorumReceipt | None = None,
+        pollen_rewards_enabled: bool = True,
+        reputation_updates_enabled: bool = True,
     ) -> PollenSettlementReceipt:
         if bounty.bounty_id in self._settled_bounties:
             raise ValueError("pollen_bounty_already_settled")
@@ -482,7 +486,11 @@ class QueenPollenEconomy:
 
         for claim, correctness, calibration, score in scored:
             before = self.reputation(claim.bee_id)
-            reward = (bounty.reward_pool * score / total_score) if total_score > 0.0 else 0.0
+            reward = (
+                bounty.reward_pool * score / total_score
+                if pollen_rewards_enabled and total_score > 0.0
+                else 0.0
+            )
             stake_returned = claim.stake if correctness >= 1.0 else claim.stake * calibration * 0.5
             if outcome.outcome_class == "UNRESOLVED":
                 stake_returned = claim.stake
@@ -492,9 +500,17 @@ class QueenPollenEconomy:
                 + 0.05 * (calibration - 0.5)
                 + 0.03 * (1.0 if claim.independent else -0.5)
             )
-            after = _clamp(before + reputation_delta)
+            after = (
+                _clamp(before + reputation_delta)
+                if reputation_updates_enabled
+                else before
+            )
             self._reputations[claim.bee_id] = after
-            self._balances[claim.bee_id] = self.balance(claim.bee_id) + stake_returned + reward
+            self._balances[claim.bee_id] = (
+                self.balance(claim.bee_id)
+                + stake_returned
+                + reward
+            )
 
             total_rewarded += reward
             total_returned += stake_returned

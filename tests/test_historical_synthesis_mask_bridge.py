@@ -322,3 +322,65 @@ def test_no_statistics_disables_statistics_bee_without_changing_world():
     )
     assert receipt.state=="DISABLED"
     assert full.cycle.world_state_hash==masked.cycle.world_state_hash
+
+
+
+def test_probabilistic_masks_remove_only_their_runtime_organs():
+    base=inputs()
+    base["regime_context"]=__import__(
+        "strategies.relative_value_lab.regime_context",
+        fromlist=["build_regime_context"],
+    ).build_regime_context(
+        as_of_ms=10,
+        deterministic={"regime_hint":"trend_expansion","confidence":.7},
+        bayesian={
+            "posterior_id":"p1",
+            "probabilities":{"TREND":.7,"MEAN_REVERSION":.1,"TRANSITION":.15,"STRESS":.05},
+            "dominant_regime":"TREND",
+            "entropy":.4,
+            "change_point_probability":.2,
+            "evidence_available_at_ms":5,
+        },
+    )
+    base["external_context"]={
+        "schema":"hivenance_external_statistics_context_v1",
+        "features":(
+            {"evidence_root":"sha256:"+"e"*64,"metric":"ETF_NET_FLOW_USD"},
+        ),
+    }
+    base["calibration_context"]={
+        "schema":"hivenance_calibration_health_v1",
+        "health_id":"h1",
+        "overall_drift_score":.2,
+    }
+    base["ml_challengers"]=(
+        {
+            "schema":"hivenance_ml_challenger_context_v1",
+            "receipt_id":"ml1",
+            "evidence_root":"sha256:"+"f"*64,
+            "uncertainty_pressure":.2,
+        },
+    )
+
+    full=run_masked_synthesis(
+        runtime=SynthesisRuntime(),
+        mask=historical_mask_plan("FULL_HIVE"),
+        runtime_inputs=base,
+    )
+    expectations={
+        "NO_BAYES":("regime_context","REGIME_CONTEXT"),
+        "NO_EXTERNAL":("external_statistics","EXTERNAL_STATISTICS"),
+        "NO_CONFORMAL":("calibration_context","CALIBRATION_CONTEXT"),
+        "NO_ML":("ml_challenger","ML_CHALLENGER"),
+    }
+    for mask_id,(organ_id,family) in expectations.items():
+        masked=run_masked_synthesis(
+            runtime=SynthesisRuntime(),
+            mask=historical_mask_plan(mask_id),
+            runtime_inputs=base,
+        )
+        assert family in families(full)
+        assert family not in families(masked)
+        receipt=next(x for x in masked.cycle.organ_receipts if x.organ_id==organ_id)
+        assert receipt.state=="DISABLED"
+        assert masked.cycle.world_state_hash==full.cycle.world_state_hash

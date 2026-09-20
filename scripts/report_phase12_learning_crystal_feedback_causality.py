@@ -508,6 +508,11 @@ def main() -> None:
         ).fetchall()
     }
 
+    full_comp = competition(workers=True)
+    no_workers_comp = competition(workers=False)
+    historical_statistics = HistoricalStatisticsReconstructor(conn)
+    historical_bayes = HistoricalBayesianRegimeReconstructor()
+
     print(
         f"audit_strict_before={not args.allow_equal_settlement_ts} "
         f"evidence_lag_sec={args.evidence_lag_sec} "
@@ -520,11 +525,6 @@ def main() -> None:
         f"observation_snapshots={len(observation_payloads)}",
         flush=True,
     )
-
-    full_comp = competition(workers=True)
-    no_workers_comp = competition(workers=False)
-    historical_statistics = HistoricalStatisticsReconstructor(conn)
-    historical_bayes = HistoricalBayesianRegimeReconstructor()
 
     full_governor = learning_governor(store)
     no_crystal_governor = learning_governor(store)

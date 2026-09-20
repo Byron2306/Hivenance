@@ -195,3 +195,34 @@ def test_synthesis_state_can_only_make_challenger_more_cautious():
     assert "synthesis_change_point_pressure_high" in cautious.reasons
     assert cautious.execution_eligible is False
     assert cautious.promotion_eligible is False
+
+
+
+def test_rolling_calibration_drift_can_only_reduce_challenger_health():
+    engine=LearnedChallenger()
+    baseline=engine.score(
+        forecast=forecast(),
+        provenance=provenance(),
+        calibration=calibration(),
+        now_ms=31_000,
+        drift_score=.05,
+        calibration_health_state={
+            "overall_drift_score": .05,
+            "calibration_error": .05,
+        },
+    )
+    degraded=engine.score(
+        forecast=forecast(),
+        provenance=provenance(),
+        calibration=calibration(),
+        now_ms=31_000,
+        drift_score=.05,
+        calibration_health_state={
+            "overall_drift_score": .90,
+            "calibration_error": .30,
+        },
+    )
+    assert degraded.voice_health < baseline.voice_health
+    assert "rolling_calibration_drift_high" in degraded.reasons
+    assert degraded.execution_eligible is False
+    assert degraded.promotion_eligible is False

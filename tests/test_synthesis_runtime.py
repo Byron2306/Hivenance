@@ -1,6 +1,7 @@
 from strategies.relative_value_lab.synthesis_runtime import SynthesisRuntime
 from strategies.relative_value_lab.world_score import ScoreObservation,CanonicalWorldScore
 from strategies.relative_value_lab.edge_ecology import EdgeEcology
+from strategies.relative_value_lab.regime_context import build_regime_context
 from strategies.relative_value_lab.statistical_synthesis import (
     StatisticalEvidence,
     StatisticsBee,
@@ -118,3 +119,46 @@ def test_statistics_bee_enters_synthesis_cycle_without_authority_gain():
     assert receipt.state=="INVOKED"
     assert receipt.execution_eligible is False
     assert receipt.promotion_eligible is False
+
+
+
+def test_regime_context_enters_synthesis_cycle_without_authority_gain():
+    f=frame()
+    regime=build_regime_context(
+        as_of_ms=10,
+        deterministic={
+            "regime_hint":"trend_expansion",
+            "confidence":.8,
+        },
+        bayesian={
+            "posterior_id":"p1",
+            "probabilities":{
+                "TREND":.7,
+                "MEAN_REVERSION":.1,
+                "TRANSITION":.15,
+                "STRESS":.05,
+            },
+            "dominant_regime":"TREND",
+            "entropy":.4,
+            "change_point_probability":.2,
+            "evidence_available_at_ms":5,
+        },
+    )
+    cycle=SynthesisRuntime().run(
+        frame=f,
+        now_ms=10,
+        regime_context=regime,
+    )
+    assert "REGIME_CONTEXT" in cycle.queen_view.families
+    node=next(
+        n for n in cycle.queen_view.nodes
+        if n.family=="REGIME_CONTEXT"
+    )
+    assert node.organ_id=="REGIME_CONTEXT"
+    assert node.execution_eligible is False
+    assert node.promotion_eligible is False
+    receipt=next(
+        x for x in cycle.organ_receipts
+        if x.organ_id=="regime_context"
+    )
+    assert receipt.state=="INVOKED"

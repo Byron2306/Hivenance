@@ -469,3 +469,26 @@ Next:
 4. add per-organ complexity/cognition cost to census;
 5. run prospective shadow validation only for organs that survive historical prosecution;
 6. quarantine duplicate or harmful organs behind explicit feature flags before any deletion.
+
+
+## Implementation checkpoint — Full Organism Census Runner
+
+Implemented:
+- generic paired-world full-organism census runner;
+- FULL_HIVE versus masked worlds are paired by world state, symbol, timestamp, and horizon;
+- decision, direction, abstention, and selection changes are counted explicitly;
+- paired realized-net delta and standard-error-style uncertainty are computed;
+- dependence-adjusted world count is tracked conservatively;
+- prosecution classification feeds directly into Organ Utility Census;
+- mask-to-organ mapping covers Statistics, Bayes/Regime, External, Conformal/Calibration, ML, Workers, Learning, Crystals, Queen, Mystique, Metabolism, Pollen, Quorum, VNS/Temporal and core evidence families;
+- topology-versus-runtime route census added to distinguish inert organs from dead/unwired routes;
+- downstream execution organs are not mislabeled dead merely because Phase 12.8 keeps them locked.
+
+Next:
+1. expose the census runner through a CLI/report script over replay bundles;
+2. feed actual current historical replay outputs into the runner;
+3. generate route census + utility census side by side;
+4. add complexity/cognition cost per organ;
+5. identify duplicate responsibilities by topology overlap plus correlated ablation outcomes;
+6. quarantine historically harmful or dead/unwired organs behind explicit switches;
+7. preserve governance/falsification organs unless their role itself is proven redundant.

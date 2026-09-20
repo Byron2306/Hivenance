@@ -81,6 +81,8 @@ class HistoricalReuseStore:
         self.exact: dict[tuple[str, str, int, str], list[tuple[float, float, int]]] = defaultdict(list)
         self.symbol_class: dict[tuple[str, int, str, str], list[tuple[float, float, int]]] = defaultdict(list)
         self.cohort: dict[tuple[str, int, str, str], list[tuple[float, float, int]]] = defaultdict(list)
+        self.worker_regime: dict[tuple[str, int, str], list[tuple[float, float, int]]] = defaultdict(list)
+        self.worker_horizon: dict[tuple[str, int], list[tuple[float, float, int]]] = defaultdict(list)
 
         rows = conn.execute(
             """
@@ -134,6 +136,13 @@ class HistoricalReuseStore:
             self.cohort[
                 (model_id, horizon, regime, cohort_bucket)
             ].append(point)
+            if model_id.startswith("worker_signal_"):
+                self.worker_regime[
+                    (model_id, horizon, regime)
+                ].append(point)
+                self.worker_horizon[
+                    (model_id, horizon)
+                ].append(point)
 
         self.loaded_rows = len(rows)
 
@@ -206,6 +215,40 @@ class HistoricalReuseStore:
             limit=limit,
         )
         return self._stats_from_points(rows)
+
+    def get_worker_transfer_reuse_stats(
+        self,
+        *,
+        model_id: str,
+        horizon_seconds: int,
+        regime_hint: str,
+        limit: int = 50,
+        cutoff_ts: float | None = None,
+    ) -> dict[str, Any]:
+        regime_rows = self._slice(
+            self.worker_regime.get(
+                (str(model_id), int(horizon_seconds), str(regime_hint or "unknown")),
+                [],
+            ),
+            cutoff_ts=cutoff_ts,
+            limit=limit,
+        )
+        if regime_rows:
+            out = self._stats_from_points(regime_rows)
+            out["match_type"] = "worker_regime"
+            return out
+
+        horizon_rows = self._slice(
+            self.worker_horizon.get(
+                (str(model_id), int(horizon_seconds)),
+                [],
+            ),
+            cutoff_ts=cutoff_ts,
+            limit=limit,
+        )
+        out = self._stats_from_points(horizon_rows)
+        out["match_type"] = "worker_horizon" if horizon_rows else "none"
+        return out
 
     def get_research_transform_reuse_stats(
         self,
@@ -358,6 +401,7 @@ def competition(
             medium_trend_phase2_model_enabled=False,
             derivatives_trend_phase2_model_enabled=False,
             phase2_transform_reuse_enabled=True,
+            phase2_worker_transfer_reuse_enabled=True,
         )
     )
 

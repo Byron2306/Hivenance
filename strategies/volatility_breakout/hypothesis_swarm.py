@@ -1216,7 +1216,7 @@ class HypothesisSwarmAgent:
         temporal_lattice_rows: list[dict[str, Any]] = []
         comparison_packet_rows: list[dict[str, Any]] = []
         g0_prospective = {"features_examined": 0, "eligible": 0, "diverged": 0, "frozen": 0, "skipped": 0, "errors": 0, "by_organ": {}}
-        phase13_rows = {
+        phase13_books = {
             "enabled": bool(self.phase13_runtime is not None),
             "features_examined": 0,
             "book_rows": 0,
@@ -1229,7 +1229,6 @@ class HypothesisSwarmAgent:
             ),
             "worlds": [],
         }
-        phase13_rows = []
         phase_store = (getattr(self.coordinator,"store",None) or (getattr(self.coordinator,"agents",{}) or {}).get("data_store")) if self.coordinator is not None else None
         g0_live = None
         if phase_store is not None:
@@ -1339,10 +1338,10 @@ class HypothesisSwarmAgent:
             if self.phase13_runtime is not None:
                 try:
                     p13 = self.phase13_runtime.process_feature(feature)
-                    phase13_rows["features_examined"] += 1
-                    phase13_rows["book_rows"] += int(p13.get("book_rows") or 0)
-                    phase13_rows["inserted"] += int(p13.get("inserted") or 0)
-                    phase13_rows["worlds"].append({
+                    phase13_books["features_examined"] += 1
+                    phase13_books["book_rows"] += int(p13.get("book_rows") or 0)
+                    phase13_books["inserted"] += int(p13.get("inserted") or 0)
+                    phase13_books["worlds"].append({
                         "world_state_id": p13.get("world_state_id"),
                         "world_state_hash": p13.get("world_state_hash"),
                         "frozen_forecasts": p13.get("frozen_forecasts"),
@@ -1350,7 +1349,7 @@ class HypothesisSwarmAgent:
                         "inserted": p13.get("inserted"),
                     })
                 except Exception:
-                    phase13_rows["errors"] += 1
+                    phase13_books["errors"] += 1
                     logging.exception("Phase-13 same-world book fan-out failed")
 
             learning_feedback = compile_learning_feedback(
@@ -1407,32 +1406,6 @@ class HypothesisSwarmAgent:
                 except Exception:
                     g0_prospective["errors"] += 1
                     logging.exception("G0 prospective feature cycle failed")
-            if self.phase13_runtime is not None:
-                try:
-                    phase13_rows.append(self.phase13_runtime.process_feature(feature))
-                except ValueError as exc:
-                    # A missing canonical binding is a lawful skip, never a reason
-                    # to synthesize a world identity.
-                    phase13_rows.append({
-                        "status": "SKIPPED",
-                        "reason": str(exc),
-                        "symbol": feature.symbol,
-                        "timestamp_ms": feature.timestamp_ms,
-                        "execution_eligible": False,
-                        "promotion_eligible": False,
-                    })
-                except Exception as exc:
-                    self._phase13_errors += 1
-                    logging.exception("Phase-13 same-world book fan-out failed")
-                    phase13_rows.append({
-                        "status": "ERROR",
-                        "reason": f"{type(exc).__name__}:{exc}",
-                        "symbol": feature.symbol,
-                        "timestamp_ms": feature.timestamp_ms,
-                        "execution_eligible": False,
-                        "promotion_eligible": False,
-                    })
-
             regime_inputs = values.get("regime_inputs") if isinstance(values.get("regime_inputs"), dict) else {}
             regime_hint = str(regime_inputs.get("regime_hint") or "unknown")
             cohort_bucket = str(values.get("cohort_bucket") or "unknown")
@@ -1638,7 +1611,7 @@ class HypothesisSwarmAgent:
                 "promotion_eligible": False,
             },
             "phase13_books": {
-                **phase13_rows,
+                **phase13_books,
                 "authority": "PHASE13_PROSPECTIVE_SHADOW_RESEARCH_ONLY",
                 "execution_eligible": False,
                 "promotion_eligible": False,
@@ -1657,16 +1630,12 @@ class HypothesisSwarmAgent:
                 },
             },
             "phase13": {
-                "enabled": self.phase13_runtime is not None,
-                "freeze_id": (
-                    self.phase13_runtime.freeze_id
-                    if self.phase13_runtime is not None
-                    else None
-                ),
-                "features_processed": len(phase13_rows),
-                "book_rows_inserted": sum(int(row.get("inserted") or 0) for row in phase13_rows),
-                "errors": int(self._phase13_errors),
-                "rows": phase13_rows,
+                "enabled": bool(phase13_books.get("enabled")),
+                "freeze_id": phase13_books.get("freeze_id"),
+                "features_processed": int(phase13_books.get("features_examined") or 0),
+                "book_rows_inserted": int(phase13_books.get("inserted") or 0),
+                "errors": int(phase13_books.get("errors") or 0),
+                "rows": list(phase13_books.get("worlds") or []),
                 "execution_eligible": False,
                 "promotion_eligible": False,
             },
@@ -1731,9 +1700,9 @@ class HypothesisSwarmAgent:
             "g0_prospective_frozen": int(g0_prospective.get("frozen") or 0),
             "g0_prospective_diverged": int(g0_prospective.get("diverged") or 0),
             "g0_prospective_errors": int(g0_prospective.get("errors") or 0),
-            "phase13_book_rows": int(phase13_rows.get("book_rows") or 0),
-            "phase13_book_inserts": int(phase13_rows.get("inserted") or 0),
-            "phase13_errors": int(phase13_rows.get("errors") or 0),
+            "phase13_book_rows": int(phase13_books.get("book_rows") or 0),
+            "phase13_book_inserts": int(phase13_books.get("inserted") or 0),
+            "phase13_errors": int(phase13_books.get("errors") or 0),
             "execution_wired": False,
             "orders_submitted": 0,
         })

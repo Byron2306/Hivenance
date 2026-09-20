@@ -27,6 +27,7 @@ EXECUTABLE_SYNTHESIS_MASKS = {
     "NO_COMPARISON",
     "NO_TEMPORAL_PARTICIPATION",
     "NO_LEARNING",
+    "NO_STATISTICS",
     "NO_FLOW",
     "NO_LIQUIDITY",
     "NO_VOLATILITY",
@@ -145,6 +146,8 @@ def run_masked_synthesis(
             "temporal_participation_bee",
         "learning_memory":
             "learning_memory",
+        "statistics_bee":
+            "statistics_bee",
     }
 
     for organ in config.disabled_organs:

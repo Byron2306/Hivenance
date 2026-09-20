@@ -28,6 +28,10 @@ EXECUTABLE_SYNTHESIS_MASKS = {
     "NO_TEMPORAL_PARTICIPATION",
     "NO_LEARNING",
     "NO_STATISTICS",
+    "NO_BAYES",
+    "NO_EXTERNAL",
+    "NO_CONFORMAL",
+    "NO_ML",
     "NO_FLOW",
     "NO_LIQUIDITY",
     "NO_VOLATILITY",
@@ -148,6 +152,14 @@ def run_masked_synthesis(
             "learning_memory",
         "statistics_bee":
             "statistics_bee",
+        "regime_context":
+            "regime_context",
+        "external_statistics":
+            "external_statistics",
+        "calibration_context":
+            "calibration_context",
+        "ml_challenger":
+            "ml_challenger",
     }
 
     for organ in config.disabled_organs:

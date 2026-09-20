@@ -23,6 +23,7 @@ from .cognitive_metabolism import CognitiveMetabolismReceipt
 from .ml_challenger import LearnedChallengerReceipt
 from .world_score import CanonicalScoreFrame
 from .vns_score_stream import VNSScorePhrase
+from .queen_input_assembly import QueenInputAssembly, REQUIRED_CHANNELS
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -199,6 +200,14 @@ class QueenPolyphonicReceipt:
     conducting_gestures: tuple[str, ...]
     reasons: tuple[str, ...]
 
+    input_assembly_id: str | None = None
+    input_completeness_ratio: float = 0.0
+    input_channel_states: tuple[tuple[str, str], ...] = ()
+    input_present_channels: tuple[str, ...] = ()
+    input_absent_channels: tuple[str, ...] = ()
+    input_disabled_channels: tuple[str, ...] = ()
+    input_error_channels: tuple[str, ...] = ()
+
     authority: str = RELATIVE_VALUE_AUTHORITY
     execution_eligible: bool = False
     promotion_eligible: bool = False
@@ -271,6 +280,7 @@ class ConductingQueen:
         mystique: MystiqueFalsificationReceipt | None = None,
         metabolism: CognitiveMetabolismReceipt | None = None,
         learned_challengers: Sequence[LearnedChallengerReceipt] = (),
+        queen_input_assembly: QueenInputAssembly | None = None,
         world_frame: CanonicalScoreFrame | None = None,
         now_ms: int,
         world_state_id: str,
@@ -297,6 +307,23 @@ class ConductingQueen:
                 world_state_hash=world_state_hash,
                 scope=scope,
             )
+
+        if queen_input_assembly is not None:
+            if (
+                queen_input_assembly.world_state_id != world_state_id
+                or queen_input_assembly.world_state_hash != world_state_hash
+            ):
+                raise ValueError("queen_input_assembly_world_state_mismatch")
+
+            channel_names = {
+                channel.name
+                for channel in queen_input_assembly.channels
+            }
+
+            if channel_names != set(REQUIRED_CHANNELS):
+                raise ValueError(
+                    "queen_input_assembly_required_channels_incomplete"
+                )
 
         epoch_consonance, world_state_tension = self._epoch_music(validation.reasons)
         acoustics = self._voice_acoustics(notes)
@@ -539,6 +566,11 @@ class ConductingQueen:
             "triune_scores": [s.score_sheet_id for s in triune_scores],
             "notation": [t.token_id for t in notation],
             "pressure": round(polyphonic_pressure, 6),
+            "input_assembly_id": (
+                queen_input_assembly.assembly_id
+                if queen_input_assembly is not None
+                else None
+            ),
         }
         return QueenPolyphonicReceipt(
             schema="hivenance_conducting_queen_v2",
@@ -601,6 +633,44 @@ class ConductingQueen:
             notation_tokens=tuple(notation),
             conducting_gestures=tuple(gestures),
             reasons=tuple(sorted(set(reasons))),
+            input_assembly_id=(
+                queen_input_assembly.assembly_id
+                if queen_input_assembly is not None
+                else None
+            ),
+            input_completeness_ratio=(
+                queen_input_assembly.completeness_ratio
+                if queen_input_assembly is not None
+                else 0.0
+            ),
+            input_channel_states=(
+                tuple(
+                    (channel.name, channel.state)
+                    for channel in queen_input_assembly.channels
+                )
+                if queen_input_assembly is not None
+                else ()
+            ),
+            input_present_channels=(
+                queen_input_assembly.present_channels
+                if queen_input_assembly is not None
+                else ()
+            ),
+            input_absent_channels=(
+                queen_input_assembly.absent_channels
+                if queen_input_assembly is not None
+                else ()
+            ),
+            input_disabled_channels=(
+                queen_input_assembly.disabled_channels
+                if queen_input_assembly is not None
+                else ()
+            ),
+            input_error_channels=(
+                queen_input_assembly.error_channels
+                if queen_input_assembly is not None
+                else ()
+            ),
             authority=RELATIVE_VALUE_AUTHORITY,
             execution_eligible=False,
             promotion_eligible=False,

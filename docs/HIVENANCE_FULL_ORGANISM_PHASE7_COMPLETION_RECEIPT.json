@@ -1,0 +1,117 @@
+{
+  "schema": "hivenance_full_organism_phase7_completion_receipt_v1",
+  "phase": 7,
+  "name": "Full VNS / Polyphia Sensory Assembly",
+  "status": "PASS",
+  "branch": "hivenance-phoenix-edge-ecology",
+  "programme": "HIVENANCE_FULL_ORGANISM_RECOVERY_MASTER_PLAN_2026-09-19",
+  "objective": "Stop calling the Queen with most of her ears unplugged.",
+  "queen_input_assembly": {
+    "schema": "hivenance_queen_input_assembly_v1",
+    "required_channel_count": 17,
+    "channel_states": [
+      "PRESENT",
+      "ABSENT_DATA",
+      "DISABLED_BY_MASK",
+      "NOT_APPLICABLE",
+      "ERROR"
+    ],
+    "silent_zero_fallback_as_market_reading_forbidden": true,
+    "world_state_bound": true,
+    "source_node_traceability_required": true,
+    "source_receipt_traceability_required": true
+  },
+  "required_channels": {
+    "VNS_SENSORY_PULSES": true,
+    "VNS_SCORE_STREAM": true,
+    "TEMPORAL_TEXTURE": true,
+    "EDGE_CHORUS": true,
+    "MOTIF_NOTES": true,
+    "MOTIF_ACCUMULATOR": true,
+    "POLYPHONIC_ENTRAINMENT": true,
+    "MARKET_HUNTING": true,
+    "COLONY_CORRELATION": true,
+    "CAUSAL_CASCADE": true,
+    "HIVE_PULSE": true,
+    "POLYPHONIC_RESONANCE": true,
+    "HARMONIC_CONTEXT": true,
+    "MYSTIQUE_CHALLENGE": true,
+    "COGNITIVE_METABOLISM": true,
+    "LEARNED_CHALLENGER": true,
+    "GOVERNANCE_EPOCH": true
+  },
+  "subphases": {
+    "7.0_queen_input_assembly_contract": "PASS",
+    "7.1_vns_sensory_stream_temporal_texture": "PASS",
+    "7.2_edge_chorus_motif_entrainment": "PASS",
+    "7.3_hunting_correlation_cascade_hivepulse": "PASS",
+    "7.4_resonance_harmonic_mystique_metabolism_learned_epoch": "PASS",
+    "7.5_full_queen_assembly_exit_gate": "PASS"
+  },
+  "epistemic_boundaries": {
+    "vns_observation_does_not_choose_trade_direction": true,
+    "derived_vns_receipts_do_not_mint_independent_market_roots": true,
+    "correlation_does_not_claim_causation": true,
+    "causal_cascade_is_supported_propagation_not_causal_proof": true,
+    "positive_hive_pulses_are_attention_only": true,
+    "alarm_and_freeze_pulses_can_only_reduce_or_freeze_authority": true,
+    "synthetic_mystique_roots_do_not_increase_observed_evidence_diversity": true,
+    "mystique_never_becomes_prospective_market_evidence": true,
+    "learned_model_provenance_does_not_become_market_evidence": true,
+    "cognitive_metabolism_is_research_telemetry_not_market_evidence": true,
+    "duplicated_roots_do_not_increase_independent_evidence_diversity": true,
+    "disabled_or_absent_channels_are_explicit": true
+  },
+  "tests": {
+    "phase7_0": {
+      "focused": 8,
+      "existing_vns_polyphia": 42
+    },
+    "phase7_1": {
+      "focused": 12,
+      "vns_regression": 27,
+      "authority_root_regression": 46
+    },
+    "phase7_2": {
+      "focused": 13,
+      "musical_regression": 31,
+      "combined_graph_regression": 53
+    },
+    "phase7_3": {
+      "focused": 13,
+      "attention_regression": 25,
+      "combined_sensory_regression": 60
+    },
+    "phase7_4": {
+      "focused": 12,
+      "deep_cognition_regression": 27,
+      "learned_and_deep_regression": 18,
+      "combined_phase7_assembly": 66
+    },
+    "phase7_5": {
+      "focused_exit_gate": 11,
+      "queen_compatibility": 31,
+      "full_phase7_assembly": 71
+    }
+  },
+  "exit_condition": {
+    "full_conducting_queen_runs_with_explicit_channel_completeness_telemetry": true,
+    "all_17_required_channels_represented": true,
+    "single_channel_mask_isolation_verified": true,
+    "missing_channel_not_interpreted_as_genuine_zero": true,
+    "synthetic_roots_do_not_increase_observed_diversity": true,
+    "duplicated_roots_do_not_increase_independence": true,
+    "status": "PASS"
+  },
+  "authority": {
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "real_orders_submitted": 0,
+    "authority_class": "PUBLIC_MARKET_RESEARCH_ONLY_NO_EXECUTION_OR_PROMOTION"
+  },
+  "next_phase": {
+    "phase": 8,
+    "name": "Recursive Queen Conducting Loop",
+    "gate": "Do not advance until Phase 7 receipt is committed and the broad regression sweep passes."
+  }
+}

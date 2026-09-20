@@ -34,6 +34,18 @@ def _cfg_int(cfg: Any, key: str, default: int) -> int:
     return int(default if raw is None else raw)
 
 
+def _organ_mode(cfg: Any, organ_id: str, default: str = "ACTIVE") -> str:
+    modes = getattr(cfg, "phase12_organ_runtime_modes", None)
+    if not isinstance(modes, dict):
+        return str(default).upper()
+    return str(modes.get(str(organ_id), default) or default).upper()
+
+
+def _organ_influence_enabled(cfg: Any, organ_id: str, default: bool = True) -> bool:
+    mode = _organ_mode(cfg, organ_id, "ACTIVE" if default else "SHADOW")
+    return mode in {"ADVISORY", "ACTIVE"}
+
+
 class HypothesisCompetition:
     """Runs frozen Phase-2 hypotheses and baselines on the same feature vector."""
 
@@ -137,6 +149,18 @@ class HypothesisCompetition:
             getattr(cfg, "derivatives_trend_ml_veto_max_failure_probability", 0.50) or 0.50
         )
         self.worker_models = (*self.worker_federation.models, *self.worker_coalition_models)
+        self.phase12_worker_influence_enabled = _organ_influence_enabled(
+            cfg, "strategy_workers", True
+        )
+        self.phase12_worker_coalition_influence_enabled = _organ_influence_enabled(
+            cfg, "worker_coalition", True
+        )
+        self.phase12_learning_influence_enabled = _organ_influence_enabled(
+            cfg, "learning_memory", True
+        )
+        self.phase12_statistics_influence_enabled = _organ_influence_enabled(
+            cfg, "statistics_bee", True
+        )
         self._all_nonbaseline_models = {
             model.model_id: model
             for model in (
@@ -289,17 +313,29 @@ class HypothesisCompetition:
             for model_id, payload in suppressed.items()
             if isinstance(payload, dict) and bool(payload.get("suppressed"))
         }
+        def runtime_allowed(model: Any) -> bool:
+            model_id = str(getattr(model, "model_id", ""))
+            if model_id == "worker_coalition_meta_v1":
+                return bool(self.phase12_worker_coalition_influence_enabled)
+            if model_id.startswith("worker_signal_"):
+                return bool(self.phase12_worker_influence_enabled)
+            return True
+
         if not allowed:
             chosen = [
                 model
                 for model in (*self.primary_models, *self.federated_models, *self.worker_models)
-                if model.model_id not in suppressed_ids
+                if model.model_id not in suppressed_ids and runtime_allowed(model)
             ]
             return (*chosen, *self.baseline_models)
         chosen = [
             self._all_nonbaseline_models[model_id]
             for model_id in allowed
-            if model_id in self._all_nonbaseline_models and model_id not in suppressed_ids
+            if (
+                model_id in self._all_nonbaseline_models
+                and model_id not in suppressed_ids
+                and runtime_allowed(self._all_nonbaseline_models[model_id])
+            )
         ]
         return (*chosen, *self.baseline_models)
 
@@ -311,8 +347,10 @@ class HypothesisCompetition:
         for horizon in horizons:
             for model in self.medium_trend_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
-                forecast = apply_learning_prior_to_forecast(forecast, features)
-                forecast = statistical_hypothesis_gate(forecast, features)
+                if self.phase12_learning_influence_enabled:
+                    forecast = apply_learning_prior_to_forecast(forecast, features)
+                if self.phase12_statistics_influence_enabled:
+                    forecast = statistical_hypothesis_gate(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 forecasts.append(forecast)
@@ -336,8 +374,10 @@ class HypothesisCompetition:
         for horizon in horizons:
             for model in self.derivatives_trend_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
-                forecast = apply_learning_prior_to_forecast(forecast, features)
-                forecast = statistical_hypothesis_gate(forecast, features)
+                if self.phase12_learning_influence_enabled:
+                    forecast = apply_learning_prior_to_forecast(forecast, features)
+                if self.phase12_statistics_influence_enabled:
+                    forecast = statistical_hypothesis_gate(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 if not forecast.abstain and self.derivatives_trend_ml_veto_enabled and coalition_model is not None:
@@ -490,8 +530,10 @@ class HypothesisCompetition:
         for horizon in horizons:
             for model in active_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
-                forecast = apply_learning_prior_to_forecast(forecast, features)
-                forecast = statistical_hypothesis_gate(forecast, features)
+                if self.phase12_learning_influence_enabled:
+                    forecast = apply_learning_prior_to_forecast(forecast, features)
+                if self.phase12_statistics_influence_enabled:
+                    forecast = statistical_hypothesis_gate(forecast, features)
                 if forecast.execution_eligible:
                     raise RuntimeError(f"research model {forecast.model_id} attempted execution eligibility")
                 forecasts.append(forecast)

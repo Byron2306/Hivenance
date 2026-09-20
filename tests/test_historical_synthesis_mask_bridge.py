@@ -308,6 +308,12 @@ def test_no_statistics_disables_statistics_bee_without_changing_world():
         mask=historical_mask_plan("FULL_HIVE"),
         runtime_inputs=base,
     )
+    external_node=next(
+        node for node in full.cycle.queen_view.nodes
+        if node.family=="EXTERNAL_STATISTICS"
+    )
+    assert external_node.organ_id=="bee_evidence"
+    assert external_node.payload["schema"]=="hivenance_bee_evidence_v1"
     masked=run_masked_synthesis(
         runtime=SynthesisRuntime(),
         mask=historical_mask_plan("NO_STATISTICS"),

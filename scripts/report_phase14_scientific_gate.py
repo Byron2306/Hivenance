@@ -7,6 +7,10 @@ from collections import defaultdict
 
 from strategies.relative_value_lab.phase14_scientific_gate import (
     summarize_book,validate_phase14_input,
+    clustered_world_summary,approximate_two_sided_pvalue,holm_bonferroni,
+    slice_summary,cost_stress_summary,fill_realism_summary,
+    selection_regret_summary,temporal_drift_summary,organ_marginal_utility,
+    negative_control_summary,
 )
 
 def main()->int:
@@ -45,6 +49,44 @@ def main()->int:
         results[str(book_id)]=result.to_dict()
 
     primary=results.get("FULL_HIVE_FROZEN") or {}
+
+    book_rows = {
+        str(book_id): by_book.get(str(book_id), [])
+        for book_id in freeze.get("books") or []
+    }
+    pvalues={}
+    for book_id,rows_for_book in book_rows.items():
+        vals=[
+            float(r["realized_net_bps"])
+            for r in rows_for_book
+            if r.get("realized_net_bps") is not None
+        ]
+        pvalues[book_id]=approximate_two_sided_pvalue(
+            (sum(vals)/len(vals)) if vals else None,
+            vals,
+        )
+    adjusted_pvalues=holm_bonferroni(pvalues)
+
+    full_rows=book_rows.get("FULL_HIVE_FROZEN",[])
+    robustness={
+        "clustered_worlds":clustered_world_summary(full_rows),
+        "cost_stress":cost_stress_summary(full_rows),
+        "fill_realism":fill_realism_summary(full_rows),
+        "per_symbol":slice_summary(full_rows,"symbol"),
+        "per_regime":slice_summary(full_rows,"regime"),
+        "per_horizon":slice_summary(full_rows,"horizon_seconds"),
+        "per_model":slice_summary(full_rows,"model_id"),
+        "selection_regret":selection_regret_summary(full_rows),
+        "temporal_drift":temporal_drift_summary(full_rows),
+        "organ_marginal_utility":organ_marginal_utility(rows),
+        "negative_controls":negative_control_summary(rows),
+        "multiplicity":{
+            "method":freeze.get("multiplicity_method"),
+            "raw_pvalues":pvalues,
+            "adjusted_pvalues":adjusted_pvalues,
+        },
+    }
+
     sufficient=(
         int(primary.get("settled_n") or 0)>=int(freeze.get("minimum_samples") or 30)
         and int(primary.get("distinct_worlds") or 0)>=int(freeze.get("minimum_distinct_market_worlds") or 20)
@@ -54,6 +96,7 @@ def main()->int:
         "freeze_id":freeze.get("freeze_id"),
         "status":"READY_FOR_ECONOMIC_CONCLUSION" if sufficient else "REFUSE_INSUFFICIENT_PROSPECTIVE_EVIDENCE",
         "books":results,
+        "robustness":robustness,
         "execution_eligible":False,
         "promotion_eligible":False,
         "claim_boundary":{

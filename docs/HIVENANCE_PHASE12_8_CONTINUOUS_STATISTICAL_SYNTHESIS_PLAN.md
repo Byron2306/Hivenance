@@ -447,3 +447,25 @@ Next singular-organism tranche:
 5. generate per-organ invocation/influence/economic-value census;
 6. retire or quarantine only organs proven redundant, inert, or harmful;
 7. keep all positive influence research-only until prospective shadow evidence survives costs.
+
+
+## Implementation checkpoint — Upper Cognition Optimization
+
+Implemented:
+- Cognitive Metabolism now computes a bounded recurrence budget for Recursive Queen;
+- high strain, duplicate pressure, low breath, and low information gain can reduce recurrence depth;
+- metabolic information exhaustion can stop recurrence before dispatch;
+- existing stop conditions (WAIT_REST, NO_GRAPH_CHANGE, INTERPRETATION_STABLE, REFUSED/ABSTAINED) remain intact;
+- expanded causal mask roster tests now include NO_STATISTICS, NO_BAYES, NO_EXTERNAL, NO_CONFORMAL, and NO_ML;
+- Organ Utility Census added to classify ablation results across the full organism;
+- census states distinguish unavailable, available-not-invoked, inert, influential-underpowered, historically useful, historically harmful, and neutral;
+- harmful historical results recommend quarantine/redesign rather than automatic deletion;
+- no historical census outcome grants prospective, execution, or promotion authority.
+
+Next:
+1. wire least-privilege ResearchContext views into explicit upper-cognition invocation adapters;
+2. generate a historical same-world census from real replay outputs;
+3. compare runtime invocation counts against topology expectations to expose dead routes;
+4. add per-organ complexity/cognition cost to census;
+5. run prospective shadow validation only for organs that survive historical prosecution;
+6. quarantine duplicate or harmful organs behind explicit feature flags before any deletion.

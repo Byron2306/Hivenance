@@ -20,9 +20,14 @@ from strategies.volatility_breakout.learning_crystal_feedback import (
 from strategies.volatility_breakout.models import FeatureVector, Forecast
 from strategies.volatility_breakout.research_reuse import ResearchReuseGovernor
 from strategies.relative_value_lab.historical_causal_prosecution import HistoricalWorldOutcome
+from strategies.relative_value_lab.historical_probabilistic_reconstruction import (
+    HistoricalBayesianRegimeReconstructor,
+    HistoricalStatisticsReconstructor,
+    bind_regime_context,
+)
 
 DB = "data/swarm_data.db"
-MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS")
+MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS", "NO_STATISTICS", "NO_BAYES")
 
 
 class HistoricalReuseStore:
@@ -511,12 +516,15 @@ def main() -> None:
     )
     print(
         f"preloaded_reuse_outcomes={store.loaded_rows} "
+        f"preloaded_statistical_outcomes={historical_statistics.loaded_rows} "
         f"observation_snapshots={len(observation_payloads)}",
         flush=True,
     )
 
     full_comp = competition(workers=True)
     no_workers_comp = competition(workers=False)
+    historical_statistics = HistoricalStatisticsReconstructor(conn)
+    historical_bayes = HistoricalBayesianRegimeReconstructor()
 
     full_governor = learning_governor(store)
     no_crystal_governor = learning_governor(store)
@@ -545,6 +553,8 @@ def main() -> None:
         "NO_LEARNING": [],
         "NO_CRYSTALS": [],
         "NO_WORKERS": [],
+        "NO_STATISTICS": [],
+        "NO_BAYES": [],
     }
 
     for (
@@ -618,6 +628,56 @@ def main() -> None:
             warning_floor=args.warning_floor,
         )
 
+        regime_context = historical_bayes.context_for(feature)
+
+        full_feature = bind_regime_context(full_feature, regime_context)
+        no_learning_feature = bind_regime_context(no_learning_feature, regime_context)
+        no_crystal_feature = bind_regime_context(no_crystal_feature, regime_context)
+        no_workers_feature = bind_regime_context(no_workers_feature, regime_context)
+
+        no_bayes_feature = full_feature
+        no_bayes_values = dict(no_bayes_feature.values or {})
+        no_bayes_values.pop("regime_context", None)
+        no_bayes_feature = FeatureVector(**{**asdict(no_bayes_feature), "values": no_bayes_values})
+
+        full_feature = historical_statistics.bind(
+            full_feature,
+            model_ids=full_comp.all_model_ids,
+            horizon_seconds=int(horizon),
+        )
+        no_learning_feature = historical_statistics.bind(
+            no_learning_feature,
+            model_ids=full_comp.all_model_ids,
+            horizon_seconds=int(horizon),
+        )
+        no_crystal_feature = historical_statistics.bind(
+            no_crystal_feature,
+            model_ids=full_comp.all_model_ids,
+            horizon_seconds=int(horizon),
+        )
+        no_workers_feature = historical_statistics.bind(
+            no_workers_feature,
+            model_ids=no_workers_comp.all_model_ids,
+            horizon_seconds=int(horizon),
+        )
+        no_bayes_feature = historical_statistics.bind(
+            no_bayes_feature,
+            model_ids=full_comp.all_model_ids,
+            horizon_seconds=int(horizon),
+        )
+        no_statistics_feature = bind_regime_context(
+            compile_feature(
+                feature,
+                comp=full_comp,
+                governor=full_governor,
+                crystals=list(full_registry.values()),
+                enable_learning=True,
+                enable_crystals=True,
+                warning_floor=args.warning_floor,
+            )[0],
+            regime_context,
+        )
+
         priors = full_feedback.get("priors") if isinstance(full_feedback.get("priors"), dict) else {}
         world_has_prior_evidence = False
         world_has_candidate = False
@@ -665,7 +725,10 @@ def main() -> None:
             "NO_LEARNING": by_model(full_comp.evaluate(no_learning_feature, (horizon,))),
             "NO_CRYSTALS": by_model(full_comp.evaluate(no_crystal_feature, (horizon,))),
             "NO_WORKERS": by_model(no_workers_comp.evaluate(no_workers_feature, (horizon,))),
+            "NO_STATISTICS": by_model(full_comp.evaluate(no_statistics_feature, (horizon,))),
+            "NO_BAYES": by_model(full_comp.evaluate(no_bayes_feature, (horizon,))),
         }
+        historical_bayes.stage(feature)
 
         world_hash = "sha256:" + hashlib.sha256(
             str(raw_payload).encode("utf-8")
@@ -862,6 +925,8 @@ def main() -> None:
                 "NO_LEARNING": int(stats["NO_LEARNING"]["testable_worlds"]),
                 "NO_CRYSTALS": int(stats["NO_CRYSTALS"]["testable_worlds"]),
                 "NO_WORKERS": int(stats["NO_WORKERS"]["testable_worlds"]),
+                "NO_STATISTICS": int(stats["NO_STATISTICS"]["testable_worlds"]),
+                "NO_BAYES": int(stats["NO_BAYES"]["testable_worlds"]),
             },
         }
         with open(args.census_json_out, "w", encoding="utf-8") as fh:

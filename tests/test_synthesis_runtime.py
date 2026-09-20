@@ -1,6 +1,11 @@
 from strategies.relative_value_lab.synthesis_runtime import SynthesisRuntime
 from strategies.relative_value_lab.world_score import ScoreObservation,CanonicalWorldScore
 from strategies.relative_value_lab.edge_ecology import EdgeEcology
+from strategies.relative_value_lab.statistical_synthesis import (
+    StatisticalEvidence,
+    StatisticsBee,
+    SynthesisBee,
+)
 
 def frame():
  o=ScoreObservation("o","kraken","public_market","BTC/USD",10,10,"sha256:"+"a"*64,{"price":100})
@@ -74,3 +79,42 @@ def test_synthesis_runtime_phase5_edge_families_are_canonical_bee_evidence():
         assert node.payload["family"]==node.family
         assert node.payload["execution_eligible"] is False
         assert node.payload["promotion_eligible"] is False
+
+
+
+def test_statistics_bee_enters_synthesis_cycle_without_authority_gain():
+    f=frame()
+    bee=StatisticsBee()
+    bee.ingest(
+        StatisticalEvidence(
+            evidence_id="settled-1",
+            scope="BTC/USD|10|trend",
+            observed_at_ms=1,
+            available_at_ms=5,
+            realized_bps=7.0,
+            positive=True,
+            evidence_root="sha256:"+"d"*64,
+        )
+    )
+    exact=bee.snapshot(scope="BTC/USD|10|trend",as_of_ms=10)
+    state=SynthesisBee().synthesize(exact=exact)
+
+    cycle=SynthesisRuntime().run(
+        frame=f,
+        now_ms=10,
+        statistical_state=state,
+    )
+
+    assert "STATISTICAL_SYNTHESIS" in cycle.queen_view.families
+    node=next(
+        n for n in cycle.queen_view.nodes
+        if n.family=="STATISTICAL_SYNTHESIS"
+    )
+    assert node.organ_id=="STATISTICS_BEE"
+    assert node.execution_eligible is False
+    assert node.promotion_eligible is False
+    assert cycle.learning["probabilistic_synthesis"]["state_id"]==state.state_id
+    receipt=next(x for x in cycle.organ_receipts if x.organ_id=="statistics_bee")
+    assert receipt.state=="INVOKED"
+    assert receipt.execution_eligible is False
+    assert receipt.promotion_eligible is False

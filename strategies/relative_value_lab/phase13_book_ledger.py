@@ -94,7 +94,7 @@ class Phase13BookLedger:
             before=self.conn.total_changes
             self.conn.execute(
                 """INSERT OR IGNORE INTO phase13_forecast_book
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     rid,row.freeze_id,row.book_id,row.world_state_id,row.world_state_hash,
                     row.symbol,int(row.timestamp_ms),int(row.horizon_seconds),row.model_id,
@@ -112,7 +112,7 @@ class Phase13BookLedger:
         target_time_ms:int|None=None,
         limit:int=10000,
     )->list[dict[str,Any]]:
-        params:[Any]=[str(freeze_id)]
+        params:list[Any]=[str(freeze_id)]
         where="f.freeze_id=? AND s.forecast_row_id IS NULL"
         if target_time_ms is not None:
             where+=" AND (f.timestamp_ms + f.horizon_seconds*1000) <= ?"

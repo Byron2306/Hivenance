@@ -1,5 +1,6 @@
 import pytest
 
+from strategies.relative_value_lab.bee_evidence import external_metric_feature_evidence
 from strategies.relative_value_lab.external_statistics import (
     CORE_EXTERNAL_METRICS,
     ExternalStatisticsSensorium,
@@ -133,3 +134,27 @@ def test_core_external_metric_family_is_locked():
         "OPTIONS_25D_SKEW",
         "MACRO_POLICY_PROBABILITY",
     }.issubset(set(CORE_EXTERNAL_METRICS))
+
+
+
+def test_external_feature_can_be_canonical_bee_evidence():
+    s=ExternalStatisticsSensorium()
+    s.observe(
+        metric="ETF_NET_FLOW_USD",
+        provider="p",
+        symbol_scope="BTC",
+        observed_at_ms=10,
+        available_at_ms=11,
+        value=25.0,
+        unit="USD",
+        source_locator="p://etf/1",
+        source_bytes_or_value={"flow":25.0},
+        revision_policy="POINT_IN_TIME_CAPTURED",
+    )
+    feature=s.feature(metric="ETF_NET_FLOW_USD",symbol_scope="BTC",as_of_ms=20)
+    evidence=external_metric_feature_evidence(feature)
+    assert evidence.family=="EXTERNAL_STATISTICS"
+    assert evidence.source_kind=="TIMESTAMPED_EXTERNAL_MARKET_STATISTIC"
+    assert evidence.evidence_roots==(feature.evidence_root,)
+    assert evidence.execution_eligible is False
+    assert evidence.promotion_eligible is False

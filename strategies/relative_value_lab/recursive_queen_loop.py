@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 
 from .contracts import RELATIVE_VALUE_AUTHORITY
 from .world_graph import WorldGraph, WorldGraphNode
+from .cognitive_metabolism import CognitiveMetabolismReceipt, recurrence_budget
 
 
 REQUEST_KINDS = {
@@ -778,6 +779,7 @@ class RecursiveQueenLoop:
         dispatch: Any,
         reconduct: Any,
         start_ms: int,
+        metabolism: CognitiveMetabolismReceipt | None = None,
     ) -> RecursiveQueenRun:
         world_state_id = graph.frame.world_state_id
         world_state_hash = graph.frame.world_state_hash
@@ -787,10 +789,17 @@ class RecursiveQueenLoop:
         initial_id = str(initial_queen_receipt.receipt_id)
 
         steps: list[QueenRecurrenceStep] = []
-        stop_reason = "MAX_RECURRENCES"
+        budget = recurrence_budget(
+            metabolism,
+            configured_max=self.max_recurrences,
+        )
+        if budget.stop_immediately:
+            stop_reason = "METABOLIC_INFORMATION_EXHAUSTION"
+        else:
+            stop_reason = "MAX_RECURRENCES"
 
         for recurrence_index in range(
-            self.max_recurrences
+            budget.max_recurrences
         ):
             self.assert_same_world(
                 graph,
@@ -899,6 +908,8 @@ class RecursiveQueenLoop:
             "world_state_hash": world_state_hash,
             "observed_root_digest": root_digest,
             "max_recurrences": self.max_recurrences,
+            "metabolic_max_recurrences": budget.max_recurrences,
+            "metabolic_budget_reason": budget.reason,
             "steps": tuple(
                 step.step_id
                 for step in steps

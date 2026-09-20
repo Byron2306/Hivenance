@@ -28,6 +28,7 @@ from strategies.relative_value_lab.historical_probabilistic_reconstruction impor
 
 DB = "data/swarm_data.db"
 MASKS = ("NO_LEARNING", "NO_CRYSTALS", "NO_WORKERS", "NO_STATISTICS", "NO_BAYES")
+STATISTICAL_ATTACKS = ("SHUFFLE_EVIDENCE", "TIME_SHIFT_PLACEBO")
 
 
 class HistoricalReuseStore:
@@ -536,6 +537,8 @@ def main() -> None:
     stats = {mask: Counter() for mask in MASKS}
     world_deltas = {mask: defaultdict(list) for mask in MASKS}
     cohort_deltas = {mask: defaultdict(list) for mask in MASKS}
+    attack_stats = {attack: Counter() for attack in STATISTICAL_ATTACKS}
+    attack_world_deltas = {attack: defaultdict(list) for attack in STATISTICAL_ATTACKS}
 
     worlds = 0
     learning_exposed_worlds = 0
@@ -554,6 +557,8 @@ def main() -> None:
     bayes_context_worlds = 0
     bayes_disagreement_samples: list[float] = []
     bayes_change_probability_samples: list[float] = []
+    previous_statistics_by_model: dict[str, Any] = {}
+    previous_statistics_timestamp_ms: int | None = None
     census_outcomes = {
         "FULL_HIVE": [],
         "NO_LEARNING": [],
@@ -764,6 +769,48 @@ def main() -> None:
             "NO_STATISTICS": by_model(full_comp.evaluate(no_statistics_feature, (horizon,))),
             "NO_BAYES": by_model(full_comp.evaluate(no_bayes_feature, (horizon,))),
         }
+
+        attack_variants = {}
+        full_values = dict(full_feature.values or {})
+        current_stats = full_values.get("phase2_statistical_hypothesis_context_by_model")
+        if isinstance(current_stats, dict) and current_stats:
+            model_ids = sorted(current_stats)
+            rotated = {}
+            if len(model_ids) > 1:
+                for idx, model_id in enumerate(model_ids):
+                    donor = model_ids[(idx + 1) % len(model_ids)]
+                    rotated[model_id] = dict(current_stats[donor])
+            else:
+                rotated = {model_ids[0]: dict(current_stats[model_ids[0]])}
+            shuffled_values = dict(full_values)
+            shuffled_values["phase2_statistical_hypothesis_context_by_model"] = rotated
+            shuffled_feature = FeatureVector(**{**asdict(full_feature), "values": shuffled_values})
+            attack_variants["SHUFFLE_EVIDENCE"] = by_model(
+                full_comp.evaluate(shuffled_feature, (horizon,))
+            )
+
+            if previous_statistics_by_model:
+                shifted_values = dict(full_values)
+                shifted_values["phase2_statistical_hypothesis_context_by_model"] = {
+                    str(model_id): dict(payload)
+                    for model_id, payload in previous_statistics_by_model.items()
+                }
+                shifted_feature = FeatureVector(**{**asdict(full_feature), "values": shifted_values})
+                attack_variants["TIME_SHIFT_PLACEBO"] = by_model(
+                    full_comp.evaluate(shifted_feature, (horizon,))
+                )
+
+            if (
+                previous_statistics_timestamp_ms is None
+                or int(feature.timestamp_ms) > int(previous_statistics_timestamp_ms)
+            ):
+                previous_statistics_by_model = {
+                    str(model_id): dict(payload)
+                    for model_id, payload in current_stats.items()
+                    if isinstance(payload, dict)
+                }
+                previous_statistics_timestamp_ms = int(feature.timestamp_ms)
+
         historical_bayes.stage(feature)
 
         world_hash = "sha256:" + hashlib.sha256(
@@ -844,6 +891,21 @@ def main() -> None:
                 world_deltas[mask_id][world_key].extend(deltas)
                 cohort_deltas[mask_id][observation_run_id].append(mean(deltas))
 
+        for attack_id, attacked_map in attack_variants.items():
+            attack_stats[attack_id]["testable_worlds"] += 1
+            deltas = []
+            compare_maps(
+                full=full_map,
+                blind=attacked_map,
+                market_move_bps=market_move_bps,
+                mask_id=attack_id,
+                stats=attack_stats[attack_id],
+                world_bucket=deltas,
+            )
+            if deltas:
+                attack_stats[attack_id]["changed_worlds"] += 1
+                attack_world_deltas[attack_id][world_key].extend(deltas)
+
         remember_crystals(
             feature,
             full_feedback,
@@ -919,6 +981,31 @@ def main() -> None:
         round(mean(bayes_change_probability_samples), 6)
         if bayes_change_probability_samples else None,
     )
+
+    print()
+    print("STATISTICAL_ADVERSARIAL_ATTACKS")
+    for attack_id in STATISTICAL_ATTACKS:
+        per_world = {
+            key: mean(values)
+            for key, values in attack_world_deltas[attack_id].items()
+            if values
+        }
+        grouped = defaultdict(list)
+        for key, value in per_world.items():
+            grouped[key[0]].append(value)
+        cohorts = {
+            run_id: mean(values)
+            for run_id, values in grouped.items()
+            if values
+        }
+        print(attack_id)
+        print("  testable_worlds=", attack_stats[attack_id]["testable_worlds"])
+        print("  changed_worlds=", attack_stats[attack_id]["changed_worlds"])
+        print("  decision_changes=", attack_stats[attack_id]["decision_changes"])
+        print("  full_minus_attack_mean_delta_bps=", mean(per_world.values()) if per_world else None)
+        print("  dependence_adjusted_worlds=", len(cohorts))
+        print("  positive_cohorts=", sum(1 for x in cohorts.values() if x > 0))
+        print("  negative_cohorts=", sum(1 for x in cohorts.values() if x < 0))
 
     for mask_id in MASKS:
         per_world = {

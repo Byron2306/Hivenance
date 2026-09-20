@@ -492,3 +492,31 @@ Next:
 5. identify duplicate responsibilities by topology overlap plus correlated ablation outcomes;
 6. quarantine historically harmful or dead/unwired organs behind explicit switches;
 7. preserve governance/falsification organs unless their role itself is proven redundant.
+
+
+## Implementation checkpoint — Census CLI and Strict Replay Bundles
+
+Implemented:
+- strict Phase 12.7c9 historical replay can emit a census replay bundle;
+- bundle preserves model identity inside each world/horizon pair;
+- census runner pairing now includes envelope/model identity to avoid collapsing multiple hypothesis voices;
+- full-organism census CLI accepts one or more strict replay bundles;
+- conflicting mask bundles are refused;
+- masks without real historical reconstruction remain explicitly skipped;
+- skipped historical masks are reported as SKIPPED_NO_HISTORICAL_RECONSTRUCTION, never treated as neutral or inert;
+- CLI emits historical prosecution, utility census, and route census in one JSON report;
+- the first authoritative corpus currently supports real replay for NO_LEARNING, NO_CRYSTALS, and NO_WORKERS;
+- newer Phase 12.8 organs require point-in-time reconstruction before they may receive historical utility classifications.
+
+Canonical first census flow:
+1. report_phase12_learning_crystal_feedback_causality.py reads swarm_data.db with strict settlement causality;
+2. --census-json-out writes FULL_HIVE / NO_LEARNING / NO_CRYSTALS / NO_WORKERS outcome tape;
+3. report_full_organism_census.py consumes the bundle;
+4. one historical-only census report is produced;
+5. missing masks remain visibly unreconstructed.
+
+Next:
+- build historical reconstruction adapters for Statistics/Bayes/External/Calibration/ML only where original point-in-time evidence exists;
+- never reconstruct revised external data as if historically observed;
+- compare route census against runtime receipts to identify genuinely dead paths;
+- add cognition/complexity cost to utility decisions before any organ retirement.

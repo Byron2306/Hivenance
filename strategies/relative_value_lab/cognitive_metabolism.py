@@ -220,3 +220,92 @@ class CognitiveMetabolism:
             execution_eligible=False,
             promotion_eligible=False,
         )
+
+
+
+@dataclass(frozen=True)
+class RecurrenceBudget:
+    schema: str
+    max_recurrences: int
+    stop_immediately: bool
+    reason: str
+    marginal_information_gain: float
+    metabolic_strain: float
+    duplicate_pressure: float
+    breath: float
+    execution_eligible: bool = False
+    promotion_eligible: bool = False
+
+    def __post_init__(self) -> None:
+        if self.max_recurrences < 0:
+            raise ValueError("negative_recurrence_budget")
+        if self.execution_eligible or self.promotion_eligible:
+            raise ValueError("recurrence_budget_authority_escalation_forbidden")
+
+
+def recurrence_budget(
+    receipt: CognitiveMetabolismReceipt | None,
+    *,
+    configured_max: int,
+    minimum_information_gain: float = 0.10,
+    high_strain: float = 0.75,
+    high_duplicate_pressure: float = 0.70,
+    low_breath: float = 0.25,
+) -> RecurrenceBudget:
+    configured = max(0, int(configured_max))
+    if receipt is None:
+        return RecurrenceBudget(
+            schema="hivenance_recurrence_budget_v1",
+            max_recurrences=configured,
+            stop_immediately=False,
+            reason="metabolism_unavailable",
+            marginal_information_gain=1.0,
+            metabolic_strain=0.0,
+            duplicate_pressure=0.0,
+            breath=1.0,
+        )
+
+    info = max(0.0, float(receipt.information_gain_units))
+    strain = _clamp(receipt.metabolic_strain)
+    duplicate = _clamp(receipt.duplicate_pressure)
+    breath = _clamp(receipt.breath)
+
+    if (
+        info < float(minimum_information_gain)
+        and (
+            strain >= float(high_strain)
+            or duplicate >= float(high_duplicate_pressure)
+            or breath <= float(low_breath)
+        )
+    ):
+        return RecurrenceBudget(
+            schema="hivenance_recurrence_budget_v1",
+            max_recurrences=0,
+            stop_immediately=True,
+            reason="metabolic_information_exhaustion",
+            marginal_information_gain=info,
+            metabolic_strain=strain,
+            duplicate_pressure=duplicate,
+            breath=breath,
+        )
+
+    if strain >= 0.60 or duplicate >= 0.55 or breath <= 0.40:
+        allowed=min(configured,1)
+        reason="metabolic_thin_recurrence"
+    elif info < 0.50:
+        allowed=min(configured,2)
+        reason="metabolic_reduced_recurrence"
+    else:
+        allowed=configured
+        reason="metabolic_full_recurrence_budget"
+
+    return RecurrenceBudget(
+        schema="hivenance_recurrence_budget_v1",
+        max_recurrences=allowed,
+        stop_immediately=(allowed == 0),
+        reason=reason,
+        marginal_information_gain=info,
+        metabolic_strain=strain,
+        duplicate_pressure=duplicate,
+        breath=breath,
+    )

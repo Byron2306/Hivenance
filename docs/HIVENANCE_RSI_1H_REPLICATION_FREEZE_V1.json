@@ -1,0 +1,70 @@
+{
+  "schema": "hivenance_rsi_1h_replication_freeze_v1",
+  "status": "FROZEN_FOR_INDEPENDENT_REPLICATION",
+  "created_date": "2026-09-21",
+  "source_branch": "phase12-learning-causality-audit",
+  "source_commit": "50642615bbece476b20b3796e3e79d4bc1bc8cae",
+  "discovery_campaign": {
+    "label": "PHASE13_CANONICAL_SYMBOL_CLEAN_V1",
+    "data_namespace": "data/phase13_canonical_20260920_222917",
+    "interruption": "POWER_LOSS_AFTER_PARTIAL_PROSPECTIVE_CAMPAIGN",
+    "observation_span_seconds": 6353.6,
+    "distinct_worlds": 400,
+    "total_forecasts": 71325,
+    "model_id": "worker_signal_rsi_v1",
+    "horizon_seconds": 3600,
+    "fills": 25,
+    "distinct_symbols": 16,
+    "mean_gross_bps": 87.876,
+    "mean_net_bps": 32.908,
+    "median_gross_bps": 65.602,
+    "median_net_bps": 13.217,
+    "paired_vs_deterministic_random": {
+      "paired_n": 25,
+      "rsi_mean_gross_bps": 87.876,
+      "random_mean_gross_bps": -2.447,
+      "mean_delta_bps": 90.322,
+      "rsi_wins": 13,
+      "random_wins": 0,
+      "ties": 12
+    },
+    "authority": {
+      "execution_eligible": false,
+      "promotion_eligible": false
+    }
+  },
+  "implementation_freeze": {
+    "model_id": "worker_signal_rsi_v1",
+    "worker": "RSIWorker",
+    "worker_module": "agents/strategy_workers.py",
+    "worker_blob_sha": "e54f4de39c664952447b7c6ed16d8bf8ee43de3a",
+    "federation_module": "strategies/volatility_breakout/worker_signal_federation.py",
+    "federation_blob_sha": "ce7ba2c62d0d38838754b96471244d1b8c249049",
+    "rsi_window": 14,
+    "oversold": 30,
+    "overbought": 70,
+    "mutation_allowed_before_replication": false
+  },
+  "replication_contract": {
+    "campaign_label": "PHASE13_RSI_1H_REPLICATION_V1",
+    "fresh_market_db_required": true,
+    "fresh_phase13_ledger_required": true,
+    "same_model_code_required": true,
+    "same_worker_parameters_required": true,
+    "same_cost_model_required": true,
+    "horizon_seconds": 3600,
+    "no_parameter_tuning_before_or_during_campaign": true,
+    "no_execution_authority": true,
+    "no_promotion_authority": true,
+    "predeclared_acceptance": {
+      "minimum_fills": 30,
+      "minimum_distinct_symbols": 10,
+      "median_gross_bps_gt": 0,
+      "median_net_bps_gt": 0,
+      "mean_excess_vs_deterministic_random_bps_gt": 0,
+      "no_single_symbol_fraction_gt": 0.3,
+      "paired_random_losses_must_not_exceed_wins": true
+    },
+    "interpretation": "Passing these gates creates a prospectively useful replication candidate only; it does not authorize live trading or promotion."
+  }
+}

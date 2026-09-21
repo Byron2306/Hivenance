@@ -130,7 +130,7 @@ def phase14_campaign_rows(receipts: Sequence[Mapping[str, Any]]) -> list[dict[st
             "campaign_id":e["campaign_id"],
             "fills":int(e["fills"]),
             "distinct_symbols":int(e["distinct_symbols"]),
-            "distinct_worlds":int(e["distinct_worlds"]),
+            "distinct_worlds":(None if e.get("distinct_worlds") is None else int(e["distinct_worlds"])),
             "mean_gross_bps":e.get("mean_gross_bps"),
             "median_gross_bps":e.get("median_gross_bps"),
             "mean_net_bps":e.get("mean_net_bps"),

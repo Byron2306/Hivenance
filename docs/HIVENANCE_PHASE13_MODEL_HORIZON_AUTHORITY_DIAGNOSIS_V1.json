@@ -1,0 +1,93 @@
+{
+  "schema": "hivenance_phase13_model_horizon_authority_diagnosis_v1",
+  "status": "POST_HOC_DIAGNOSTIC_ONLY",
+  "source_campaign": "data/phase13_canonical_20260920_222917",
+  "source_freeze_id": "p13f_e97ffdae92cb73e8ac067cb4",
+  "authority": "RESEARCH_DIAGNOSTIC_ONLY",
+  "execution_eligible": false,
+  "promotion_eligible": false,
+  "direct_g1_ablation_available": false,
+  "direct_g1_ablation_reason": "phase5_g0_shadow_twins had zero born/settled twins in this campaign",
+  "findings": {
+    "coarse_adaptive_behavior": {
+      "baseline_controls": "same frozen/adaptive",
+      "federated_research": "same frozen/adaptive",
+      "strategy_workers": "present in FULL_HIVE_FROZEN; absent in ADAPTIVE_HIVE",
+      "worker_coalition": "present in FULL_HIVE_FROZEN; absent in ADAPTIVE_HIVE"
+    },
+    "family_gross_bps": {
+      "strategy_workers": {
+        "300": -11.683,
+        "900": 2.226,
+        "3600": 8.332
+      },
+      "worker_coalition": {
+        "300": 55.414,
+        "900": 21.804,
+        "3600": -27.141
+      },
+      "federated_research": {
+        "300": 8.61,
+        "900": -4.005,
+        "3600": -37.149
+      },
+      "baseline_controls": {
+        "300": -1.458,
+        "900": 0.144,
+        "3600": -0.353
+      }
+    },
+    "one_hour_models": [
+      {
+        "model_id": "worker_signal_rsi_v1",
+        "fills": 25,
+        "gross_bps": 87.876,
+        "net_bps": 32.908,
+        "classification": "REPLICATION_CANDIDATE_ONLY"
+      },
+      {
+        "model_id": "worker_signal_bollinger_v1",
+        "fills": 15,
+        "gross_bps": 47.421,
+        "net_bps": -8.092,
+        "classification": "COST_NEAR_MISS"
+      },
+      {
+        "model_id": "worker_signal_rsi2_v1",
+        "fills": 47,
+        "gross_bps": 15.545,
+        "net_bps": -39.552,
+        "classification": "POSITIVE_GROSS_COST_NEGATIVE"
+      },
+      {
+        "model_id": "worker_coalition_meta_v1",
+        "fills": 42,
+        "gross_bps": -27.141,
+        "net_bps": -82.2,
+        "classification": "NEGATIVE_TESTED_WINDOW"
+      },
+      {
+        "model_id": "candidate_freqai_transparent_linear_v1",
+        "fills": 59,
+        "gross_bps": -34.636,
+        "net_bps": -89.6,
+        "classification": "NEGATIVE_TESTED_WINDOW"
+      },
+      {
+        "model_id": "candidate_finrl_conservative_policy_proxy_v1",
+        "fills": 50,
+        "gross_bps": -39.624,
+        "net_bps": -94.774,
+        "classification": "NEGATIVE_TESTED_WINDOW"
+      }
+    ]
+  },
+  "architectural_conclusion": "Do not allocate research influence at organ-family granularity when model utility is horizon/regime heterogeneous. Resolve authority by model_id + horizon_seconds + regime (+ cohort where useful), preserve immutable controls, and require prospective evidence before ACTIVE authority.",
+  "safeguards": [
+    "No post-hoc finding activates a model automatically.",
+    "The RSI 1h replication freeze remains independent and unchanged.",
+    "Granular authority lattice is disabled by default.",
+    "ADVISORY, SHADOW, and QUARANTINED cannot directly steer forecast selection.",
+    "Baseline controls remain active even when granular authority is enabled."
+  ]
+}

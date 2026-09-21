@@ -313,3 +313,128 @@ def negative_control_summary(rows: Sequence[Mapping[str,Any]]) -> dict[str,Any]:
             "median_net_bps":statistics.median(values) if values else None,
         }
     return out
+
+
+def independent_campaign_replication_summary(
+    campaigns: Sequence[Mapping[str, Any]],
+    *,
+    minimum_fills: int = 30,
+    minimum_distinct_symbols: int = 10,
+    maximum_single_symbol_fraction: float = 0.30,
+) -> dict[str, Any]:
+    """Compare already-frozen campaign results without granting authority.
+
+    Each campaign is an independent evidence unit. Missing/insufficient campaigns
+    remain visible rather than being pooled until a desired answer appears.
+    """
+    normalized=[]
+    signs=[]
+    for raw in campaigns:
+        fills=int(raw.get("fills") or 0)
+        symbols=int(raw.get("distinct_symbols") or 0)
+        mean_gross=raw.get("mean_gross_bps")
+        median_gross=raw.get("median_gross_bps")
+        mean_net=raw.get("mean_net_bps")
+        median_net=raw.get("median_net_bps")
+        excess=raw.get("mean_excess_vs_random_bps")
+        concentration=raw.get("largest_symbol_fraction")
+        sufficient=(
+            fills >= int(minimum_fills)
+            and symbols >= int(minimum_distinct_symbols)
+            and concentration is not None
+            and float(concentration) <= float(maximum_single_symbol_fraction)
+        )
+        economic_pass=(
+            sufficient
+            and median_gross is not None and float(median_gross) > 0
+            and median_net is not None and float(median_net) > 0
+            and excess is not None and float(excess) > 0
+        )
+        if mean_net is not None:
+            signs.append(1 if float(mean_net)>0 else (-1 if float(mean_net)<0 else 0))
+        normalized.append({
+            "campaign_id":str(raw.get("campaign_id") or ""),
+            "fills":fills,
+            "distinct_symbols":symbols,
+            "mean_gross_bps":mean_gross,
+            "median_gross_bps":median_gross,
+            "mean_net_bps":mean_net,
+            "median_net_bps":median_net,
+            "mean_excess_vs_random_bps":excess,
+            "largest_symbol_fraction":concentration,
+            "sufficient":sufficient,
+            "economic_pass":economic_pass,
+        })
+
+    sufficient_n=sum(1 for row in normalized if row["sufficient"])
+    pass_n=sum(1 for row in normalized if row["economic_pass"])
+    sign_reversal=bool(signs) and any(x>0 for x in signs) and any(x<0 for x in signs)
+
+    if not normalized or sufficient_n==0:
+        classification="INSUFFICIENT_INDEPENDENT_REPLICATION"
+    elif sign_reversal:
+        classification="REGIME_OR_TEMPORAL_INSTABILITY_DETECTED"
+    elif sufficient_n>=2 and pass_n==sufficient_n:
+        classification="REPEATED_PROSPECTIVE_SUPPORT"
+    elif pass_n==0 and sufficient_n>=1:
+        classification="NOT_REPLICATED_ON_TESTED_CAMPAIGNS"
+    else:
+        classification="MIXED_OR_UNRESOLVED_REPLICATION"
+
+    return {
+        "campaigns":normalized,
+        "campaign_count":len(normalized),
+        "sufficient_campaigns":sufficient_n,
+        "passing_campaigns":pass_n,
+        "sign_reversal":sign_reversal,
+        "classification":classification,
+        "authority_effect":"NONE_RESEARCH_ONLY",
+        "execution_eligible":False,
+        "promotion_eligible":False,
+    }
+
+
+def model_horizon_regime_persistence(
+    rows: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize evidence at the authority lattice grain.
+
+    This is diagnostic only. It never turns a post-hoc slice into ACTIVE authority.
+    """
+    grouped: dict[tuple[str,int,str],list[float]]={}
+    worlds: dict[tuple[str,int,str],set[str]]={}
+    for row in rows:
+        value=row.get("realized_net_bps")
+        if value is None:
+            continue
+        key=(
+            str(row.get("model_id") or ""),
+            int(row.get("horizon_seconds") or 0),
+            str(row.get("regime") or "UNKNOWN"),
+        )
+        grouped.setdefault(key,[]).append(float(value))
+        worlds.setdefault(key,set()).add(str(row.get("world_state_id") or ""))
+
+    cells=[]
+    for key in sorted(grouped):
+        values=grouped[key]
+        model_id,horizon,regime=key
+        cells.append({
+            "model_id":model_id,
+            "horizon_seconds":horizon,
+            "regime":regime,
+            "n":len(values),
+            "distinct_worlds":len(worlds[key]),
+            "mean_net_bps":statistics.mean(values),
+            "median_net_bps":statistics.median(values),
+            "positive":sum(1 for x in values if x>0),
+            "negative":sum(1 for x in values if x<0),
+            "authority_effect":"NONE_RESEARCH_ONLY",
+        })
+    return {
+        "grain":["model_id","horizon_seconds","regime"],
+        "cells":cells,
+        "post_hoc_activation_forbidden":True,
+        "execution_eligible":False,
+        "promotion_eligible":False,
+    }

@@ -1,0 +1,76 @@
+{
+  "schema": "hivenance_phase14_rsi_replication_checkpoint_v1",
+  "candidate": {
+    "book_id": "FULL_HIVE_FROZEN",
+    "model_id": "worker_signal_rsi_v1",
+    "horizon_seconds": 3600,
+    "freeze_id": "p13f_e97ffdae92cb73e8ac067cb4"
+  },
+  "campaign": {
+    "label": "PHASE13_RSI_1H_REPLICATION_V1",
+    "run_directory": "data/phase13_rsi_replication_20260921_085206",
+    "requested_seconds": 21600.0,
+    "wall_clock_seconds": 21618.62,
+    "interrupted": false,
+    "settlement_errors": 0,
+    "real_orders_submitted": 0
+  },
+  "custody": {
+    "sealed_preoutcome_csv_sha256": "95fef558d8722404fbe3f03020a3eead7308cefc2706e6284a0ab1e75385c301",
+    "sealed_predictions": 31,
+    "sealed_worlds": 31,
+    "sealed_symbols": 22,
+    "sealed_up": 5,
+    "sealed_down": 26,
+    "final_market_db_sha256": "f49b80570226cc0901e0d039dfc0afec905e9842023e2b1dc1c4a7660b5da47d",
+    "final_phase13_ledger_sha256": "2ad88aa7ce6cee0530c4e6de88eba42ee27f21876d026d12c674580ef8be42af",
+    "final_gauntlet_result_sha256": "6532f616e6794de0bc41714fb270a0ebc9b2b98bd02a6ee5d79ba4a910a12764"
+  },
+  "sealed_cohort_result": {
+    "matched_settlements": 25,
+    "fills": 23,
+    "settlement_abstentions": 2,
+    "unmatched": 6,
+    "filled_symbols": 15,
+    "filled_worlds": 23,
+    "mean_gross_bps": -95.141,
+    "median_gross_bps": -99.268,
+    "mean_cost_bps": 54.578,
+    "mean_net_bps": -149.718,
+    "median_net_bps": -151.798,
+    "net_win_pct": 4.3,
+    "paired_random_n": 23,
+    "mean_excess_vs_deterministic_random_bps": -93.543,
+    "rsi_paired_wins": 1,
+    "random_paired_wins": 9,
+    "largest_symbol": "SOL/USD",
+    "largest_symbol_fills": 4,
+    "largest_symbol_fraction": 0.174
+  },
+  "precommitted_acceptance": {
+    "minimum_fills": 30,
+    "minimum_distinct_symbols": 10,
+    "median_gross_bps_gt": 0,
+    "median_net_bps_gt": 0,
+    "mean_excess_vs_deterministic_random_bps_gt": 0,
+    "maximum_single_symbol_fraction": 0.30
+  },
+  "status": "REPLICATION_INCOMPLETE_WITH_STRONGLY_ADVERSE_EVIDENCE",
+  "interpretation": [
+    "The minimum-fill gate is not yet satisfied, so the frozen replication contract is not complete.",
+    "Observed mature fills fail median gross, median net, and matched deterministic-random excess criteria by large margins.",
+    "The adverse result is not explained by single-symbol concentration under the frozen concentration limit.",
+    "No parameter tuning, symbol pruning, direction reversal, or retrospective rescue is authorized from this checkpoint."
+  ],
+  "authority": {
+    "model_authority_effect": "NONE",
+    "execution_eligible": false,
+    "promotion_eligible": false,
+    "granular_authority_lattice_activation": false
+  },
+  "next_evidence": [
+    "Preserve this campaign unchanged.",
+    "Treat any temporally independent Debian campaign as a separate campaign, never merged into this receipt.",
+    "Use Phase14 replication court to distinguish persistence, tested-domain failure, and regime/temporal dependence across independent campaigns."
+  ]
+}

@@ -21,6 +21,10 @@ from .worker_coalition_model import WorkerCoalitionMetaModel
 from .worker_signal_federation import WorkerSignalFederation
 from .venue_profiles import venue_profile
 from strategies.relative_value_lab.hypothesis_statistics_bridge import statistical_hypothesis_gate
+from strategies.relative_value_lab.model_authority_lattice import (
+    model_authority_manifest,
+    resolve_model_authority,
+)
 
 
 def _cfg_float(cfg: Any, key: str, default: float) -> float:
@@ -164,6 +168,13 @@ class HypothesisCompetition:
         self.phase12_statistics_influence_enabled = _organ_influence_enabled(
             cfg, "statistics_bee", True
         )
+        self.phase13_granular_model_authority_enabled = bool(
+            getattr(cfg, "phase13_granular_model_authority_enabled", False)
+        )
+        configured_authority_rules = getattr(cfg, "phase13_model_authority_rules", ()) or ()
+        self.phase13_model_authority_rules = tuple(
+            dict(item) for item in configured_authority_rules if isinstance(item, dict)
+        )
         self._all_nonbaseline_models = {
             model.model_id: model
             for model in (
@@ -267,9 +278,21 @@ class HypothesisCompetition:
     def all_model_ids(self) -> tuple[str, ...]:
         return (*self.primary_ids, *self.federated_ids, *self.baseline_ids)
 
-    def active_model_ids_for(self, features: FeatureVector) -> tuple[str, ...]:
-        """Return the exact research roster eligible to emit on this world."""
-        return tuple(str(model.model_id) for model in self._active_models_for(features))
+    def active_model_ids_for(
+        self,
+        features: FeatureVector,
+        horizon_seconds: int | None = None,
+    ) -> tuple[str, ...]:
+        """Return the research roster eligible on this world/horizon.
+
+        With granular authority disabled this preserves the historical coarse
+        organ behavior. Horizon-specific authority is only applied when the
+        explicit Phase-13 lattice flag is enabled.
+        """
+        return tuple(
+            str(model.model_id)
+            for model in self._active_models_for(features, horizon_seconds=horizon_seconds)
+        )
 
     def federation_manifest(self) -> dict[str, Any]:
         manifest = self.federation.manifest()
@@ -281,6 +304,12 @@ class HypothesisCompetition:
             "authority": "research_forecast_only",
             "execution_wired": False,
             "orders_submitted": 0,
+        }
+        manifest["model_horizon_regime_authority"] = {
+            **model_authority_manifest(self.phase13_model_authority_rules),
+            "enabled": self.phase13_granular_model_authority_enabled,
+            "default_behavior": "coarse_organ_authority_fallback",
+            "note": "Granular rules never grant execution or promotion authority.",
         }
         manifest["medium_horizon_trend_model"] = {
             "enabled": bool(self.medium_trend_models),
@@ -307,7 +336,59 @@ class HypothesisCompetition:
         values = features.values if isinstance(features.values, dict) else {}
         return str(values.get("cohort_bucket") or "unknown")
 
-    def _active_models_for(self, features: FeatureVector) -> tuple[Any, ...]:
+    def _model_authority_decision(
+        self,
+        *,
+        model_id: str,
+        features: FeatureVector,
+        horizon_seconds: int | None,
+    ):
+        values = features.values if isinstance(features.values, dict) else {}
+        regime_inputs = values.get("regime_inputs") if isinstance(values.get("regime_inputs"), dict) else {}
+        return resolve_model_authority(
+            model_id=str(model_id),
+            horizon_seconds=horizon_seconds,
+            regime=str(regime_inputs.get("regime_hint") or "unknown"),
+            cohort_bucket=self._cohort_bucket(features),
+            rules=self.phase13_model_authority_rules,
+        )
+
+    def _coarse_runtime_allowed(self, model: Any) -> bool:
+        model_id = str(getattr(model, "model_id", ""))
+        if model_id == "worker_coalition_meta_v1":
+            return bool(self.phase12_worker_coalition_influence_enabled)
+        if model_id.startswith("worker_signal_"):
+            return bool(self.phase12_worker_influence_enabled)
+        return True
+
+    def _runtime_allowed(
+        self,
+        model: Any,
+        *,
+        features: FeatureVector,
+        horizon_seconds: int | None,
+    ) -> bool:
+        model_id = str(getattr(model, "model_id", ""))
+        # Baselines are immutable controls and cannot be removed by the adaptive
+        # authority lattice.
+        if model_id.startswith("baseline_") or model_id == "baseline_no_trade_v1":
+            return True
+        if not self.phase13_granular_model_authority_enabled:
+            return self._coarse_runtime_allowed(model)
+        decision = self._model_authority_decision(
+            model_id=model_id,
+            features=features,
+            horizon_seconds=horizon_seconds,
+        )
+        if decision.matched:
+            return decision.influence_enabled
+        return self._coarse_runtime_allowed(model)
+
+    def _active_models_for(
+        self,
+        features: FeatureVector,
+        horizon_seconds: int | None = None,
+    ) -> tuple[Any, ...]:
         cohort = self._cohort_bucket(features)
         allowed = self._cohort_preferences.get(cohort)
         values = features.values if isinstance(features.values, dict) else {}
@@ -320,19 +401,22 @@ class HypothesisCompetition:
             for model_id, payload in suppressed.items()
             if isinstance(payload, dict) and bool(payload.get("suppressed"))
         }
-        def runtime_allowed(model: Any) -> bool:
-            model_id = str(getattr(model, "model_id", ""))
-            if model_id == "worker_coalition_meta_v1":
-                return bool(self.phase12_worker_coalition_influence_enabled)
-            if model_id.startswith("worker_signal_"):
-                return bool(self.phase12_worker_influence_enabled)
-            return True
+
+        def allowed_here(model: Any) -> bool:
+            return (
+                str(getattr(model, "model_id", "")) not in suppressed_ids
+                and self._runtime_allowed(
+                    model,
+                    features=features,
+                    horizon_seconds=horizon_seconds,
+                )
+            )
 
         if not allowed:
             chosen = [
                 model
                 for model in (*self.primary_models, *self.federated_models, *self.worker_models)
-                if model.model_id not in suppressed_ids and runtime_allowed(model)
+                if allowed_here(model)
             ]
             return (*chosen, *self.baseline_models)
         chosen = [
@@ -340,8 +424,7 @@ class HypothesisCompetition:
             for model_id in allowed
             if (
                 model_id in self._all_nonbaseline_models
-                and model_id not in suppressed_ids
-                and runtime_allowed(self._all_nonbaseline_models[model_id])
+                and allowed_here(self._all_nonbaseline_models[model_id])
             )
         ]
         return (*chosen, *self.baseline_models)
@@ -533,10 +616,22 @@ class HypothesisCompetition:
     def evaluate(self, features: FeatureVector, horizons: Iterable[int]) -> list[Forecast]:
         forecasts: list[Forecast] = []
         features = self._adaptive_feature(features)
-        active_models = self._active_models_for(features)
         for horizon in horizons:
+            active_models = self._active_models_for(
+                features,
+                horizon_seconds=int(horizon),
+            )
             for model in active_models:
                 forecast = model.forecast(features, horizon_seconds=int(horizon))
+                if self.phase13_granular_model_authority_enabled and not str(forecast.model_id).startswith("baseline_"):
+                    decision = self._model_authority_decision(
+                        model_id=forecast.model_id,
+                        features=features,
+                        horizon_seconds=int(horizon),
+                    )
+                    inputs = dict(forecast.inputs or {})
+                    inputs["model_authority_receipt"] = decision.to_dict()
+                    forecast = replace(forecast, inputs=inputs, execution_eligible=False)
                 if self.phase12_learning_influence_enabled:
                     forecast = apply_learning_prior_to_forecast(forecast, features)
                 if self.phase12_statistics_influence_enabled:

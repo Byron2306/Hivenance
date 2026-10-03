@@ -6,11 +6,11 @@ A multi-agent crypto trading swarm that combines technical analysis strategies, 
 
 ## Table of contents
 
-- [Novelty & market gap analysis](#novelty--market-gap-analysis)
+- [Novelty &amp; market gap analysis](#novelty--market-gap-analysis)
 - [What it does](#what-it-does)
 - [Architecture overview](#architecture-overview)
 - [Agent reference](#agent-reference)
-- [BuzzService (staking & governance)](#buzzservice-staking--governance)
+- [BuzzService (staking &amp; governance)](#buzzservice-staking--governance)
 - [Trading strategies](#trading-strategies)
 - [Risk management](#risk-management)
 - [On-chain trading](#on-chain-trading)
@@ -29,26 +29,21 @@ A multi-agent crypto trading swarm that combines technical analysis strategies, 
 
 ### The problem with existing trading bots
 
-| Category | Examples | Gap |
-|---|---|---|
-| **Simple signal bots** | 3Commas, Pionex, Bitsgap | Single strategy per bot; no regime awareness; no cross-agent accountability; stop working when market structure changes |
-| **Quant frameworks** | Freqtrade, Jesse, Backtrader | Research tools, not production swarms; require manual strategy selection; no on-chain execution; no agent-level staking or governance |
-| **DeFi yield/arbitrage bots** | Hummingbot, MEV bots | Narrow focus (arb or MM); no multi-strategy deliberation; no equity-floor kill switch; not designed for discretionary overlay |
-| **Managed algo funds** | Proprietary HFT / quant funds | Closed, inaccessible, minimum ticket sizes in the six-figure range |
-| **AI trading agents** | Various GPT-wrapper bots | LLM chat over prices; no real order execution pipeline; no formal risk accounting; hallucination risk on financial decisions |
+| Category                            | Examples                      | Gap                                                                                                                                   |
+| ----------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Simple signal bots**        | 3Commas, Pionex, Bitsgap      | Single strategy per bot; no regime awareness; no cross-agent accountability; stop working when market structure changes               |
+| **Quant frameworks**          | Freqtrade, Jesse, Backtrader  | Research tools, not production swarms; require manual strategy selection; no on-chain execution; no agent-level staking or governance |
+| **DeFi yield/arbitrage bots** | Hummingbot, MEV bots          | Narrow focus (arb or MM); no multi-strategy deliberation; no equity-floor kill switch; not designed for discretionary overlay         |
+| **Managed algo funds**        | Proprietary HFT / quant funds | Closed, inaccessible, minimum ticket sizes in the six-figure range                                                                    |
+| **AI trading agents**         | Various GPT-wrapper bots      | LLM chat over prices; no real order execution pipeline; no formal risk accounting; hallucination risk on financial decisions          |
 
 ### What Hivenance does differently
 
 1. **Swarm deliberation, not single-strategy conviction** — Rather than betting on one indicator, Hivenance runs four independent strategy workers in parallel. Trades only execute when a quorum of workers agrees (`swarmguard_consensus_min`) and the GovernanceQueen's SVS score clears a threshold. This is structurally more robust than any single-strategy bot under changing market conditions.
-
 2. **Regime-aware execution** — Most bots ignore market structure entirely. The `RegimeOracle` continuously classifies market state across three timeframes (1m / 5m / 1h) into six regimes. Strategies are filtered and weighted by regime alignment, so a SMA crossover signal in a `CHOP_RANGE` regime is suppressed even if it technically triggers.
-
 3. **Agent-level financial accountability via BuzzService** — Every agent that influences a trade stakes Buzz tokens before execution. Profitable outcomes earn rewards; losses trigger slashing. This creates a measurable, auditable cost for each agent's contribution to trading decisions — something no open-source bot framework has.
-
 4. **Unified CEX + on-chain execution** — Most bots are either CEX-only or DEX-only. Hivenance routes orders to whichever venue is better at execution time: Kraken/Binance for liquid pairs, 1inch on Base L2 for on-chain tokens (XCN, TOSHI, WLD), with automatic fallback between them (`onchain_fallback_to_cex`).
-
 5. **Dynamic symbol selection** — `CoinSelector` re-ranks tradeable symbols every 10 minutes by volume and spread. The swarm self-adapts its opportunity set without manual reconfiguration — rare in retail-accessible bots.
-
 6. **Production-grade risk stack** — SwarmGuard (liquidity cap + spread veto + rate limiter + JSON rulebook), KillSwitch (equity floor + drawdown + loss streak), NurseAgent (health monitoring + auto-restart), and SecurityAgent (anomaly detection) are not afterthoughts — they are first-class agents with their own staking.
 
 ### Market gap
@@ -56,6 +51,7 @@ A multi-agent crypto trading swarm that combines technical analysis strategies, 
 The intersection of **multi-agent deliberation**, **cross-venue execution (CEX + L2 DEX)**, and **on-chain agent accountability** does not exist in any open-source or retail-accessible trading system today. Most retail bots optimise for ease of setup; Hivenance optimises for correctness of decision-making at runtime.
 
 The addressable gap is specifically the segment of sophisticated retail and semi-professional traders who:
+
 - Have on-chain assets (Base, Ethereum) and CEX accounts simultaneously
 - Want strategy diversity without running five separate bots
 - Need a formal risk layer (not just a stop-loss) before trusting automation with real capital
@@ -127,29 +123,29 @@ All inter-agent decisions are staked using **Buzz tokens**, creating accountabil
 
 ## Agent reference
 
-| Agent | File | Role |
-|---|---|---|
-| `SwarmCoordinator` | `agents/coordinator.py` | Orchestrates all agents; runs the main trading loop |
-| `RegimeOracle` | `agents/oracle_regime.py` | Multi-timeframe market regime detection |
-| `StrategyCouncil` | `agents/council.py` | Aggregates worker proposals; applies consensus weighting |
-| `GovernanceQueen` | `agents/queen.py` | SVS scoring; position sizing; final BUY/SELL/HOLD decision |
-| `SMAWorker` | `agents/strategy_workers.py` | SMA crossover proposals |
-| `RSIWorker` | `agents/strategy_workers.py` | RSI overbought/oversold proposals |
-| `BreakoutWorker` | `agents/strategy_workers.py` | Price breakout proposals |
-| `MomentumWorker` | `agents/strategy_workers.py` | Momentum-based proposals |
-| `SwarmGuard` | `agents/swarmguard.py` | Liquidity cap, spread/fee veto, rate limiting, risk rulebook |
-| `KillSwitchAgent` | `agents/kill_switch.py` | Halts trading on equity floor or max drawdown breach |
-| `NurseAgent` | `agents/nurse.py` | Periodic health checks; auto-restarts stale agents |
-| `CoinSelector` | `agents/coin_selector.py` | Dynamic symbol selection by volume and spread |
-| `MarketData` | `agents/market_data.py` | Kraken OHLCV + order book feeds |
-| `WalletMonitor` | `agents/wallet_monitor.py` | On-chain wallet balance polling |
-| `OpenClawAgent` | `agents/openclaw.py` | On-chain swap execution via 1inch API |
-| `DataStoreAgent` | `agents/data_store_agent.py` | Persists candles, trades, events to SQLite |
-| `PerformanceAgent` | `agents/performance_agent.py` | Tracks PnL, win-rate, execution quality |
-| `SecurityAgent` | `agents/security_agent.py` | Monitors for anomalous activity; auto-pause support |
-| `NetworkAgent` | `agents/network_agent.py` | P2P agent communication layer |
-| `UIAgent` | `agents/ui_agent.py` | Flask web dashboard backend |
-| `LoggingAnalyticsAgent` | `agents/logging_analytics.py` | Structured logging + analytics sink |
+| Agent                     | File                            | Role                                                         |
+| ------------------------- | ------------------------------- | ------------------------------------------------------------ |
+| `SwarmCoordinator`      | `agents/coordinator.py`       | Orchestrates all agents; runs the main trading loop          |
+| `RegimeOracle`          | `agents/oracle_regime.py`     | Multi-timeframe market regime detection                      |
+| `StrategyCouncil`       | `agents/council.py`           | Aggregates worker proposals; applies consensus weighting     |
+| `GovernanceQueen`       | `agents/queen.py`             | SVS scoring; position sizing; final BUY/SELL/HOLD decision   |
+| `SMAWorker`             | `agents/strategy_workers.py`  | SMA crossover proposals                                      |
+| `RSIWorker`             | `agents/strategy_workers.py`  | RSI overbought/oversold proposals                            |
+| `BreakoutWorker`        | `agents/strategy_workers.py`  | Price breakout proposals                                     |
+| `MomentumWorker`        | `agents/strategy_workers.py`  | Momentum-based proposals                                     |
+| `SwarmGuard`            | `agents/swarmguard.py`        | Liquidity cap, spread/fee veto, rate limiting, risk rulebook |
+| `KillSwitchAgent`       | `agents/kill_switch.py`       | Halts trading on equity floor or max drawdown breach         |
+| `NurseAgent`            | `agents/nurse.py`             | Periodic health checks; auto-restarts stale agents           |
+| `CoinSelector`          | `agents/coin_selector.py`     | Dynamic symbol selection by volume and spread                |
+| `MarketData`            | `agents/market_data.py`       | Kraken OHLCV + order book feeds                              |
+| `WalletMonitor`         | `agents/wallet_monitor.py`    | On-chain wallet balance polling                              |
+| `OpenClawAgent`         | `agents/openclaw.py`          | On-chain swap execution via 1inch API                        |
+| `DataStoreAgent`        | `agents/data_store_agent.py`  | Persists candles, trades, events to SQLite                   |
+| `PerformanceAgent`      | `agents/performance_agent.py` | Tracks PnL, win-rate, execution quality                      |
+| `SecurityAgent`         | `agents/security_agent.py`    | Monitors for anomalous activity; auto-pause support          |
+| `NetworkAgent`          | `agents/network_agent.py`     | P2P agent communication layer                                |
+| `UIAgent`               | `agents/ui_agent.py`          | Flask web dashboard backend                                  |
+| `LoggingAnalyticsAgent` | `agents/logging_analytics.py` | Structured logging + analytics sink                          |
 
 ---
 
@@ -161,13 +157,13 @@ Each agent locks Buzz tokens before influencing a trade. If the trade is profita
 
 ### Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/lock` | Lock tokens (pre-trade stake) |
-| `POST` | `/release` | Release locked tokens |
-| `POST` | `/slash` | Slash an agent's balance |
-| `POST` | `/credit` | Credit an agent's balance |
-| `GET` | `/balance/{account}` | Query current balance |
+| Method   | Path                   | Description                   |
+| -------- | ---------------------- | ----------------------------- |
+| `POST` | `/lock`              | Lock tokens (pre-trade stake) |
+| `POST` | `/release`           | Release locked tokens         |
+| `POST` | `/slash`             | Slash an agent's balance      |
+| `POST` | `/credit`            | Credit an agent's balance     |
+| `GET`  | `/balance/{account}` | Query current balance         |
 
 All requests are authenticated with HMAC-SHA256 via the `x-hive-sig` / `x-hive-service` headers. Set `BUZZ_SHARED_SECRET` to the same value in both the coordinator config and the BuzzService environment.
 
@@ -183,12 +179,12 @@ Or set `buzz_base_url` in `config/settings.yaml` and the coordinator starts expe
 
 ## Trading strategies
 
-| Strategy | Trigger | Config keys |
-|---|---|---|
-| **SMA Crossover** | Fast SMA crosses above/below slow SMA | `sma_fast`, `sma_slow` |
-| **RSI** | RSI crosses oversold/overbought threshold | `rsi_window`, `rsi_oversold`, `rsi_overbought` |
-| **Breakout** | Close breaks above recent high / below recent low | `lookback` |
-| **Momentum** | Directional price momentum over lookback window | `lookback` |
+| Strategy                | Trigger                                           | Config keys                                          |
+| ----------------------- | ------------------------------------------------- | ---------------------------------------------------- |
+| **SMA Crossover** | Fast SMA crosses above/below slow SMA             | `sma_fast`, `sma_slow`                           |
+| **RSI**           | RSI crosses oversold/overbought threshold         | `rsi_window`, `rsi_oversold`, `rsi_overbought` |
+| **Breakout**      | Close breaks above recent high / below recent low | `lookback`                                         |
+| **Momentum**      | Directional price momentum over lookback window   | `lookback`                                         |
 
 All strategies are proposal-only; the `StrategyCouncil` + `GovernanceQueen` make the final call. Set `strategy_type` in `settings.yaml` to use a single strategy instead of the full worker ensemble.
 
@@ -210,6 +206,7 @@ Multi-layer trade filter applied before every order:
 ### KillSwitch
 
 Hard stop on any of:
+
 - Portfolio equity drops below `killswitch_equity_floor_usd`
 - Drawdown exceeds `max_drawdown_pct`
 - `max_consecutive_losses` consecutive losing trades
@@ -220,6 +217,7 @@ When triggered the coordinator halts all new orders and enters a grace period (`
 ### GovernanceQueen (SVS scoring)
 
 The queen scores each proposal using a **Sovereign Validation Score (SVS)** that factors in:
+
 - Regime alignment
 - Execution quality history
 - Historical performance metrics
@@ -235,20 +233,21 @@ Hivenance can route trades through the **1inch API** on Base L2 (chain ID 8453) 
 
 Key settings:
 
-| Setting | Description |
-|---|---|
-| `onchain_enabled` | Enable on-chain execution |
-| `onchain_chain_id` | EVM chain ID (8453 = Base) |
-| `onchain_slippage_bps` | Slippage tolerance in basis points |
-| `onchain_max_gas_usd` | Abort if estimated gas cost exceeds this |
-| `onchain_max_fee_eth` | Absolute max fee in ETH |
-| `web3_rpc_url` | RPC endpoint (default: Base mainnet) |
-| `watch_address` | Wallet address to monitor |
+| Setting                     | Description                                   |
+| --------------------------- | --------------------------------------------- |
+| `onchain_enabled`         | Enable on-chain execution                     |
+| `onchain_chain_id`        | EVM chain ID (8453 = Base)                    |
+| `onchain_slippage_bps`    | Slippage tolerance in basis points            |
+| `onchain_max_gas_usd`     | Abort if estimated gas cost exceeds this      |
+| `onchain_max_fee_eth`     | Absolute max fee in ETH                       |
+| `web3_rpc_url`            | RPC endpoint (default: Base mainnet)          |
+| `watch_address`           | Wallet address to monitor                     |
 | `onchain_fallback_to_cex` | Fall back to Kraken/Binance if on-chain fails |
 
 Token addresses for Base are pre-configured for ETH, XCN, TOSHI, WLD, and USDC in `settings.yaml` under `onchain_token_addresses`.
 
 **Required env vars for on-chain:**
+
 ```
 WEB3_PRIVATE_KEY=<your private key>
 ONEINCH_API_KEY=<your 1inch API key>
@@ -258,15 +257,15 @@ ONEINCH_API_KEY=<your 1inch API key>
 
 ## Prerequisites
 
-| Requirement | Notes |
-|---|---|
-| Python 3.10+ | Tested on 3.10 and 3.14 |
-| Redis | Used for pub/sub between agents (`redis_host`, `redis_port`) |
-| Kraken account | API key + secret for CEX trading |
-| Binance account | Optional; for Binance execution |
-| 1inch API key | Required for on-chain execution |
-| EVM wallet | Private key for on-chain signing |
-| Ollama (optional) | Local LLM inference |
+| Requirement       | Notes                                                            |
+| ----------------- | ---------------------------------------------------------------- |
+| Python 3.10+      | Tested on 3.10 and 3.14                                          |
+| Redis             | Used for pub/sub between agents (`redis_host`, `redis_port`) |
+| Kraken account    | API key + secret for CEX trading                                 |
+| Binance account   | Optional; for Binance execution                                  |
+| 1inch API key     | Required for on-chain execution                                  |
+| EVM wallet        | Private key for on-chain signing                                 |
+| Ollama (optional) | Local LLM inference                                              |
 
 ---
 
@@ -305,52 +304,52 @@ All options live in `config/settings.yaml`. Key sections:
 
 ### Core trading
 
-| Key | Default | Description |
-|---|---|---|
-| `exchange` | `kraken` | Primary CEX (`kraken` or `binance`) |
-| `symbol` | `ETH/USD` | Primary trading pair |
-| `multi_symbol_enabled` | `true` | Trade multiple symbols in parallel |
-| `multi_symbols` | `[ETH/USD, XCN/USD, TOSHI/USD]` | Symbol list for multi-symbol mode |
-| `interval` | `1m` | Candle interval |
-| `lookback` | `500` | Candles to keep in memory |
-| `poll_seconds` | `10` | Main loop interval (seconds) |
-| `dry_run` | `false` | Paper-trade mode (no real orders) |
+| Key                      | Default                           | Description                             |
+| ------------------------ | --------------------------------- | --------------------------------------- |
+| `exchange`             | `kraken`                        | Primary CEX (`kraken` or `binance`) |
+| `symbol`               | `ETH/USD`                       | Primary trading pair                    |
+| `multi_symbol_enabled` | `true`                          | Trade multiple symbols in parallel      |
+| `multi_symbols`        | `[ETH/USD, XCN/USD, TOSHI/USD]` | Symbol list for multi-symbol mode       |
+| `interval`             | `1m`                            | Candle interval                         |
+| `lookback`             | `500`                           | Candles to keep in memory               |
+| `poll_seconds`         | `10`                            | Main loop interval (seconds)            |
+| `dry_run`              | `false`                         | Paper-trade mode (no real orders)       |
 
 ### Position sizing & risk
 
-| Key | Default | Description |
-|---|---|---|
-| `risk_pct` | `0.005` | Fraction of free balance risked per trade |
-| `max_trade_usd` | `0.5` | Maximum order size in USD |
-| `min_trade_usd` | `0.1` | Minimum order size in USD |
-| `max_notional` | `2.0` | Max total notional exposure in USD |
-| `max_drawdown_pct` | `10.0` | Kill-switch drawdown threshold (%) |
-| `daily_loss_limit` | `50.0` | Daily loss limit in USD |
-| `max_consecutive_losses` | `5` | Kill-switch consecutive loss threshold |
-| `killswitch_equity_floor_usd` | `25.0` | Minimum equity before halt |
+| Key                             | Default   | Description                               |
+| ------------------------------- | --------- | ----------------------------------------- |
+| `risk_pct`                    | `0.005` | Fraction of free balance risked per trade |
+| `max_trade_usd`               | `0.5`   | Maximum order size in USD                 |
+| `min_trade_usd`               | `0.1`   | Minimum order size in USD                 |
+| `max_notional`                | `2.0`   | Max total notional exposure in USD        |
+| `max_drawdown_pct`            | `10.0`  | Kill-switch drawdown threshold (%)        |
+| `daily_loss_limit`            | `50.0`  | Daily loss limit in USD                   |
+| `max_consecutive_losses`      | `5`     | Kill-switch consecutive loss threshold    |
+| `killswitch_equity_floor_usd` | `25.0`  | Minimum equity before halt                |
 
 ### Coin selection (auto-switching)
 
-| Key | Default | Description |
-|---|---|---|
-| `coin_selection_enabled` | `true` | Enable dynamic coin selection |
-| `coin_selection_interval_sec` | `600` | Re-evaluate interval |
-| `coin_selection_top_n` | `3` | Number of symbols to trade |
-| `coin_selection_min_vol_usd` | `100000` | Minimum 24h volume filter |
-| `coin_selection_spread_max` | `0.03` | Maximum acceptable spread |
+| Key                             | Default    | Description                   |
+| ------------------------------- | ---------- | ----------------------------- |
+| `coin_selection_enabled`      | `true`   | Enable dynamic coin selection |
+| `coin_selection_interval_sec` | `600`    | Re-evaluate interval          |
+| `coin_selection_top_n`        | `3`      | Number of symbols to trade    |
+| `coin_selection_min_vol_usd`  | `100000` | Minimum 24h volume filter     |
+| `coin_selection_spread_max`   | `0.03`   | Maximum acceptable spread     |
 
 ### BuzzService
 
-| Key | Default | Description |
-|---|---|---|
-| `buzz_base_url` | `http://localhost:9009` | BuzzService endpoint |
-| `buzz_shared_secret` | `CHANGE_ME` | HMAC secret — **change before deploying** |
-| `buzz_account` | `hivenance-system` | Coordinator account name |
-| `buzz_bootstrap_amount` | `250` | Initial token balance seeded on startup |
-| `buzz_cycle_length_sec` | `120` | Governance cycle duration |
-| `buzz_stake_queen` | `20` | Tokens staked per queen decision |
-| `buzz_stake_council` | `10` | Tokens staked per council consensus |
-| `buzz_stake_worker_default` | `8` | Default stake per strategy worker |
+| Key                           | Default                   | Description                                     |
+| ----------------------------- | ------------------------- | ----------------------------------------------- |
+| `buzz_base_url`             | `http://localhost:9009` | BuzzService endpoint                            |
+| `buzz_shared_secret`        | `CHANGE_ME`             | HMAC secret —**change before deploying** |
+| `buzz_account`              | `hivenance-system`      | Coordinator account name                        |
+| `buzz_bootstrap_amount`     | `250`                   | Initial token balance seeded on startup         |
+| `buzz_cycle_length_sec`     | `120`                   | Governance cycle duration                       |
+| `buzz_stake_queen`          | `20`                    | Tokens staked per queen decision                |
+| `buzz_stake_council`        | `10`                    | Tokens staked per council consensus             |
+| `buzz_stake_worker_default` | `8`                     | Default stake per strategy worker               |
 
 ---
 
@@ -387,6 +386,7 @@ Set `ui_enabled: true` in `settings.yaml`, then open `http://localhost:5000` whi
 The Flask-based web dashboard runs on port `5000` (configurable via `ui_port`).
 
 Features:
+
 - Live agent status and health
 - Open positions and recent trades
 - PnL curve and win-rate metrics

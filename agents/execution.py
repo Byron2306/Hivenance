@@ -3,7 +3,7 @@ import logging
 import ccxt
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceOrderException
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, List
 import json
 import requests
 from web3 import Web3
@@ -41,6 +41,7 @@ class BinanceTrader:
         self.dry_run = dry_run
         self.max_position_base = max_position_base
         self.order_tracker = OrderTracker()
+        self.exchange = "binance"
 
         # Infer base/quote assets from symbol info
         info = self.client.get_symbol_info(symbol)
@@ -199,6 +200,7 @@ class DexExecutionAgent:
         self._pending_swap: Optional[Dict[str, Any]] = None
         self._last_tx_hash: Optional[str] = None
         self._last_error: Optional[Dict[str, Any]] = None
+        self._last_route_quality: Dict[str, Any] = {}
         self._w3 = None
         if self.web3_rpc_url:
             try:
@@ -313,11 +315,16 @@ class DexExecutionAgent:
                     pending_ms = 0
         except Exception:
             pending_ms = 0
-        return {
+        out = {
             "order_unconfirmed_ms": pending_ms,
             "api_failures_60s": 0,
             "last_error": self._last_error,
         }
+        try:
+            out.update(self._last_route_quality or {})
+        except Exception:
+            pass
+        return out
 
     def safety_reset(self) -> bool:
         """Clear pending swap state and last error."""
@@ -380,7 +387,6 @@ class DexExecutionAgent:
                 "amount": str(amount),
                 "from": from_addr,
                 "slippage": str(slippage),
-                "disableEstimate": "true",
             }),
             (f"https://api.1inch.dev/swap/v5.2/{self.chain_id}/swap", {
                 "fromTokenAddress": from_token,
@@ -388,7 +394,6 @@ class DexExecutionAgent:
                 "amount": str(amount),
                 "fromAddress": from_addr,
                 "slippage": str(slippage),
-                "disableEstimate": "true",
             }),
         ]
         last_err = None
@@ -404,6 +409,28 @@ class DexExecutionAgent:
 
     def _request_swap(self, side: str, amount: float, client_order_id: Optional[str], intent_id: Optional[str]) -> Optional[Dict[str, Any]]:
         self._set_last_error(None)
+        if bool(getattr(self.cfg, "dry_run", True)):
+            self._pending_swap = None
+            dry = {
+                "orderId": "dry_run_dex",
+                "status": "DRY_RUN",
+                "side": side,
+                "type": "SWAP",
+                "symbol": self.symbol,
+                "amount": amount,
+                "intent_id": intent_id,
+                "client_order_id": client_order_id,
+            }
+            self._emit_exec({
+                "status": "DRY_RUN",
+                "venue": self.venue,
+                "intent_id": intent_id,
+                "client_order_id": client_order_id,
+                "symbol": self.symbol,
+                "side": side,
+                "amount": amount,
+            })
+            return dry
         # Allowlist guard
         try:
             allowed = getattr(self.cfg, "onchain_allowed_pairs", []) or []
@@ -474,6 +501,57 @@ class DexExecutionAgent:
                     return None
             est_gas = _to_int(swap.get("estimatedGas") or swap.get("gas") or tx.get("gas"))
             gas_price = _to_int(tx.get("gasPrice") or tx.get("maxFeePerGas") or tx.get("maxPriorityFeePerGas"))
+            from_amt_raw = swap.get("fromTokenAmount") or swap.get("fromAmount") or amount_in
+            to_amt_raw = swap.get("toTokenAmount") or swap.get("toAmount")
+            from_sym = ((swap.get("fromToken") or {}).get("symbol") or (self.base_asset if side == "SELL" else self.quote_asset))
+            to_sym = ((swap.get("toToken") or {}).get("symbol") or (self.quote_asset if side == "SELL" else self.base_asset))
+            try:
+                from_units = float(_to_int(from_amt_raw)) / (10 ** int(self._asset_decimals(from_sym or "")))
+                to_units = float(_to_int(to_amt_raw)) / (10 ** int(self._asset_decimals(to_sym or "")))
+            except Exception:
+                from_units = None
+                to_units = None
+            try:
+                latest_price = None
+                if self.coordinator and hasattr(self.coordinator, "get_shared_data"):
+                    latest_price = self.coordinator.get_shared_data("latest_price")
+                latest_price = float(latest_price or 0.0)
+                def _usd_value(sym: str, units: Optional[float]) -> Optional[float]:
+                    if units is None:
+                        return None
+                    s = str(sym or "").upper()
+                    if s in ("USD", "USDC", "USDT", "DAI"):
+                        return float(units)
+                    if s in ("ETH", "WETH") and latest_price > 0:
+                        return float(units) * latest_price
+                    return None
+                from_usd = _usd_value(from_sym, from_units)
+                to_usd = _usd_value(to_sym, to_units)
+                min_ratio = float(getattr(self.cfg, "onchain_min_output_ratio", 0.90) or 0.90)
+                quote_ratio = (float(to_usd) / float(from_usd)) if from_usd and to_usd else None
+                self._last_route_quality = {
+                    "quote_output_ratio": quote_ratio,
+                    "min_output_ratio": min_ratio,
+                    "route_from_usd": from_usd,
+                    "route_to_usd": to_usd,
+                    "route_side": side,
+                    "route_symbol": self.symbol,
+                    "route_ts": int(time.time() * 1000),
+                }
+                if from_usd is None or from_usd <= 0 or to_usd is None or to_usd <= 0:
+                    raise RuntimeError(f"missing usable output quote from={from_amt_raw} {from_sym} to={to_amt_raw} {to_sym}")
+                if min_ratio and to_usd < from_usd * min_ratio:
+                    raise RuntimeError(f"output quote too low: ${to_usd:.6f} < {min_ratio:.2%} of ${from_usd:.6f}")
+            except Exception as e:
+                self._emit_exec({
+                    "status": "PRECHECK_FAILED",
+                    "venue": self.venue,
+                    "intent_id": intent_id,
+                    "client_order_id": client_order_id,
+                    "error": {"class": "QUOTE_TOO_LOW", "message": str(e)},
+                })
+                self._set_last_error({"class": "QUOTE_TOO_LOW", "message": str(e)})
+                return None
             gas_gwei = None
             fee_eth = None
             try:
@@ -481,9 +559,54 @@ class DexExecutionAgent:
                     gas_gwei = float(gas_price) / 1e9
                 if est_gas is not None and gas_price is not None:
                     fee_eth = (float(est_gas) * float(gas_price)) / 1e18
+                try:
+                    latest_price = float(self.coordinator.get_shared_data("latest_price") or 0.0) if self.coordinator else 0.0
+                    fee_usd = float(fee_eth or 0.0) * latest_price if latest_price > 0 else None
+                    route_from = float((self._last_route_quality or {}).get("route_from_usd") or 0.0)
+                    if fee_usd is not None:
+                        self._last_route_quality["gas_usd"] = fee_usd
+                    if fee_usd is not None and route_from > 0:
+                        self._last_route_quality["gas_drag_pct"] = fee_usd / route_from
+                except Exception:
+                    pass
             except Exception:
                 gas_gwei = None
                 fee_eth = None
+            # Mandatory live validation: never hand MetaMask a zero/unknown gas swap.
+            try:
+                require_estimate = bool(getattr(self.cfg, "onchain_require_gas_estimate", True))
+                needs_estimate = (
+                    est_gas is None or est_gas <= 0 or
+                    gas_price is None or gas_price <= 0 or
+                    fee_eth is None or fee_eth <= 0
+                )
+                if require_estimate and needs_estimate:
+                    if not self._w3:
+                        raise RuntimeError("web3 provider unavailable for gas validation")
+                    tx_for_estimate = dict(tx)
+                    if _to_int(tx_for_estimate.get("gas")) in (None, 0):
+                        tx_for_estimate.pop("gas", None)
+                    if not tx_for_estimate.get("from") and self.wallet_address:
+                        tx_for_estimate["from"] = self.wallet_address
+                    est_gas = int(self._w3.eth.estimate_gas(tx_for_estimate))
+                    if gas_price is None or gas_price <= 0:
+                        gas_price = int(self._w3.eth.gas_price)
+                    if est_gas <= 0 or gas_price <= 0:
+                        raise RuntimeError("gas estimate returned zero")
+                    # Add a small buffer so MetaMask receives a usable upper bound.
+                    tx["gas"] = int(est_gas * 1.15)
+                    gas_gwei = float(gas_price) / 1e9
+                    fee_eth = (float(tx["gas"]) * float(gas_price)) / 1e18
+            except Exception as e:
+                self._emit_exec({
+                    "status": "PRECHECK_FAILED",
+                    "venue": self.venue,
+                    "intent_id": intent_id,
+                    "client_order_id": client_order_id,
+                    "error": {"class": "GAS_ESTIMATE_UNAVAILABLE", "message": str(e)},
+                })
+                self._set_last_error({"class": "GAS_ESTIMATE_UNAVAILABLE", "message": str(e)})
+                return None
             # Enforce caps if configured
             try:
                 max_gas_gwei = float(getattr(self.cfg, "onchain_max_gas_gwei", 0.0) or 0.0)
@@ -617,6 +740,7 @@ class KrakenTrader:
         self.dry_run = dry_run
         self.max_position_base = max_position_base
         self.order_tracker = OrderTracker()
+        self.exchange = "kraken"
 
         # Infer base/quote from symbol "BASE/QUOTE"
         if "/" not in symbol:
@@ -629,13 +753,21 @@ class KrakenTrader:
         quote_free = float(bal.get(self.quote_asset, {}).get("free", 0))
         return base_free, quote_free
 
-    def _place(self, side: str, amount: float) -> Optional[Dict[str, Any]]:
+    def _place(self, side: str, amount: float, price: Optional[float] = None) -> Optional[Dict[str, Any]]:
         if amount <= 0:
             logging.info("Order amount <= 0; skipping.")
             return None
         if self.dry_run:
             logging.info(f"[DRY_RUN] {side} {self.symbol} amount={amount}")
-            return {"orderId": "dry_run", "status": "FILLED", "side": side, "type": "MARKET"}
+            return {
+                "orderId": "dry_run",
+                "status": "FILLED",
+                "side": side,
+                "type": "MARKET",
+                "executedQty": amount,
+                "avgPrice": price,
+                "price": price,
+            }
         try:
             if side == "BUY":
                 order = self.client.create_market_buy_order(self.symbol, amount)
@@ -655,11 +787,16 @@ class KrakenTrader:
             logging.error(f"Could not fetch price for BUY: {e}")
             return None
         amount = quote_amount / price
-        return self._place("BUY", amount)
+        return self._place("BUY", amount, price=price)
 
     def sell_market_base(self, base_qty: float) -> Optional[Dict[str, Any]]:
         qty = min(base_qty, self.max_position_base)
-        return self._place("SELL", qty)
+        price = None
+        try:
+            price = float(self.client.fetch_ticker(self.symbol)["last"])
+        except Exception:
+            pass
+        return self._place("SELL", qty, price=price)
 
 
 class ExecutionAgent:
@@ -773,6 +910,16 @@ class ExecutionAgent:
         except Exception:
             return False
 
+    def _split_order_quantities(self, total_qty: float, max_chunk: float) -> List[float]:
+        """Splits a large order into smaller chunks."""
+        chunks = []
+        remaining = total_qty
+        while remaining > 0:
+            chunk = min(remaining, max_chunk)
+            chunks.append(chunk)
+            remaining -= chunk
+        return chunks
+
     def _precheck(self, req: Dict[str, Any]) -> Tuple[bool, Optional[Dict[str, Any]]]:
         # Kill switch
         try:
@@ -860,7 +1007,15 @@ class ExecutionAgent:
             return prev.get('order')
 
         # ACK
-        ack = {"client_order_id": client_order_id, "status": "RECEIVED", "venue": getattr(self.trader, 'exchange', None) or getattr(self.trader, 'client', None) and 'binance'}
+        ack = {
+            "client_order_id": client_order_id,
+            "intent_id": intent_id,
+            "status": "RECEIVED",
+            "venue": getattr(self.trader, 'exchange', None) or getattr(self.trader, 'client', None) and 'binance',
+            "symbol": getattr(self.trader, "symbol", None),
+            "side": "BUY",
+            "order_type": "MARKET",
+        }
         self._emit(ack)
 
         ok, fail = self._precheck(req)
@@ -882,12 +1037,23 @@ class ExecutionAgent:
             order_id = order.get('orderId') or order.get('id') or 'unknown'
             if client_order_id:
                 self._order_sent_ts[client_order_id] = time.time()
-            placed = {"client_order_id": client_order_id, "intent_id": intent_id, "order_id": order_id, "status": "PLACED", "filled_qty": order.get('executedQty') or order.get('filledQty') or 0.0, "avg_price": order.get('avgPrice') or order.get('price') or None}
+            filled_qty = order.get('executedQty') or order.get('filledQty') or 0.0
+            avg_price = order.get('avgPrice') or order.get('price') or None
+            placed = {
+                "client_order_id": client_order_id,
+                "intent_id": intent_id,
+                "order_id": order_id,
+                "status": "PLACED",
+                "venue": getattr(self.trader, "exchange", None),
+                "symbol": getattr(self.trader, "symbol", None),
+                "side": "BUY",
+                "order_type": "MARKET",
+            }
             self._client_orders[client_order_id or order_id] = {"status": placed['status'], "order": order}
             self._emit(placed)
             # If immediate FILLED
             if order.get('status') == 'FILLED' or order.get('status') == 'filled':
-                filled = {**placed, "status": "FILLED"}
+                filled = {**placed, "status": "FILLED", "filled_qty": filled_qty, "avg_price": avg_price}
                 self._emit(filled)
             return order
         else:
@@ -895,7 +1061,19 @@ class ExecutionAgent:
             self._emit(err)
             return None
 
-    def sell_market_base(self, base_qty: float, client_order_id: Optional[str] = None, intent_id: Optional[str] = None, ts: Optional[int] = None, **kwargs) -> Optional[Dict[str, Any]]:
+    def sell_market_base(self, base_qty: float, client_order_id: Optional[str] = None, intent_id: Optional[str] = None, ts: Optional[int] = None, max_chunk: Optional[float] = None, **kwargs) -> Optional[Dict[str, Any]]:
+        # Order splitting logic
+        if max_chunk and base_qty > max_chunk:
+            chunks = self._split_order_quantities(base_qty, max_chunk)
+            results = []
+            for chunk in chunks:
+                # Use a modified client_order_id for each chunk
+                chunk_cid = f"{client_order_id}-chunk-{chunks.index(chunk)}" if client_order_id else None
+                res = self.sell_market_base(chunk, client_order_id=chunk_cid, intent_id=intent_id, ts=ts, max_chunk=None, **kwargs)
+                if res:
+                    results.append(res)
+            return results[0] if results else None
+
         req = {"client_order_id": client_order_id, "intent_id": intent_id, "side": "SELL", "order_type": "MARKET", "qty": base_qty, "ts": ts or int(time.time() * 1000)}
         prev = self._idempotent_check(client_order_id)
         if prev:
@@ -923,11 +1101,22 @@ class ExecutionAgent:
             order_id = order.get('orderId') or order.get('id') or 'unknown'
             if client_order_id:
                 self._order_sent_ts[client_order_id] = time.time()
-            placed = {"client_order_id": client_order_id, "intent_id": intent_id, "order_id": order_id, "status": "PLACED", "filled_qty": order.get('executedQty') or order.get('filledQty') or 0.0, "avg_price": order.get('avgPrice') or order.get('price') or None}
+            filled_qty = order.get('executedQty') or order.get('filledQty') or 0.0
+            avg_price = order.get('avgPrice') or order.get('price') or None
+            placed = {
+                "client_order_id": client_order_id,
+                "intent_id": intent_id,
+                "order_id": order_id,
+                "status": "PLACED",
+                "venue": getattr(self.trader, "exchange", None),
+                "symbol": getattr(self.trader, "symbol", None),
+                "side": "SELL",
+                "order_type": "MARKET",
+            }
             self._client_orders[client_order_id or order_id] = {"status": placed['status'], "order": order}
             self._emit(placed)
             if order.get('status') == 'FILLED' or order.get('status') == 'filled':
-                filled = {**placed, "status": "FILLED"}
+                filled = {**placed, "status": "FILLED", "filled_qty": filled_qty, "avg_price": avg_price}
                 self._emit(filled)
             return order
         else:

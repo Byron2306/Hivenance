@@ -36,6 +36,7 @@ class WalletMonitor:
         poll_seconds: int = 5,
         rpc_timeout: int = 5,
         extra_token_addresses: Optional[Dict[str, Dict[str, Any]]] = None,
+        multichain_watch: Optional[List[Dict[str, Any]]] = None,
     ):
         # Use a short RPC timeout so UI startup can't hang on a slow/unreachable endpoint.
         self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": rpc_timeout}))
@@ -53,6 +54,7 @@ class WalletMonitor:
         self.token_symbol = None
         self.token_decimals = None
         self.extra_tokens: Dict[str, Dict[str, Any]] = {}
+        self.multichain_watch: List[Dict[str, Any]] = multichain_watch or []
         if erc20_token_address:
             taddr = self.w3.to_checksum_address(erc20_token_address)
             self.token = self.w3.eth.contract(address=taddr, abi=ERC20_MIN_ABI)
@@ -243,6 +245,57 @@ class WalletMonitor:
         except Exception:
             pass
 
+        # Watch-only balances on other EVM chains. Execution remains bound to
+        # the configured primary chain; these rows are visibility/risk context.
+        try:
+            for chain in self.multichain_watch or []:
+                if not isinstance(chain, dict) or not chain.get("rpc_url"):
+                    continue
+                chain_name = str(chain.get("name") or chain.get("chain_id") or "chain")
+                chain_id = chain.get("chain_id")
+                native_symbol = str(chain.get("native_symbol") or "ETH")
+                w3 = Web3(Web3.HTTPProvider(chain.get("rpc_url"), request_kwargs={"timeout": int(chain.get("rpc_timeout", 5) or 5)}))
+                if not w3.is_connected():
+                    continue
+                watch_addr = w3.to_checksum_address(chain.get("watch_address") or self.addr)
+                try:
+                    native_bal = float(w3.from_wei(w3.eth.get_balance(watch_addr), "ether"))
+                    snapshot['balances'].append({
+                        'asset': native_symbol,
+                        'free': native_bal,
+                        'locked': 0.0,
+                        'chain': chain_name,
+                        'chain_id': chain_id,
+                        'watch_only': True,
+                    })
+                except Exception:
+                    pass
+                for sym, info in (chain.get("tokens") or {}).items():
+                    try:
+                        addr = info.get("address") if isinstance(info, dict) else None
+                        if not addr:
+                            continue
+                        contract = w3.eth.contract(address=w3.to_checksum_address(addr), abi=ERC20_MIN_ABI)
+                        raw = contract.functions.balanceOf(watch_addr).call()
+                        try:
+                            dec = int(info.get("decimals")) if isinstance(info, dict) and info.get("decimals") is not None else int(contract.functions.decimals().call())
+                        except Exception:
+                            dec = 18
+                        bal = float(raw) / (10 ** dec)
+                        snapshot['balances'].append({
+                            'asset': str(sym).upper(),
+                            'free': bal,
+                            'locked': 0.0,
+                            'chain': chain_name,
+                            'chain_id': chain_id,
+                            'address': addr,
+                            'watch_only': True,
+                        })
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
         # Deduplicate assets (avoid double-counting on-chain vs execution balances)
         try:
             dex_mode = False
@@ -253,18 +306,22 @@ class WalletMonitor:
                 asset = str(b.get('asset') or '')
                 if not asset:
                     continue
+                chain = str(b.get('chain') or '')
+                key = f"{asset}@{chain}" if chain else asset
                 free = float(b.get('free') or 0.0)
                 locked = float(b.get('locked') or 0.0)
-                if asset not in merged:
-                    merged[asset] = {'asset': asset, 'free': free, 'locked': locked}
+                if key not in merged:
+                    merged[key] = dict(b)
+                    merged[key]['free'] = free
+                    merged[key]['locked'] = locked
                 else:
                     if dex_mode:
                         # In DEX mode, prefer the larger observed value to avoid doubling
-                        merged[asset]['free'] = max(merged[asset]['free'], free)
-                        merged[asset]['locked'] = max(merged[asset]['locked'], locked)
+                        merged[key]['free'] = max(merged[key]['free'], free)
+                        merged[key]['locked'] = max(merged[key]['locked'], locked)
                     else:
-                        merged[asset]['free'] += free
-                        merged[asset]['locked'] += locked
+                        merged[key]['free'] += free
+                        merged[key]['locked'] += locked
             snapshot['balances'] = list(merged.values())
         except Exception:
             pass

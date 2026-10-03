@@ -92,9 +92,13 @@ def root():
         ],
     }
 
+@app.get("/health")
+def health():
+    return {"ok": True, "service": "BuzzService", "version": "1.0"}
+
 @app.get("/buzz")
 def buzz_alias():
-    return {"detail": "Use the UI at /buzz on the main app (port 5000)."}
+    return {"detail": "Use the UI at /buzz on the main app (port 5001)."}
 
 
 @app.post("/v1/admin/credit")

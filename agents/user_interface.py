@@ -5,8 +5,8 @@ of the system isn't running.
 """
 
 import logging
+import os
 import time
-import ccxt
 
 from main import load_config
 from agents.coordinator import SwarmCoordinator
@@ -26,7 +26,7 @@ def launch_ui_only() -> None:
     # aren't available.
     cfg.ui_enabled = True
     cfg.kill_switch_enabled = False
-    cfg.network_enabled = False
+    cfg.network_enabled = os.getenv("HIVENANCE_ENABLE_REDIS", "0") == "1"
     cfg.data_store_enabled = False
     cfg.performance_enabled = False
     cfg.security_enabled = False
@@ -40,6 +40,7 @@ def launch_ui_only() -> None:
     client = None
     try:
         if cfg.exchange.lower() == "kraken":
+            import ccxt
             client = ccxt.kraken({"enableRateLimit": True})
         else:
             from binance.client import Client
@@ -51,6 +52,18 @@ def launch_ui_only() -> None:
 
     if client:
         coordinator.initialize(client)
+
+    if cfg.network_enabled:
+        try:
+            coordinator.enable_network(
+                host=cfg.redis_host,
+                port=cfg.redis_port,
+                db=cfg.redis_db,
+                password=cfg.redis_password,
+            )
+            logging.info("Network (Redis) enabled for UI backend.")
+        except Exception as e:
+            logging.warning(f"UI backend Redis enable failed: {e}")
 
     coordinator.start_background_tasks()
 

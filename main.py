@@ -21,6 +21,7 @@ class Config:
     kraken_api_secret: str
 
     dry_run: bool
+    live_mode: bool
 
     symbol: str
     interval: str
@@ -42,6 +43,7 @@ class Config:
     ratio_gate_enabled: bool
     target_base_ratio: float
     target_ratio_band: float
+    ratio_gate_trade_override_enabled: bool
 
     poll_seconds: int
     wallet_poll_seconds: int
@@ -67,6 +69,8 @@ class Config:
     onchain_max_gas_eth: float
     onchain_max_gas_usd: float
     onchain_max_fee_eth: float
+    onchain_require_gas_estimate: bool
+    onchain_min_output_ratio: float
     onchain_fallback_to_cex: bool
     swarmguard_enabled: bool
     liquidity_k: float
@@ -99,6 +103,70 @@ class Config:
     coin_selection_include: List[str]
     coin_selection_exclude: List[str]
     coin_selection_auto_switch: bool
+    coin_selection_target_volatility: float
+    coin_selection_max_volatility: float
+    core_assets: List[str]
+    experimental_assets: List[str]
+    stable_reserve_assets: List[str]
+    capital_allocator_enabled: bool
+    capital_reserve_pct: float
+    core_allocation_pct: float
+    experimental_allocation_pct: float
+    symbol_memory_path: str
+    promotion_allowed_stages: List[str]
+    promotion_min_paper_trades: int
+    promotion_min_win_rate: float
+    promotion_max_drawdown_pct: float
+    wallet_safety_enabled: bool
+    wallet_max_daily_spend_usd: float
+    wallet_max_token_exposure_pct: float
+    wallet_approval_check_enabled: bool
+    multichain_watch_enabled: bool
+    multichain_watch_chains: List[dict]
+    market_context_enabled: bool
+    btc_dominance_risk_off_threshold: float
+    volatility_harvest_enabled: bool
+    volatility_harvest_min_expansion: float
+    volatility_harvest_min_volume_surge: float
+    volatility_harvest_min_return_pct: float
+    volatility_harvest_max_drawdown_pct: float
+    exit_manager_enabled: bool
+    exit_hard_stop_pct: float
+    exit_take_profit_pct: float
+    exit_trailing_window: int
+    exit_trailing_stop_pct: float
+    exit_time_stop_sec: int
+    dex_min_output_ratio: float
+    dex_max_price_impact_pct: float
+    dex_max_gas_drag_pct: float
+    dex_min_liquidity_usd: float
+    dex_margin_oracle_enabled: bool
+    dex_probe_amount_usd: float
+    dex_min_roundtrip_ratio: float
+    dex_min_volume_24h_usd: float
+    dex_min_txns_24h: int
+    dex_min_token_age_hours: float
+    dex_oracle_cache_sec: int
+    dex_oracle_timeout_sec: float
+    quote_retry_attempts: int
+    quote_retry_backoff_sec: float
+    quote_backoff_cooldown_sec: int
+    last_good_quote_ttl_sec: int
+    dex_ready_roundtrip_ratio: float
+    goplus_security_enabled: bool
+    goplus_cache_sec: int
+    contract_max_transfer_tax_pct: float
+    contract_max_top10_holder_pct: float
+    market_bee_enabled: bool
+    market_bee_top_n: int
+    market_bee_snapshot_interval_sec: int
+    paper_promotion_eval_interval_sec: int
+    paper_promotion_window_days: int
+    contract_min_liquidity_to_fdv: float
+    volatility_harvest_quote_asset: str
+    volatility_harvest_require_exit: bool
+    tax_export_enabled: bool
+    tax_export_path: str
 
     governance_authoritative: bool
     regime_timeframes: List[str]
@@ -135,6 +203,9 @@ class Config:
 
     data_store_enabled: bool
     db_path: str
+    settings_path: str
+    config_snapshot_dir: str
+    config_audit_log_path: str
 
     performance_enabled: bool
 
@@ -148,6 +219,49 @@ class Config:
     buzz_base_url: Optional[str]
     buzz_shared_secret: Optional[str]
     buzz_account: Optional[str]
+    public_bot_integrations_enabled: bool
+    local_crypto_bot_implementations_enabled: bool
+    public_bot_repo_root: str
+    public_bot_backtest_dir: str
+    hummingbot_sidecar_live_enabled: bool
+    hummingbot_sidecar_command: str
+    hummingbot_sidecar_config_dir: str
+    hummingbot_v2_default_executor: str
+    hummingbot_v2_twap_duration_sec: int
+    hummingbot_v2_twap_interval_sec: int
+    hummingbot_v2_grid_width_pct: float
+    hummingbot_v2_dca_steps: int
+    hummingbot_v2_dca_step_pct: float
+    hummingbot_v2_leverage: int
+    market_making_advisors_enabled: bool
+    market_making_quote_placement_enabled: bool
+    pmm_simple_min_liquidity_usd: float
+    pmm_simple_max_spread_pct: float
+    pmm_simple_min_quote_spread_pct: float
+    pmm_dynamic_min_volume_24h_usd: float
+    pmm_dynamic_max_spread_pct: float
+    pmm_dynamic_max_abs_change_24h_pct: float
+    pmm_dynamic_min_quote_spread_pct: float
+    public_bot_metrics_auto_promote: bool
+    ml_research_lab_enabled: bool
+    ml_model_families_enabled: List[str]
+    execution_parity_max_latency_ms: int
+    execution_parity_max_slippage_pct: float
+    execution_parity_min_fill_ratio: float
+    execution_parity_max_queue_position_risk: float
+    orderbook_capture_enabled: bool
+    orderbook_capture_depth: int
+    signal_marketplace_min_originality: float
+    signal_marketplace_max_drawdown: float
+    signal_marketplace_min_stability: float
+    signal_marketplace_min_realized_samples: int
+    signal_marketplace_reward_scale: float
+    signal_marketplace_weight_strength: float
+    signal_marketplace_weight_realized_outcome: float
+    signal_marketplace_weight_originality: float
+    signal_marketplace_weight_stability: float
+    signal_marketplace_weight_win_rate: float
+    signal_marketplace_weight_drawdown_penalty: float
 
     openclaw_autonomy_enabled: bool
     openclaw_autonomy_min_score: float
@@ -157,6 +271,9 @@ class Config:
     erc20_token_address: Optional[str]
     etherscan_api_key: Optional[str]
     allowed_ips: List[str]
+    profile_path: str
+    profile_name: str
+    profile_reason: str
 
 
 def load_config() -> Config:
@@ -183,6 +300,29 @@ def load_config() -> Config:
     except Exception as e:
         logging.error(f"Error loading settings: {e}")
         settings = {}
+    profile_path = os.getenv("HIVENANCE_PROFILE_PATH") or settings.get("profile_path") or "config/conservative_state.yaml"
+    try:
+        if profile_path and os.path.exists(profile_path):
+            with open(profile_path, "r") as f:
+                profile = yaml.safe_load(f) or {}
+            if isinstance(profile, dict):
+                settings.update(profile)
+                settings["profile_path"] = profile_path
+    except Exception as e:
+        logging.error(f"Error loading profile overlay {profile_path}: {e}")
+
+    ui_port = int(os.getenv("HIVENANCE_UI_PORT") or os.getenv("PORT") or settings.get("ui_port", 5001))
+    buzz_base_url = os.getenv("BUZZ_BASE_URL") or settings.get("buzz_base_url", "http://localhost:9009")
+    redis_port = int(os.getenv("REDIS_PORT") or os.getenv("HIVENANCE_REDIS_PORT") or settings.get("redis_port", 6379))
+    safe_hummingbot_sidecar_command = settings.get(
+        "hummingbot_sidecar_command",
+        "python3 scripts/hummingbot_sidecar_runner.py --config {config_path} --dry-run=true --mode validate --compose-file docker/docker-compose.yml --service hummingbot-sidecar",
+    )
+    if "--dry-run=false" in safe_hummingbot_sidecar_command or "--mode docker-compose" in safe_hummingbot_sidecar_command:
+        safe_hummingbot_sidecar_command = (
+            "python3 scripts/hummingbot_sidecar_runner.py --config {config_path} "
+            "--dry-run=true --mode validate --compose-file docker/docker-compose.yml --service hummingbot-sidecar"
+        )
 
     return Config(
         binance_api_key=api_keys.get("binance_api_key", ""),
@@ -193,6 +333,7 @@ def load_config() -> Config:
         kraken_api_secret=api_keys.get("kraken_api_secret", ""),
 
         dry_run=settings.get("dry_run", True),
+        live_mode=settings.get("live_mode", False),
 
         symbol=settings.get("symbol", "BTCUSDT"),
         interval=settings.get("interval", "1m"),
@@ -214,6 +355,7 @@ def load_config() -> Config:
         ratio_gate_enabled=settings.get("ratio_gate_enabled", True),
         target_base_ratio=settings.get("target_base_ratio", 0.5),
         target_ratio_band=settings.get("target_ratio_band", 0.1),
+        ratio_gate_trade_override_enabled=settings.get("ratio_gate_trade_override_enabled", False),
 
         poll_seconds=settings.get("poll_seconds", 10),
         wallet_poll_seconds=settings.get("wallet_poll_seconds", 5),
@@ -239,6 +381,8 @@ def load_config() -> Config:
         onchain_max_gas_eth=settings.get("onchain_max_gas_eth", 0.0),
         onchain_max_gas_usd=settings.get("onchain_max_gas_usd", 0.0),
         onchain_max_fee_eth=settings.get("onchain_max_fee_eth", 0.0),
+        onchain_require_gas_estimate=settings.get("onchain_require_gas_estimate", True),
+        onchain_min_output_ratio=settings.get("onchain_min_output_ratio", 0.90),
         onchain_fallback_to_cex=settings.get("onchain_fallback_to_cex", False),
         swarmguard_enabled=settings.get("swarmguard_enabled", True),
         liquidity_k=settings.get("liquidity_k", 0.08),
@@ -271,6 +415,70 @@ def load_config() -> Config:
         coin_selection_include=settings.get("coin_selection_include", []),
         coin_selection_exclude=settings.get("coin_selection_exclude", []),
         coin_selection_auto_switch=settings.get("coin_selection_auto_switch", True),
+        coin_selection_target_volatility=settings.get("coin_selection_target_volatility", 0.006),
+        coin_selection_max_volatility=settings.get("coin_selection_max_volatility", 0.025),
+        core_assets=settings.get("core_assets", ["BTC", "ETH", "USDC"]),
+        experimental_assets=settings.get("experimental_assets", ["XCN", "TOSHI", "WLD"]),
+        stable_reserve_assets=settings.get("stable_reserve_assets", ["USDC", "USDT", "USD"]),
+        capital_allocator_enabled=settings.get("capital_allocator_enabled", True),
+        capital_reserve_pct=settings.get("capital_reserve_pct", 0.65),
+        core_allocation_pct=settings.get("core_allocation_pct", 0.30),
+        experimental_allocation_pct=settings.get("experimental_allocation_pct", 0.05),
+        symbol_memory_path=settings.get("symbol_memory_path", "data/symbol_memory.json"),
+        promotion_allowed_stages=settings.get("promotion_allowed_stages", ["paper", "tiny_live"]),
+        promotion_min_paper_trades=settings.get("promotion_min_paper_trades", 25),
+        promotion_min_win_rate=settings.get("promotion_min_win_rate", 0.52),
+        promotion_max_drawdown_pct=settings.get("promotion_max_drawdown_pct", 5.0),
+        wallet_safety_enabled=settings.get("wallet_safety_enabled", True),
+        wallet_max_daily_spend_usd=settings.get("wallet_max_daily_spend_usd", 25.0),
+        wallet_max_token_exposure_pct=settings.get("wallet_max_token_exposure_pct", 0.35),
+        wallet_approval_check_enabled=settings.get("wallet_approval_check_enabled", True),
+        multichain_watch_enabled=settings.get("multichain_watch_enabled", False),
+        multichain_watch_chains=settings.get("multichain_watch_chains", []),
+        market_context_enabled=settings.get("market_context_enabled", True),
+        btc_dominance_risk_off_threshold=settings.get("btc_dominance_risk_off_threshold", 58.0),
+        volatility_harvest_enabled=settings.get("volatility_harvest_enabled", False),
+        volatility_harvest_min_expansion=settings.get("volatility_harvest_min_expansion", 1.15),
+        volatility_harvest_min_volume_surge=settings.get("volatility_harvest_min_volume_surge", 0.85),
+        volatility_harvest_min_return_pct=settings.get("volatility_harvest_min_return_pct", 0.002),
+        volatility_harvest_max_drawdown_pct=settings.get("volatility_harvest_max_drawdown_pct", 0.08),
+        exit_manager_enabled=settings.get("exit_manager_enabled", True),
+        exit_hard_stop_pct=settings.get("exit_hard_stop_pct", 0.025),
+        exit_take_profit_pct=settings.get("exit_take_profit_pct", 0.04),
+        exit_trailing_window=settings.get("exit_trailing_window", 12),
+        exit_trailing_stop_pct=settings.get("exit_trailing_stop_pct", 0.025),
+        exit_time_stop_sec=settings.get("exit_time_stop_sec", 21600),
+        dex_min_output_ratio=settings.get("dex_min_output_ratio", settings.get("onchain_min_output_ratio", 0.90)),
+        dex_max_price_impact_pct=settings.get("dex_max_price_impact_pct", 0.02),
+        dex_max_gas_drag_pct=settings.get("dex_max_gas_drag_pct", 0.01),
+        dex_min_liquidity_usd=settings.get("dex_min_liquidity_usd", 0.0),
+        dex_margin_oracle_enabled=settings.get("dex_margin_oracle_enabled", True),
+        dex_probe_amount_usd=settings.get("dex_probe_amount_usd", settings.get("quote_order_size", 1.0)),
+        dex_min_roundtrip_ratio=settings.get("dex_min_roundtrip_ratio", 0.94),
+        dex_min_volume_24h_usd=settings.get("dex_min_volume_24h_usd", 25000),
+        dex_min_txns_24h=settings.get("dex_min_txns_24h", 50),
+        dex_min_token_age_hours=settings.get("dex_min_token_age_hours", 24),
+        dex_oracle_cache_sec=settings.get("dex_oracle_cache_sec", 45),
+        dex_oracle_timeout_sec=settings.get("dex_oracle_timeout_sec", 8),
+        quote_retry_attempts=settings.get("quote_retry_attempts", 3),
+        quote_retry_backoff_sec=settings.get("quote_retry_backoff_sec", 0.6),
+        quote_backoff_cooldown_sec=settings.get("quote_backoff_cooldown_sec", 30),
+        last_good_quote_ttl_sec=settings.get("last_good_quote_ttl_sec", 900),
+        dex_ready_roundtrip_ratio=settings.get("dex_ready_roundtrip_ratio", 0.985),
+        goplus_security_enabled=settings.get("goplus_security_enabled", True),
+        goplus_cache_sec=settings.get("goplus_cache_sec", 3600),
+        contract_max_transfer_tax_pct=settings.get("contract_max_transfer_tax_pct", 0.05),
+        contract_max_top10_holder_pct=settings.get("contract_max_top10_holder_pct", 0.80),
+        market_bee_enabled=settings.get("market_bee_enabled", True),
+        market_bee_top_n=settings.get("market_bee_top_n", 4),
+        market_bee_snapshot_interval_sec=settings.get("market_bee_snapshot_interval_sec", 300),
+        paper_promotion_eval_interval_sec=settings.get("paper_promotion_eval_interval_sec", 3600),
+        paper_promotion_window_days=settings.get("paper_promotion_window_days", 30),
+        contract_min_liquidity_to_fdv=settings.get("contract_min_liquidity_to_fdv", 0.002),
+        volatility_harvest_quote_asset=settings.get("volatility_harvest_quote_asset", "USD"),
+        volatility_harvest_require_exit=settings.get("volatility_harvest_require_exit", True),
+        tax_export_enabled=settings.get("tax_export_enabled", True),
+        tax_export_path=settings.get("tax_export_path", "data/tax_export.csv"),
 
         governance_authoritative=settings.get("governance_authoritative", True),
         regime_timeframes=settings.get("regime_timeframes", ["1m", "5m", "1h"]),
@@ -297,16 +505,19 @@ def load_config() -> Config:
 
         ui_enabled=settings.get("ui_enabled", True),
         ui_host=settings.get("ui_host", "0.0.0.0"),
-        ui_port=settings.get("ui_port", 5000),
+        ui_port=ui_port,
 
         network_enabled=settings.get("network_enabled", False),  # Default to False for easier startup
-        redis_host=settings.get("redis_host", "localhost"),
-        redis_port=settings.get("redis_port", 6379),
+        redis_host=os.getenv("REDIS_HOST") or os.getenv("HIVENANCE_REDIS_HOST") or settings.get("redis_host", "localhost"),
+        redis_port=redis_port,
         redis_db=settings.get("redis_db", 0),
         redis_password=settings.get("redis_password"),
 
         data_store_enabled=settings.get("data_store_enabled", True),
         db_path=settings.get("db_path", "data/swarm_data.db"),
+        settings_path=settings.get("settings_path", "config/settings.yaml"),
+        config_snapshot_dir=settings.get("config_snapshot_dir", "data/config_snapshots"),
+        config_audit_log_path=settings.get("config_audit_log_path", "logs/config_audit.jsonl"),
 
         performance_enabled=settings.get("performance_enabled", True),
 
@@ -316,19 +527,65 @@ def load_config() -> Config:
         security_always_armed=settings.get("security_always_armed", True),
 
         walletconnect_project_id=settings.get("walletconnect_project_id") or api_keys.get("walletconnect_project_id"),
-        oneinch_api_key=os.getenv("ONEINCH_API_KEY") or settings.get("oneinch_api_key") or api_keys.get("oneinch_api_key"),
-        buzz_base_url=settings.get("buzz_base_url", "http://localhost:9009"),
-        buzz_shared_secret=settings.get("buzz_shared_secret", ""),
+        oneinch_api_key=os.getenv("ONEINCH_API_KEY") or api_keys.get("oneinch_api_key"),
+        buzz_base_url=buzz_base_url,
+        buzz_shared_secret=os.getenv("BUZZ_SHARED_SECRET") or os.getenv("HIVE_SHARED_SECRET") or settings.get("buzz_shared_secret", ""),
         buzz_account=settings.get("buzz_account", "hivenance-system"),
+        public_bot_integrations_enabled=settings.get("public_bot_integrations_enabled", True),
+        local_crypto_bot_implementations_enabled=settings.get("local_crypto_bot_implementations_enabled", True),
+        public_bot_repo_root=settings.get("public_bot_repo_root", "external/public-bots"),
+        public_bot_backtest_dir=settings.get("public_bot_backtest_dir", "data/public_bot_backtests"),
+        hummingbot_sidecar_live_enabled=settings.get("public_bot_integrations_enabled", True),
+        hummingbot_sidecar_command=safe_hummingbot_sidecar_command,
+        hummingbot_sidecar_config_dir=settings.get("hummingbot_sidecar_config_dir", "data/hummingbot_executors"),
+        hummingbot_v2_default_executor=settings.get("hummingbot_v2_default_executor", "position"),
+        hummingbot_v2_twap_duration_sec=settings.get("hummingbot_v2_twap_duration_sec", 300),
+        hummingbot_v2_twap_interval_sec=settings.get("hummingbot_v2_twap_interval_sec", 30),
+        hummingbot_v2_grid_width_pct=settings.get("hummingbot_v2_grid_width_pct", 0.012),
+        hummingbot_v2_dca_steps=settings.get("hummingbot_v2_dca_steps", 3),
+        hummingbot_v2_dca_step_pct=settings.get("hummingbot_v2_dca_step_pct", 0.006),
+        hummingbot_v2_leverage=settings.get("hummingbot_v2_leverage", 1),
+        market_making_advisors_enabled=settings.get("market_making_advisors_enabled", True),
+        market_making_quote_placement_enabled=settings.get("market_making_quote_placement_enabled", False),
+        pmm_simple_min_liquidity_usd=settings.get("pmm_simple_min_liquidity_usd", 25000.0),
+        pmm_simple_max_spread_pct=settings.get("pmm_simple_max_spread_pct", 0.015),
+        pmm_simple_min_quote_spread_pct=settings.get("pmm_simple_min_quote_spread_pct", 0.003),
+        pmm_dynamic_min_volume_24h_usd=settings.get("pmm_dynamic_min_volume_24h_usd", 50000.0),
+        pmm_dynamic_max_spread_pct=settings.get("pmm_dynamic_max_spread_pct", 0.02),
+        pmm_dynamic_max_abs_change_24h_pct=settings.get("pmm_dynamic_max_abs_change_24h_pct", 0.25),
+        pmm_dynamic_min_quote_spread_pct=settings.get("pmm_dynamic_min_quote_spread_pct", 0.004),
+        public_bot_metrics_auto_promote=settings.get("public_bot_metrics_auto_promote", False),
+        ml_research_lab_enabled=settings.get("ml_research_lab_enabled", True),
+        ml_model_families_enabled=settings.get("ml_model_families_enabled", ["freqai", "finrl_crypto", "macrohft", "webcryptoagent"]),
+        execution_parity_max_latency_ms=settings.get("execution_parity_max_latency_ms", 1500),
+        execution_parity_max_slippage_pct=settings.get("execution_parity_max_slippage_pct", 0.01),
+        execution_parity_min_fill_ratio=settings.get("execution_parity_min_fill_ratio", 0.98),
+        execution_parity_max_queue_position_risk=settings.get("execution_parity_max_queue_position_risk", 0.35),
+        orderbook_capture_enabled=settings.get("orderbook_capture_enabled", True),
+        orderbook_capture_depth=settings.get("orderbook_capture_depth", 5),
+        signal_marketplace_min_originality=settings.get("signal_marketplace_min_originality", 0.35),
+        signal_marketplace_max_drawdown=settings.get("signal_marketplace_max_drawdown", 0.45),
+        signal_marketplace_min_stability=settings.get("signal_marketplace_min_stability", 0.2),
+        signal_marketplace_min_realized_samples=settings.get("signal_marketplace_min_realized_samples", 25),
+        signal_marketplace_reward_scale=settings.get("signal_marketplace_reward_scale", 100.0),
+        signal_marketplace_weight_strength=settings.get("signal_marketplace_weight_strength", 0.2),
+        signal_marketplace_weight_realized_outcome=settings.get("signal_marketplace_weight_realized_outcome", 0.3),
+        signal_marketplace_weight_originality=settings.get("signal_marketplace_weight_originality", 0.2),
+        signal_marketplace_weight_stability=settings.get("signal_marketplace_weight_stability", 0.15),
+        signal_marketplace_weight_win_rate=settings.get("signal_marketplace_weight_win_rate", 0.15),
+        signal_marketplace_weight_drawdown_penalty=settings.get("signal_marketplace_weight_drawdown_penalty", 0.35),
 
         openclaw_autonomy_enabled=settings.get("openclaw_autonomy_enabled", False),
         openclaw_autonomy_min_score=settings.get("openclaw_autonomy_min_score", 0.55),
 
-        web3_rpc_url=api_keys.get("web3_rpc_url") or settings.get("web3_rpc_url"),
-        watch_address=api_keys.get("watch_address") or settings.get("watch_address"),
-        erc20_token_address=api_keys.get("erc20_token_address") or settings.get("erc20_token_address"),
+        web3_rpc_url=settings.get("web3_rpc_url") or api_keys.get("web3_rpc_url"),
+        watch_address=settings.get("watch_address") or api_keys.get("watch_address"),
+        erc20_token_address=settings.get("erc20_token_address") or api_keys.get("erc20_token_address"),
         etherscan_api_key=api_keys.get("etherscan_api_key") or settings.get("etherscan_api_key"),
         allowed_ips=settings.get("allowed_ips", []),
+        profile_path=settings.get("profile_path", profile_path),
+        profile_name=settings.get("profile_name", ""),
+        profile_reason=settings.get("profile_reason", ""),
     )
 
 

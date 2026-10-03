@@ -22,10 +22,25 @@ class GovernanceQueen:
         if not proposals:
             return self._decision("HOLD", None, 0.0, "No proposals", ts)
 
-        # Filter out HOLDs
+        protection_block = any(
+            ((p.get("protection") or {}).get("state") == "BLOCK")
+            for p in proposals
+            if isinstance(p.get("protection"), dict)
+        )
+        latency_block = any(
+            ((p.get("latency") or {}).get("state") == "BLOCK")
+            for p in proposals
+            if isinstance(p.get("latency"), dict)
+        )
+
+        # Filter out HOLDs. Protection blocks suppress new entries but still
+        # allow exit-risk SELL proposals through.
         active = [p for p in proposals if p.get("action") in ("BUY", "SELL")]
+        if protection_block or latency_block:
+            active = [p for p in active if p.get("action") == "SELL"]
         if not active:
-            return self._decision("HOLD", None, 0.0, "No actionable proposals", ts)
+            reason = "Protection block" if protection_block else ("Latency block" if latency_block else "No actionable proposals")
+            return self._decision("HOLD", None, 0.0, reason, ts)
 
         regime_label = (regime or {}).get("regime") or "CHOP_RANGE"
         regime_conf = float((regime or {}).get("confidence") or 0.0)
@@ -80,16 +95,36 @@ class GovernanceQueen:
         rf = 0.5
         if "RSI" in strategy and regime in ("CHOP_RANGE", "MEAN_REVERT_HIGH_VOL"):
             rf = 0.9
-        elif "BREAKOUT" in strategy and regime in ("BREAKOUT", "PANIC_VOLATILE"):
+        elif "BREAKOUT" in strategy and regime in ("BREAKOUT", "PANIC_VOLATILE", "VOL_EXPANSION", "PUMP"):
             rf = 0.85
-        elif "MOMENTUM" in strategy and regime.startswith("TREND"):
+        elif "MOMENTUM" in strategy and (regime.startswith("TREND") or regime in ("VOL_EXPANSION", "PUMP")):
             rf = 0.85
+        elif "BOLLINGER" in strategy and regime in ("CHOP_RANGE", "MEAN_REVERT_HIGH_VOL", "RANGING"):
+            rf = 0.9
+        elif "SUPERTREND" in strategy and (regime.startswith("TREND") or regime in ("BREAKOUT", "VOL_EXPANSION", "PUMP", "TREND_UP")):
+            rf = 0.9
         elif "SMA" in strategy and regime.startswith("TREND"):
             rf = 0.8
+        elif "VOL-EXPANSION" in strategy and regime in ("VOL_EXPANSION", "BREAKOUT", "PUMP", "TREND_UP"):
+            rf = 0.92
+        elif "EXIT-RISK" in strategy and proposal.get("action") == "SELL":
+            rf = 0.95
 
         rp = float(perf.get("win_rate", 0.5)) if isinstance(perf, dict) else 0.5
         sq = float(proposal.get("signal_strength") or 0.0)
-        ef = 1.0 - float(exec_quality.get("spread_pct", 0.0))
+        spread = float(exec_quality.get("spread_pct", 0.0) or 0.0)
+        price_impact = float(exec_quality.get("price_impact_pct", 0.0) or 0.0)
+        gas_drag = float(exec_quality.get("gas_drag_pct", 0.0) or 0.0)
+        min_output_ratio = exec_quality.get("min_output_ratio")
+        quote_ratio = exec_quality.get("quote_output_ratio")
+        ef = 1.0 - spread - price_impact - gas_drag
+        try:
+            if min_output_ratio is not None and quote_ratio is not None:
+                if float(quote_ratio) < float(min_output_ratio):
+                    ef *= 0.25
+        except Exception:
+            pass
+        ef = max(0.0, min(1.0, ef))
         ra = 1.0 - float(proposal.get("risk") or 0.0) * 0.5
 
         svs = 0.30 * rf + 0.25 * rp + 0.20 * sq + 0.15 * ef + 0.10 * ra
